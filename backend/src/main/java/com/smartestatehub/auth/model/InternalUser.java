@@ -1,22 +1,22 @@
-package com.smartestatehub.crm.model;
+package com.smartestatehub.auth.model;
 
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "client")
+@Table(name = "internal_users")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Client {
+public class InternalUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_client")
-    private Long idClient;
+    @Column(name = "id_user")
+    private Long idUser;
 
     @Column(name = "first_name", nullable = false)
     private String firstName;
@@ -32,11 +32,9 @@ public class Client {
 
     private String phone;
 
-    @Column(name = "deletion_reason")
-    private String deletionReason;
-
-    @Column(name = "deleted_by")
-    private Long deletedBy;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -47,8 +45,11 @@ public class Client {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @OneToOne(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private ClientFolder clientFolder;
+    @Column(name = "deleted_by")
+    private Long deletedBy;
+
+    @Column(name = "deletion_reason")
+    private String deletionReason;
 
     @PrePersist
     protected void onCreate() {

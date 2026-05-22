@@ -1,0 +1,178 @@
+Table: password_reset_tokens (ID: xFuZovWATEGj)
+Fields:
+  - created_at Point 1 Points d'extension
+  - expires_at Point 1 Points d'extension
+  - id Point 1 Points d'extension
+  - token_hash Point 1 Points d'extension
+  - used Point 1 Points d'extension
+  - used_at Point 1 Points d'extension
+
+Table: property_images (ID: C.nZBb~vs6TR)
+Fields:
+  - created_at Point 1 Points d'extension
+  - display_order Point 1 Points d'extension
+  - image_url Point 1 Points d'extension
+
+Table: deals (ID: SMnZvv1LxVSP)
+Fields:
+  - ai_lead_score Point 1 Points d'extension
+  - ai_recommended_action Point 1 Points d'extension
+  - ai_score_explanation Point 1 Points d'extension
+  - ai_summary Point 1 Points d'extension
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - is_urgent Point 1 Points d'extension
+  - last_interaction_at Point 1 Points d'extension
+  - stage Point 1 Points d'extension
+  - updated_at Point 1 Points d'extension
+
+Table: documents (ID: mpoZgptxOj3A)
+Fields:
+  - confirmed_received Point 1 Points d'extension
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - document_type Point 1 Points d'extension
+  - file_path Point 1 Points d'extension
+  - id_document Point 1 Points d'extension
+  - is_embedded Point 1 Points d'extension
+
+Table: client (ID: wBnZhD7sS65V)
+Fields:
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - deleted_by Point 1 Points d'extension
+  - deletion_reason Point 1 Points d'extension
+  - email Point 1 Points d'extension
+  - first_name Point 1 Points d'extension
+  - id_client Point 1 Points d'extension
+  - last_name Point 1 Points d'extension
+  - password Point 1 Points d'extension
+  - phone Point 1 Points d'extension
+  - updated_at Point 1 Points d'extension
+
+Table: contract_payments (ID: HUoZiAf6dimt)
+Fields:
+  - amount Point 1 Points d'extension
+  - due_date Point 1 Points d'extension
+  - id_payment Point 1 Points d'extension
+  - is_paid Point 1 Points d'extension
+  - payment_order Point 1 Points d'extension
+
+Table: offers (ID: YfoZ2kXzdEtg)
+Fields:
+  - created_at Point 1 Points d'extension
+  - id_offer Point 1 Points d'extension
+  - offer_amount Point 1 Points d'extension
+  - status Point 1 Points d'extension
+  - updated_at Point 1 Points d'extension
+
+Table: meetings (ID: t1nZEsVe-HPb)
+Fields:
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - notes_logged Point 1 Points d'extension
+  - reminder_1h_sent Point 1 Points d'extension
+  - reminder_24h_sent Point 1 Points d'extension
+  - scheduled_at Point 1 Points d'extension
+  - status Point 1 Points d'extension
+  - type Point 1 Points d'extension
+
+Table: document_embeddings (ID: CAoZBXS5o0Pd)
+Fields:
+  - chunk_index Point 1 Points d'extension
+  - chunk_text Point 1 Points d'extension
+  - embedding Point 1 Points d'extension
+  - id Point 1 Points d'extension
+
+Table: internal_users (ID: KwnZBAhrQWC4)
+Fields:
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - deleted_by Point 1 Points d'extension
+  - deletion_reason Point 1 Points d'extension
+  - email Point 1 Points d'extension
+  - first_name Point 1 Points d'extension
+  - id_user Point 1 Points d'extension
+  - last_name Point 1 Points d'extension
+  - password Point 1 Points d'extension
+  - phone Point 1 Points d'extension
+  - role Point 1 Points d'extension
+  - updated_at Point 1 Points d'extension
+
+Table: refresh_tokens (ID: 4GnZdBEg2Zb6)
+Fields:
+  - created_at Point 1 Points d'extension
+  - expires_at Point 1 Points d'extension
+  - id Point 1 Points d'extension
+  - revoked Point 1 Points d'extension
+  - revoked_at Point 1 Points d'extension
+  - token_hash Point 1 Points d'extension
+
+Table: client_folder (ID: eInZ7xozf6u4)
+Fields:
+  - client_type Point 1 Points d'extension
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - id_profile Point 1 Points d'extension
+  - updated_at Point 1 Points d'extension
+
+Table: contracts_ai_flags (ID: 10oZNcVwlp0z)
+Fields:
+  - description Point 1 Points d'extension
+  - flag_type Point 1 Points d'extension
+  - id_flag Point 1 Points d'extension
+  - saverity Point 1 Points d'extension
+
+Table: contracts (ID: RDoZMMmqOEu0)
+Fields:
+  - agreed_price Point 1 Points d'extension
+  - ai_risk_summary Point 1 Points d'extension
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - deposit_amount Point 1 Points d'extension
+  - id_contract Point 1 Points d'extension
+  - sent_at Point 1 Points d'extension
+  - signed_at Point 1 Points d'extension
+  - status Point 1 Points d'extension
+
+Table: buyer_folder (ID: 3KvZ0mBxdG5O)
+Fields:
+  - budget_max Point 1 Points d'extension
+  - budget_min Point 1 Points d'extension
+  - preferred_area Point 1 Points d'extension
+  - preferred_floor Point 1 Points d'extension
+  - preferred_size_m2 Point 1 Points d'extension
+  - property_type Point 1 Points d'extension
+
+Table: seller_folder (ID: gLvZqM~tBkpC)
+Fields:
+
+Table: properties (ID: z6nZyMQYK~jb)
+Fields:
+  - address Point 1 Points d'extension
+  - city Point 1 Points d'extension
+  - created_at Point 1 Points d'extension
+  - deleted_at Point 1 Points d'extension
+  - floor Point 1 Points d'extension
+  - id_property Point 1 Points d'extension
+  - is_available Point 1 Points d'extension
+  - listing_url Point 1 Points d'extension
+  - num_rooms Point 1 Points d'extension
+  - price Point 1 Points d'extension
+  - property_type Point 1 Points d'extension
+  - surface_m2 Point 1 Points d'extension
+  - title Point 1 Points d'extension
+  - unavailable_at Point 1 Points d'extension
+  - unavailable_reason Point 1 Points d'extension
+  - updated_at Point 1 Points d'extension
+
+Table: notification (ID: rcIZWZE-hI~f)
+Fields:
+  - created_at Point 1 Points d'extension
+  - id_notification Point 1 Points d'extension
+  - is_read Point 1 Points d'extension
+  - message Point 1 Points d'extension
+  - read_at Point 1 Points d'extension
+  - sender_type Point 1 Points d'extension
+  - title Point 1 Points d'extension
+

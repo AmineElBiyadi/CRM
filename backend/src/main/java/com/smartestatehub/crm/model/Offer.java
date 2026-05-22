@@ -3,54 +3,56 @@ package com.smartestatehub.crm.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
-@Table(name = "meetings")
+@Table(name = "offers")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Meeting {
+public class Offer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_offer")
+    private Long idOffer;
 
-    @Column(name = "scheduled_at", nullable = false)
-    private LocalDateTime scheduledAt;
-
-    @Column(name = "notes_logged", length = 2000)
-    private String notesLogged;
-
-    private String status;
+    @Column(name = "offer_amount", nullable = false)
+    private Double offerAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MeetingType type;
-
-    @Column(name = "reminder_1h_sent")
-    private boolean reminder1hSent;
-
-    @Column(name = "reminder_24h_sent")
-    private boolean reminder24hSent;
+    private OfferStatus status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_deal", nullable = false)
     private Deal deal;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_offer")
-    private Offer offer;
+    @JoinColumn(name = "id_property", nullable = false)
+    private Property property;
+
+    @OneToMany(mappedBy = "offer")
+    private List<Meeting> meetings;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (status == null) {
+            status = OfferStatus.PENDING;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

@@ -6,31 +6,26 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "interactions")
+@Table(name = "deal_assignments")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Interaction {
+public class DealAssignment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_interaction")
-    private Long idInteraction;
+    private Long id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private InteractionType type;
+    @Column(name = "assigned_at", nullable = false, updatable = false)
+    private LocalDateTime assignedAt;
 
-    @Column(length = 2000)
-    private String description;
+    @Column(name = "unassigned_at")
+    private LocalDateTime unassignedAt;
 
-    @Column(name = "occurred_at", nullable = false)
-    private LocalDateTime occurredAt;
-
-    @Column(name = "duration_minutes")
-    private Integer durationMinutes;
+    @Column(name = "reson")
+    private String reson;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_deal", nullable = false)
@@ -42,8 +37,6 @@ public class Interaction {
 
     @PrePersist
     protected void onCreate() {
-        if (occurredAt == null) {
-            occurredAt = LocalDateTime.now();
-        }
+        assignedAt = LocalDateTime.now();
     }
 }
