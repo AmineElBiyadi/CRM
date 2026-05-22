@@ -2,6 +2,7 @@ package com.smartestatehub.crm.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.UUID;
 
 @Entity
 @Table(name = "buyer_folder")
@@ -14,7 +15,7 @@ public class BuyerFolder {
 
     @Id
     @Column(name = "id_profile")
-    private Long idProfile;
+    private UUID idProfile;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId

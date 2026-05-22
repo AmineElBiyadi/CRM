@@ -2,8 +2,10 @@ package com.smartestatehub.crm.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "contracts")
@@ -15,9 +17,9 @@ import java.util.List;
 public class Contract {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_contract")
-    private Long idContract;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_contract", updatable = false, nullable = false)
+    private UUID idContract;
 
     @Column(name = "agreed_price")
     private Double agreedPrice;
@@ -25,9 +27,10 @@ public class Contract {
     @Column(name = "deposit_amount")
     private Double depositAmount;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ContractStatus status;
+    private ContractStatus status = ContractStatus.DRAFT;
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
@@ -38,6 +41,7 @@ public class Contract {
     @Column(name = "ai_risk_summary", length = 4000)
     private String aiRiskSummary;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -53,12 +57,4 @@ public class Contract {
 
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL)
     private List<ContractAiFlag> aiFlags;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (status == null) {
-            status = ContractStatus.DRAFT;
-        }
-    }
 }

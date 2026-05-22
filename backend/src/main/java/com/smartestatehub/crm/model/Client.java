@@ -1,8 +1,13 @@
 package com.smartestatehub.crm.model;
 
+import com.smartestatehub.auth.model.DeletionReason;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "client")
@@ -14,9 +19,9 @@ import java.time.LocalDateTime;
 public class Client {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_client")
-    private Long idClient;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_client", updatable = false, nullable = false)
+    private UUID idClient;
 
     @Column(name = "first_name", nullable = false)
     private String firstName;
@@ -36,11 +41,13 @@ public class Client {
     private String deletionReason;
 
     @Column(name = "deleted_by")
-    private Long deletedBy;
+    private UUID deletedBy;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -49,14 +56,4 @@ public class Client {
 
     @OneToOne(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private ClientFolder clientFolder;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
