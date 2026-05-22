@@ -1,12 +1,14 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   application:
     name: smartestatehub
+  config:
+    import: optional:file:../.env[.properties]
   
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartestatehub}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:postgres}?sslmode=require
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -32,7 +34,7 @@ spring:
     vectorstore:
       pgvector:
         dimension: 1536
-        database-name: ${DB_NAME:smartestatehub}
+        database-name: ${DB_NAME:postgres}
         table-name: document_embeddings
         index-type: HNSW
 
