@@ -1,0 +1,69 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: smartestatehub
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartestatehub}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        dimension: 1536
+        database-name: ${DB_NAME:smartestatehub}
+        table-name: document_embeddings
+        index-type: HNSW
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Sécurité JWT
+jwt:
+  secret: ${JWT_SECRET:default_super_secret_key_which_must_be_long_enough_to_meet_requirements_32_bytes}
+  expiration: 86400000 # 24 heures en ms
+  refresh-expiration: 604800000 # 7 jours en ms
+
+# Supervision Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, loggers
+  endpoint:
+    health:
+      show-details: always
+
+# Configurations d'intégrations externes
+app:
+  rapidapi:
+    key: ${RAPIDAPI_KEY}
+    host: ${RAPIDAPI_HOST:realty-in-us.p.rapidapi.com}
+  sendgrid:
+    api-key: ${SENDGRID_API_KEY}
+    from-email: ${SENDGRID_FROM_EMAIL:noreply@smartestatehub.com}
+  n8n:
+    webhook-url: ${N8N_WEBHOOK_URL:http://localhost:5678/webhook}

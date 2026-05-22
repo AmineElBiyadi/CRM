@@ -1,0 +1,152 @@
+# =============================================================
+# SmartEstateHub — .gitignore
+# Covers: Java/Maven, Node.js/React (Vite), Docker, JetBrains
+#         IDE, Windows/macOS OS files, and sensitive credentials
+# =============================================================
+
+
+# -------------------------------------------------------------
+# SECRETS & CREDENTIALS (NE JAMAIS PUSHER)
+# -------------------------------------------------------------
+.env
+.env.*
+!.env.example          # Seul le fichier exemple est autorisé
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+
+
+# -------------------------------------------------------------
+# JAVA / MAVEN (backend)
+# -------------------------------------------------------------
+# Dossiers de build Maven
+backend/target/
+**/target/
+
+# Fichiers générés par Maven Wrapper
+!**/mvnw
+!**/mvnw.cmd
+.mvn/wrapper/maven-wrapper.jar
+
+# Fichiers de logs Java
+hs_err_pid*.log
+replay_pid*.log
+
+# Fichiers compilés Java
+*.class
+
+# Archives Java
+*.jar
+*.war
+*.ear
+*.nar
+
+# Fichiers de sérialisation
+*.ser
+
+
+# -------------------------------------------------------------
+# NODE.JS / REACT / VITE (frontend-agent & frontend-client)
+# -------------------------------------------------------------
+# Dépendances
+**/node_modules/
+
+# Dossiers de build de production
+**/dist/
+**/build/
+**/.output/
+
+# Cache Vite
+**/.vite/
+**/vite.config.js.timestamp-*
+
+# Cache npm / yarn / pnpm
+**/.npm/
+**/.pnpm-store/
+**/yarn-error.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/pnpm-debug.log*
+
+# Fichiers de lock (garder seulement package-lock.json ou yarn.lock,
+# pas les deux — décommentez selon votre gestionnaire de paquets)
+# package-lock.json
+# yarn.lock
+
+
+# -------------------------------------------------------------
+# IDE — JETBRAINS (IntelliJ IDEA, WebStorm…)
+# -------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+
+# -------------------------------------------------------------
+# IDE — VSCODE
+# -------------------------------------------------------------
+.vscode/
+*.code-workspace
+
+
+# -------------------------------------------------------------
+# ECLIPSE
+# -------------------------------------------------------------
+.project
+.classpath
+.settings/
+.factorypath
+
+
+
+
+
+# -------------------------------------------------------------
+# OS — WINDOWS
+# -------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+
+# -------------------------------------------------------------
+# OS — MACOS
+# -------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+
+
+# -------------------------------------------------------------
+# OS — LINUX
+# -------------------------------------------------------------
+*~
+.nfs*
+
+
+# -------------------------------------------------------------
+# LOGS GÉNÉRAUX
+# -------------------------------------------------------------
+*.log
+logs/
+log/
+
+
+# -------------------------------------------------------------
+# FICHIERS TEMPORAIRES
+# -------------------------------------------------------------
+*.tmp
+*.temp
+*.swp
+*.bak
+*.orig
+.cache/
