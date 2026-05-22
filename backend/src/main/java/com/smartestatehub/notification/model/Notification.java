@@ -4,7 +4,10 @@ import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.crm.model.Client;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "notification")
@@ -16,9 +19,9 @@ import java.time.LocalDateTime;
 public class Notification {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_notification")
-    private Long idNotification;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_notification", nullable = false, updatable = false)
+    private UUID idNotification;
 
     @Column(name = "title", nullable = false)
     private String title;
@@ -30,12 +33,14 @@ public class Notification {
     @Column(name = "sender_type")
     private SenderType senderType;
 
+    @Builder.Default
     @Column(name = "is_read", nullable = false)
-    private Boolean isRead = false;
+    private boolean isRead = false;
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -56,9 +61,4 @@ public class Notification {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_user_id")
     private InternalUser receiverUser;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }
