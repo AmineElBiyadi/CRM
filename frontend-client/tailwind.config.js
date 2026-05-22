@@ -1,41 +1,89 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  darkMode: ['class'],
+  content: [
+    './index.html',
+    './src/**/*.{ts,tsx}',
+  ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          50:  '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-        },
-        surface: {
-          50:  '#f8fafc',
-          100: '#f1f5f9',
-          800: '#1e293b',
-          850: '#172033',
-          900: '#0f172a',
-          950: '#080d1a',
-        }
-      },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
-      animation: {
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'slide-up': 'slideUp 0.4s ease-out',
+      borderRadius: {
+        sm:  '8px',
+        md:  '12px',
+        lg:  '16px',
+        xl:  '20px',
+        '2xl': '24px',
+        '3xl': '32px',
       },
-      keyframes: {
-        fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
-        slideUp: { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'translateY(0)' } },
-      }
+      colors: {
+        background:  'var(--background)',
+        foreground:  'var(--foreground)',
+        card: {
+          DEFAULT:    'var(--card)',
+          foreground: 'var(--card-foreground)',
+        },
+        popover: {
+          DEFAULT:    'var(--popover)',
+          foreground: 'var(--popover-foreground)',
+        },
+        primary: {
+          DEFAULT:    'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+        },
+        secondary: {
+          DEFAULT:    'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
+        },
+        muted: {
+          DEFAULT:    'var(--muted)',
+          foreground: 'var(--muted-foreground)',
+        },
+        accent: {
+          DEFAULT:    'var(--accent)',
+          foreground: 'var(--accent-foreground)',
+        },
+        destructive: {
+          DEFAULT:    'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
+        },
+        border:  'var(--border)',
+        input:   'var(--input)',
+        ring:    'var(--ring)',
+        // Brand palette
+        alice:   'var(--alice)',
+        honeydew:'var(--honeydew)',
+        vanilla: 'var(--vanilla)',
+        eerie:   'var(--eerie)',
+        ghost:   'var(--ghost)',
+        // Chart
+        chart: {
+          1: 'var(--chart-1)',
+          2: 'var(--chart-2)',
+          3: 'var(--chart-3)',
+          4: 'var(--chart-4)',
+          5: 'var(--chart-5)',
+        },
+        sidebar: {
+          DEFAULT:             'var(--sidebar)',
+          foreground:          'var(--sidebar-foreground)',
+          primary:             'var(--sidebar-primary)',
+          'primary-foreground':'var(--sidebar-primary-foreground)',
+          accent:              'var(--sidebar-accent)',
+          'accent-foreground': 'var(--sidebar-accent-foreground)',
+          border:              'var(--sidebar-border)',
+          ring:                'var(--sidebar-ring)',
+        },
+      },
+      boxShadow: {
+        neu:       'var(--shadow-neu)',
+        'neu-sm':  'var(--shadow-neu-sm)',
+        'neu-lg':  'var(--shadow-neu-lg)',
+        'neu-inset':'var(--shadow-neu-inset)',
+        glass:     'var(--shadow-glass)',
+      },
     },
   },
   plugins: [],
