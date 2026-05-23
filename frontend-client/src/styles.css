@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   SmartEstateHub Design System
+   Neumorphism + Glass + Soft palette
+   ======================================== */
+
+:root {
+  --radius: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+
+  /* Brand palette */
+  --alice: #D8DFE9;
+  --honeydew: #CFDECA;
+  --vanilla: #EFF0A3;
+  --eerie: #212121;
+  --ghost: #F6F5FA;
+
+  --background: var(--ghost);
+  --foreground: var(--eerie);
+
+  --card: #F3F2F8;
+  --card-foreground: var(--eerie);
+
+  --popover: #F7F6FB;
+  --popover-foreground: var(--eerie);
+
+  --primary: var(--eerie);
+  --primary-foreground: var(--ghost);
+
+  --secondary: var(--alice);
+  --secondary-foreground: var(--eerie);
+
+  --muted: #ECEAF4;
+  --muted-foreground: #6B6880;
+
+  --accent: var(--honeydew);
+  --accent-foreground: var(--eerie);
+
+  --destructive: #D4503A;
+  --destructive-foreground: var(--ghost);
+
+  --border: #DEDCE9;
+  --input: #ECEAF4;
+  --ring: #8A8899;
+
+  --chart-1: var(--eerie);
+  --chart-2: var(--honeydew);
+  --chart-3: var(--vanilla);
+  --chart-4: var(--alice);
+  --chart-5: #C97A55;
+
+  --sidebar: #F7F6FB;
+  --sidebar-foreground: var(--eerie);
+  --sidebar-primary: var(--eerie);
+  --sidebar-primary-foreground: var(--ghost);
+  --sidebar-accent: var(--alice);
+  --sidebar-accent-foreground: var(--eerie);
+  --sidebar-border: #E3E1EE;
+  --sidebar-ring: #9996AA;
+
+  --shadow-neu: 6px 6px 14px rgba(33, 33, 33, 0.08), -6px -6px 14px rgba(255, 255, 255, 0.85);
+  --shadow-neu-sm: 3px 3px 8px rgba(33, 33, 33, 0.07), -3px -3px 8px rgba(255, 255, 255, 0.8);
+  --shadow-neu-lg: 10px 10px 24px rgba(33, 33, 33, 0.1), -10px -10px 24px rgba(255, 255, 255, 0.9);
+  --shadow-neu-inset: inset 4px 4px 8px rgba(33, 33, 33, 0.08), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+  --shadow-glass: 0 8px 32px rgba(33, 33, 33, 0.12);
+}
+
+.dark {
+  --background: #2A2835;
+  --foreground: var(--ghost);
+  --card: #32303F;
+  --card-foreground: var(--ghost);
+  --popover: #32303F;
+  --popover-foreground: var(--ghost);
+  --primary: var(--ghost);
+  --primary-foreground: var(--eerie);
+  --secondary: #3A384A;
+  --secondary-foreground: var(--ghost);
+  --muted: #38364A;
+  --muted-foreground: #A8A6BB;
+  --accent: #3D5440;
+  --accent-foreground: var(--ghost);
+  --border: rgba(255,255,255,0.10);
+  --input: rgba(255,255,255,0.12);
+  --ring: #9997AA;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+    box-sizing: border-box;
+  }
+  html, body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* CSS variable colour bridging for Tailwind utilities */
+  body {
+    --tw-color-background: var(--background);
+    --tw-color-foreground: var(--foreground);
+  }
+}
+
+@layer components {
+  /* Neumorphic surface */
+  .neu {
+    background: var(--ghost);
+    box-shadow: var(--shadow-neu);
+    border-radius: var(--radius-lg);
+  }
+  .neu-sm {
+    background: var(--ghost);
+    box-shadow: var(--shadow-neu-sm);
+    border-radius: var(--radius-md);
+  }
+  .neu-lg {
+    background: var(--ghost);
+    box-shadow: var(--shadow-neu-lg);
+    border-radius: var(--radius-xl);
+  }
+  .neu-inset {
+    background: var(--ghost);
+    box-shadow: var(--shadow-neu-inset);
+    border-radius: var(--radius-md);
+  }
+  .neu-pressable {
+    transition: box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  .neu-pressable:hover {
+    box-shadow: var(--shadow-neu-lg);
+  }
+  .neu-pressable:active {
+    box-shadow: var(--shadow-neu-inset);
+  }
+
+  /* Glass surface */
+  .glass {
+    background: rgba(246, 245, 250, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: var(--shadow-glass);
+    border-radius: var(--radius-2xl);
+  }
+  .glass-dark {
+    background: rgba(33, 33, 33, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--ghost);
+  }
+
+  /* Soft scrollbar */
+  .soft-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .soft-scroll::-webkit-scrollbar-thumb {
+    background: #D8D6E6;
+    border-radius: 8px;
+  }
+
+  /* Neumorphic input */
+  .input-neu {
+    width: 100%;
+    padding: 0.65rem 0.9rem;
+    border-radius: var(--radius-md);
+    background: var(--ghost);
+    box-shadow: var(--shadow-neu-inset);
+    font-size: 0.875rem;
+    color: var(--foreground);
+    outline: none;
+    border: none;
+    transition: box-shadow 0.2s ease;
+  }
+  .input-neu::placeholder { color: var(--muted-foreground); opacity: 0.7; }
+  .input-neu:focus { box-shadow: var(--shadow-neu-inset), 0 0 0 2px #C2CEDF; }
+
+  /* Brand colour utilities (used in JSX classNames) */
+  .bg-alice   { background-color: var(--alice) !important; }
+  .bg-honeydew { background-color: var(--honeydew) !important; }
+  .bg-vanilla  { background-color: var(--vanilla) !important; }
+  .bg-eerie   { background-color: var(--eerie) !important; }
+  .bg-ghost   { background-color: var(--ghost) !important; }
+  .text-eerie  { color: var(--eerie) !important; }
+  .text-ghost  { color: var(--ghost) !important; }
+  .text-alice  { color: var(--alice) !important; }
+  .text-honeydew { color: var(--honeydew) !important; }
+  .text-vanilla  { color: var(--vanilla) !important; }
+
+  /* Colour variants with opacity used in JSX */
+  .bg-alice\/40  { background-color: rgba(216, 223, 233, 0.40) !important; }
+  .bg-alice\/20  { background-color: rgba(216, 223, 233, 0.20) !important; }
+  .bg-alice\/30  { background-color: rgba(216, 223, 233, 0.30) !important; }
+  .bg-alice\/60  { background-color: rgba(216, 223, 233, 0.60) !important; }
+  .bg-honeydew\/40 { background-color: rgba(207, 222, 202, 0.40) !important; }
+  .bg-vanilla\/40  { background-color: rgba(239, 240, 163, 0.40) !important; }
+  .ring-honeydew\/30 { --tw-ring-color: rgba(207, 222, 202, 0.30); }
+
+  .border-border { border-color: var(--border); }
+  .text-muted-foreground { color: var(--muted-foreground); }
+  .text-destructive { color: var(--destructive); }
+  .bg-background { background-color: var(--background); }
+  .text-foreground { color: var(--foreground); }
+  .bg-primary { background-color: var(--primary); }
+  .text-primary-foreground { color: var(--primary-foreground); }
+  .border-input { border-color: var(--input); }
+  .bg-accent { background-color: var(--accent); }
+  .bg-muted { background-color: var(--muted); }
+}
