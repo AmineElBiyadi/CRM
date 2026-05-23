@@ -3,6 +3,8 @@ package com.smartestatehub.crm.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "meetings")
@@ -14,8 +16,9 @@ import java.time.LocalDateTime;
 public class Meeting {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name =   "id_meeting", updatable = false, nullable = false)
+    private UUID idMeeting;
 
     @Column(name = "scheduled_at", nullable = false)
     private LocalDateTime scheduledAt;
@@ -35,6 +38,7 @@ public class Meeting {
     @Column(name = "reminder_24h_sent")
     private boolean reminder24hSent;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -49,8 +53,4 @@ public class Meeting {
     @JoinColumn(name = "id_offer")
     private Offer offer;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }

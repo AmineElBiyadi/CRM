@@ -3,6 +3,7 @@ package com.smartestatehub.crm.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Table(name = "contract_payments")
@@ -14,9 +15,9 @@ import java.time.LocalDate;
 public class ContractPayment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_payment")
-    private Long idPayment;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_payment", updatable = false, nullable = false)
+    private UUID idPayment;
 
     @Column(name = "amount", nullable = false)
     private Double amount;
@@ -25,6 +26,7 @@ public class ContractPayment {
     private LocalDate dueDate;
 
     @Column(name = "is_paid", nullable = false)
+    @Builder.Default
     private Boolean isPaid = false;
 
     @Column(name = "payment_order")

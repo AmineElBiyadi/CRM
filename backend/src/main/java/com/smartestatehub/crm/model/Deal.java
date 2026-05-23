@@ -2,8 +2,11 @@ package com.smartestatehub.crm.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "deals")
@@ -15,11 +18,12 @@ import java.util.List;
 public class Deal {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_deal", updatable = false, nullable = false)
+    private UUID idDeal;
 
     @Column(name = "ai_lead_score")
-    private Double aiLeadScore;
+    private Integer aiLeadScore;
 
     @Column(name = "ai_recommended_action")
     private String aiRecommendedAction;
@@ -31,18 +35,22 @@ public class Deal {
     private String aiSummary;
 
     @Column(name = "is_urgent")
-    private boolean isUrgent;
+    @Builder.Default
+    private Boolean isUrgent = false;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private DealStage stage;
+    private DealStage stage = DealStage.COLD;
 
     @Column(name = "last_interaction_at")
     private LocalDateTime lastInteractionAt;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -70,17 +78,4 @@ public class Deal {
 
     @OneToMany(mappedBy = "deal", cascade = CascadeType.ALL)
     private List<DealAssignment> assignments;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (stage == null) {
-            stage = DealStage.COLD;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

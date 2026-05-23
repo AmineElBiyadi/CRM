@@ -1,9 +1,12 @@
 package com.smartestatehub.crm.model;
 
 import com.smartestatehub.auth.model.InternalUser;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "deal_assignments")
@@ -15,8 +18,9 @@ import java.time.LocalDateTime;
 public class DealAssignment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_deal_assignment", updatable = false, nullable = false)
+    private UUID idDealAssignment;
 
     @Column(name = "assigned_at", nullable = false, updatable = false)
     private LocalDateTime assignedAt;

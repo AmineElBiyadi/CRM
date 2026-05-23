@@ -3,8 +3,10 @@ package com.smartestatehub.crm.model;
 import com.smartestatehub.ai.model.DocumentEmbedding;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "documents")
@@ -16,9 +18,9 @@ import java.util.List;
 public class Document {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_document")
-    private Long idDocument;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_document", updatable = false, nullable = false)
+    private UUID idDocument;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false)
@@ -28,11 +30,14 @@ public class Document {
     private String filePath;
 
     @Column(name = "confirmed_received")
+    @Builder.Default
     private Boolean confirmedReceived = false;
 
     @Column(name = "is_embedded")
+    @Builder.Default
     private Boolean isEmbedded = false;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -45,9 +50,4 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DocumentEmbedding> embeddings;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }

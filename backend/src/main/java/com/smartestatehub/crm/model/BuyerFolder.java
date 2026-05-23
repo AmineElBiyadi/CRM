@@ -34,10 +34,17 @@ public class BuyerFolder {
     @Column(name = "preferred_area")
     private String preferredArea;
 
+    /**
+     * Rules for preferredFloor:
+     *  0 = ground floor
+     *  n = number of the floor
+     * -1 = have no problem with any floor
+     */
+    @Builder.Default
     @Column(name = "preferred_floor")
-    private Integer preferredFloor;
+    private Integer preferredFloor = -1;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "property_type")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_property_type")
     private PropertyType propertyType;
 }

@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.util.UUID;
 
 @Entity
 @Table(name = "offers")
@@ -15,20 +18,23 @@ import java.util.List;
 public class Offer {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_offer")
-    private Long idOffer;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_offer", updatable = false, nullable = false)
+    private UUID idOffer;
 
     @Column(name = "offer_amount", nullable = false)
     private Double offerAmount;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OfferStatus status;
+    private OfferStatus status = OfferStatus.PENDING;
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -43,16 +49,4 @@ public class Offer {
     @OneToMany(mappedBy = "offer")
     private List<Meeting> meetings;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (status == null) {
-            status = OfferStatus.PENDING;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

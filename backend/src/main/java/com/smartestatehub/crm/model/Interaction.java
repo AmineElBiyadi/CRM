@@ -1,9 +1,11 @@
 package com.smartestatehub.crm.model;
 
 import com.smartestatehub.auth.model.InternalUser;
+import org.hibernate.annotations.CreationTimestamp;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "interactions")
@@ -15,9 +17,9 @@ import java.time.LocalDateTime;
 public class Interaction {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_interaction")
-    private Long idInteraction;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_interaction", updatable = false, nullable = false)
+    private UUID idInteraction;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -26,7 +28,8 @@ public class Interaction {
     @Column(length = 2000)
     private String description;
 
-    @Column(name = "occurred_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "occurred_at", nullable = false, updatable = false)
     private LocalDateTime occurredAt;
 
     @Column(name = "duration_minutes")
@@ -39,11 +42,4 @@ public class Interaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_user", nullable = false)
     private InternalUser user;
-
-    @PrePersist
-    protected void onCreate() {
-        if (occurredAt == null) {
-            occurredAt = LocalDateTime.now();
-        }
-    }
 }

@@ -1,6 +1,8 @@
 package com.smartestatehub.crm.model;
 
 import com.smartestatehub.auth.model.InternalUser;
+import org.hibernate.annotations.CreationTimestamp;
+import java.util.UUID;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -15,9 +17,9 @@ import java.time.LocalDateTime;
 public class DealStageUpdate {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_update")
-    private Long idUpdate;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id_update", updatable = false, nullable = false)
+    private UUID idUpdate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "from_stage")
@@ -27,6 +29,7 @@ public class DealStageUpdate {
     @Column(name = "to_stage", nullable = false)
     private DealStage toStage;
 
+    @CreationTimestamp
     @Column(name = "changed_at", nullable = false, updatable = false)
     private LocalDateTime changedAt;
 
@@ -37,9 +40,4 @@ public class DealStageUpdate {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_user", nullable = false)
     private InternalUser user;
-
-    @PrePersist
-    protected void onCreate() {
-        changedAt = LocalDateTime.now();
-    }
 }
