@@ -28,14 +28,16 @@ public class ContractService {
     private final DealRepository dealRepository;
 
     /**
-     * Crée un nouveau contrat pour un dossier (deal) avec son calendrier de paiement.
+     * Crée un nouveau contrat pour un dossier (deal) avec son calendrier de
+     * paiement.
      */
     @Transactional
     public ContractDto.Response createContract(UUID dealId, ContractDto.CreateRequest request) {
         log.info("Création d'un contrat pour le deal ID: {}", dealId);
 
         Deal deal = dealRepository.findById(dealId)
-                .orElseThrow(() -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
 
         Contract contract = Contract.builder()
                 .deal(deal)
@@ -97,7 +99,7 @@ public class ContractService {
         contract.setStatus(newStatus);
         if (newStatus == ContractStatus.SENT) {
             contract.setSentAt(LocalDateTime.now());
-        } else if (newStatus == ContractStatus.SIGNED) {
+        } else if (newStatus == ContractStatus.RECEIVED_SIGNED) {
             contract.setSignedAt(LocalDateTime.now());
         }
 
