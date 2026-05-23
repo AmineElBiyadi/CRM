@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
-import { Avatar, LeadScore, SoftBadge, StageBadge } from "@/components/ui/design-bits";
+import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import { clients, properties, type Property } from "@/lib/mock-data";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  MessageSquare, Send, FileSignature, Check, X,
+  MessageSquare, Send, FileSignature, X, Upload, Paperclip, Loader2, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
+import { updateContractStatus } from "@/api/contractApi";
 
 export const Route = createFileRoute("/agent/dossier")({
   component: DossierPage,
@@ -24,14 +26,70 @@ const initialInteractions = [
 
 const tabs = ["Interactions", "Propriétés", "Rendez-vous", "Contrats"] as const;
 
+/* Mock deal ID — en production, récupéré depuis le dossier client */
+const MOCK_DEAL_ID = "00000000-0000-0000-0000-000000000001";
+
+/* Mock contrat existant pour la démo */
+const mockContract = {
+  idContract: "00000000-0000-0000-0000-000000000099",
+  status: "SENT",
+  agreedPrice: 2400000,
+  depositAmount: 100000,
+  payments: [
+    { idPayment: "p1", label: "1er versement", amount: 700000, dueDate: "2025-12-01", isPaid: true },
+    { idPayment: "p2", label: "2ème versement", amount: 800000, dueDate: "2026-02-01", isPaid: false },
+    { idPayment: "p3", label: "Solde", amount: 800000, dueDate: "2026-04-01", isPaid: false },
+  ],
+};
+
 function DossierPage() {
   const [tab, setTab] = useState<typeof tabs[number]>("Interactions");
   const [interactions, setInteractions] = useState(initialInteractions);
   const [logging, setLogging] = useState(false);
-  const [contractOpen, setContractOpen] = useState(false);
+  const [showContractForm, setShowContractForm] = useState(false);
   const [propDetail, setPropDetail] = useState<Property | null>(null);
   const [newType, setNewType] = useState("Appel");
   const [newDesc, setNewDesc] = useState("");
+  const [contract, setContract] = useState<any>(mockContract);
+  /* documents */
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [docs, setDocs] = useState([
+    { name: "CNI_recto.pdf", size: "245 Ko", type: "PDF" },
+    { name: "Justif_revenus.pdf", size: "1.2 Mo", type: "PDF" },
+    { name: "Pré-accord_banque.pdf", size: "320 Ko", type: "PDF" },
+  ]);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    setTimeout(() => {
+      setDocs((prev) => [
+        ...prev,
+        ...files.map((f) => ({
+          name: f.name,
+          size: f.size > 1024 * 1024
+            ? `${(f.size / 1024 / 1024).toFixed(1)} Mo`
+            : `${Math.round(f.size / 1024)} Ko`,
+          type: f.name.split(".").pop()?.toUpperCase() || "FILE",
+        })),
+      ]);
+      setUploading(false);
+      toast.success(`${files.length} fichier(s) uploadé(s)`);
+    }, 1200);
+    e.target.value = "";
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      // await updateContractStatus(contract.idContract, newStatus); // décommenter en prod
+      setContract((c: any) => ({ ...c, status: newStatus }));
+      toast.success(`Statut → ${newStatus}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
 
   const logInteraction = () => {
     if (!newDesc.trim()) return;
@@ -225,28 +283,71 @@ function DossierPage() {
         )}
 
         {tab === "Contrats" && (
-          <NeuCard>
-            <h3 className="font-semibold flex items-center gap-2 mb-5"><FileSignature size={16} /> Contrat en cours</h3>
-            <div className="flex items-center overflow-x-auto soft-scroll">
-              {["Brouillon", "Envoyé", "Reçu signé", "Archivé"].map((s, i) => (
-                <div key={s} className="flex-1 min-w-[80px] flex items-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${i <= 1 ? "bg-honeydew" : "neu-inset"}`}>
-                      {i <= 1 ? <Check size={16} /> : <span className="text-sm">{i + 1}</span>}
-                    </div>
-                    <span className="text-xs text-center">{s}</span>
-                  </div>
-                  {i < 3 && <div className={`flex-1 h-px ${i < 1 ? "bg-honeydew" : "bg-border"}`} />}
-                </div>
-              ))}
-            </div>
+          <div className="space-y-4">
+            {/* Bouton nouveau contrat */}
             <button
-              onClick={() => setContractOpen(true)}
-              className="w-full mt-6 py-2.5 rounded-lg bg-eerie text-ghost text-sm font-medium hover:opacity-90"
+              onClick={() => setShowContractForm(true)}
+              className="w-full py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90 flex items-center justify-center gap-2"
             >
-              Voir le contrat
+              <Plus size={16} /> Nouveau contrat
             </button>
-          </NeuCard>
+
+            {/* Contrat existant */}
+            {contract && (
+              <NeuCard>
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <FileSignature size={16} /> Contrat en cours
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Réf : MR-2025-0142 · {(contract.agreedPrice / 1_000_000).toFixed(2)}M MAD
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tracker statut */}
+                <ContractStatusTracker
+                  contract={contract}
+                  onStatusChange={handleStatusChange}
+                />
+
+                {/* Calendrier de paiement */}
+                {contract.payments && contract.payments.length > 0 && (
+                  <div className="mt-5">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                      Calendrier de paiement
+                    </p>
+                    <div className="space-y-2">
+                      {contract.payments.map((p: any) => (
+                        <div
+                          key={p.idPayment}
+                          className={`flex items-center gap-3 p-3 rounded-xl ${
+                            p.isPaid ? "bg-honeydew/40" : "neu-sm"
+                          }`}
+                        >
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                              p.isPaid ? "bg-honeydew" : "border-2 border-border"
+                            }`}
+                          >
+                            {p.isPaid && <span className="text-[10px] text-eerie">✓</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium">{p.label}</div>
+                            <div className="text-xs text-muted-foreground">{p.dueDate}</div>
+                          </div>
+                          <div className="text-sm font-bold shrink-0">
+                            {p.amount.toLocaleString("fr-MA")} MAD
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </NeuCard>
+            )}
+          </div>
         )}
       </div>
 
@@ -276,21 +377,53 @@ function DossierPage() {
         </NeuCard>
 
         <NeuCard>
-          <h3 className="font-semibold flex items-center gap-2 text-sm mb-4"><FileText size={14} /> Documents</h3>
+          <h3 className="font-semibold flex items-center gap-2 text-sm mb-4">
+            <FileText size={14} /> Documents ({docs.length})
+          </h3>
           <div className="space-y-2">
-            {["CNI_recto.pdf", "Justif_revenus.pdf", "Pré-accord_banque.pdf"].map((f) => (
-              <button
-                key={f}
-                onClick={() => toast(`Aperçu de ${f}`)}
-                className="w-full flex items-center gap-2 p-2 rounded-lg neu-sm hover:neu-pressable text-xs"
+            {docs.map((f, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group"
               >
-                <FileText size={14} /> <span className="flex-1 truncate text-left">{f}</span>
-              </button>
+                <Paperclip size={13} className="text-muted-foreground shrink-0" />
+                <span className="flex-1 truncate">{f.name}</span>
+                <span className="text-muted-foreground shrink-0">{f.size}</span>
+                <button
+                  onClick={() => toast(`Aperçu : ${f.name}`)}
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
+                  aria-label="Voir"
+                >
+                  <Eye size={11} />
+                </button>
+              </div>
             ))}
           </div>
+
+          {/* Upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {uploading ? (
+              <><Loader2 size={12} className="animate-spin" /> Upload…</>
+            ) : (
+              <><Upload size={12} /> Ajouter un document</>
+            )}
+          </button>
+
           <button
             onClick={() => toast("Assistant IA documents — démo")}
-            className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2"
+            className="w-full mt-2 py-2.5 rounded-lg bg-alice/40 text-xs font-medium flex items-center justify-center gap-2 hover:bg-alice/60 transition-colors"
           >
             <MessageSquare size={12} /> Poser une question sur les docs
           </button>
@@ -308,34 +441,25 @@ function DossierPage() {
         </NeuCard>
       </div>
 
-      {/* Contract modal */}
-      {contractOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setContractOpen(false)}>
+      {/* Modale : Nouveau contrat (formulaire guidé) */}
+      {showContractForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowContractForm(false)}
+        >
           <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
-          <div className="relative bg-ghost rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto soft-scroll p-7 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setContractOpen(false)} className="absolute top-4 right-4 w-9 h-9 rounded-full neu-sm flex items-center justify-center" aria-label="Fermer">
-              <X size={16} />
-            </button>
-            <SoftBadge tone="warn">Envoyé · en attente signature</SoftBadge>
-            <h2 className="text-2xl font-bold mt-3">Mandat de recherche — Karim Benchekroun</h2>
-            <p className="text-xs text-muted-foreground mt-1">Référence : MR-2025-0142</p>
-            <div className="mt-5 space-y-3 text-sm text-muted-foreground leading-relaxed">
-              <p>
-                Le présent mandat est conclu entre M. Karim Benchekroun (le « Mandant ») et l'agence
-                SmartEstateHub, représentée par Sara El Idrissi. Le Mandant confie à l'Agence la mission
-                de recherche d'un bien immobilier répondant aux critères suivants :
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Type : appartement T3/T4</li>
-                <li>Zone : Anfa, Bourgogne (Casablanca)</li>
-                <li>Budget : jusqu'à 2.4M MAD</li>
-                <li>Durée du mandat : 6 mois renouvelables</li>
-              </ul>
-            </div>
-            <div className="mt-6 flex flex-wrap gap-2">
-              <button onClick={() => { toast.success("Contrat envoyé pour signature"); setContractOpen(false); }} className="flex-1 min-w-[140px] py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Relancer signature</button>
-              <button onClick={() => toast("Téléchargement PDF…")} className="px-5 py-2.5 rounded-xl neu-sm text-sm font-medium">Télécharger PDF</button>
-            </div>
+          <div
+            className="relative bg-ghost rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto soft-scroll p-7 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ContractForm
+              dealId={MOCK_DEAL_ID}
+              onClose={() => setShowContractForm(false)}
+              onCreated={(c) => {
+                setContract(c);
+                setTab("Contrats");
+              }}
+            />
           </div>
         </div>
       )}
