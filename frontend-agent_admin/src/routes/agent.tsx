@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/app-shell";
+import { useAgentDashboard } from "@/hooks/useDashboard";
 import { LayoutDashboard, Users, FolderOpen, Search, CalendarDays } from "lucide-react";
 
 const nav = [
@@ -11,13 +12,22 @@ const nav = [
 ];
 
 export const Route = createFileRoute("/agent")({
-  component: () => (
+  component: AgentLayout,
+});
+
+function AgentLayout() {
+  const { data } = useAgentDashboard();
+  
+  return (
     <AppShell
       space="agent"
       spaceLabel="Espace Agent"
-      user={{ name: "Sara El Idrissi", role: "Commercial" }}
+      user={{ 
+        name: data?.agentFullName || "Sara El Idrissi", 
+        role: data?.agentRole || "Commercial" 
+      }}
       nav={nav}
       accent="bg-honeydew"
     />
-  ),
-});
+  );
+}
