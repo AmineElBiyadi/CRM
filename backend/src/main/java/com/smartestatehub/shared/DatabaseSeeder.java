@@ -73,36 +73,15 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .orElse(null);
                 }
 
-                // 2. Seed Property Types
+                // 2. Fetch Property Types (déjà insérés via le script SQL supabase_enums_and_inserts.sql)
                 PropertyType apartmentType = propertyTypeRepository.findAll().stream()
-                                .filter(pt -> "Apartment".equalsIgnoreCase(pt.getSpecificType()))
+                                .filter(pt -> pt.getSpecificType().contains("Apartment"))
                                 .findFirst()
                                 .orElse(null);
                 PropertyType houseType = propertyTypeRepository.findAll().stream()
-                                .filter(pt -> "House".equalsIgnoreCase(pt.getSpecificType()))
+                                .filter(pt -> pt.getSpecificType().contains("House"))
                                 .findFirst()
                                 .orElse(null);
-
-                if (apartmentType == null || houseType == null) {
-                        System.out.println("🌱 Seeding Property Types...");
-                        if (apartmentType == null) {
-                                apartmentType = PropertyType.builder()
-                                                .generalType("Residential")
-                                                .specificType("Apartment")
-                                                .description("Flat or apartment in a residential building.")
-                                                .build();
-                                apartmentType = propertyTypeRepository.save(apartmentType);
-                        }
-                        if (houseType == null) {
-                                houseType = PropertyType.builder()
-                                                .generalType("Residential")
-                                                .specificType("House")
-                                                .description("Standalone single-family house.")
-                                                .build();
-                                houseType = propertyTypeRepository.save(houseType);
-                        }
-                        System.out.println("✅ Property Types seeded.");
-                }
 
                 // 3. Seed Clients & Folders (Cascaded)
                 buyerClient = clientRepository.findByEmail("buyer@client.com").orElse(null);
