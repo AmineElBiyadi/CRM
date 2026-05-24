@@ -13,7 +13,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/properties")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", allowedHeaders = "*", allowCredentials = "true")
+@CrossOrigin(originPatterns = "*", allowedHeaders = "*", allowCredentials = "true")
 public class PropertyController {
 
     private final PropertyService propertyService;

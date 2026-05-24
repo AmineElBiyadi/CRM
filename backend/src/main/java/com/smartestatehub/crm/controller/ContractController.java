@@ -14,7 +14,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/contracts")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", allowedHeaders = "*", allowCredentials = "true")
+@CrossOrigin(originPatterns = "*", allowedHeaders = "*", allowCredentials = "true")
 public class ContractController {
 
     private final ContractService contractService;
