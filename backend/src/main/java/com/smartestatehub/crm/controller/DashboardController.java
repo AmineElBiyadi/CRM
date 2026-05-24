@@ -1,7 +1,7 @@
 package com.smartestatehub.crm.controller;
 
-import com.smartestatehub.crm.dto.MeetingDto;
-import com.smartestatehub.crm.service.MeetingService;
+import com.smartestatehub.crm.dto.AgentDashboardDto;
+import com.smartestatehub.crm.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,21 +10,20 @@ import java.security.Principal;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/agent/meetings")
+@RequestMapping("/api/agent/dashboard")
 @RequiredArgsConstructor
-public class MeetingController {
+public class DashboardController {
 
-    private final MeetingService meetingService;
+    private final DashboardService dashboardService;
 
-    @PatchMapping("/{meetingId}/toggle")
-    public ResponseEntity<MeetingDto> toggleMeetingStatus(
-            @PathVariable UUID meetingId,
+    @GetMapping
+    public ResponseEntity<AgentDashboardDto> getAgentDashboard(
             @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
             Principal principal) {
         
         UUID agentId = resolveAgentId(devAgentId, principal);
-        MeetingDto updated = meetingService.toggleMeetingStatus(meetingId, agentId);
-        return ResponseEntity.ok(updated);
+        AgentDashboardDto dashboard = dashboardService.getAgentDashboard(agentId);
+        return ResponseEntity.ok(dashboard);
     }
 
     private UUID resolveAgentId(String devAgentId, Principal principal) {
@@ -35,7 +34,7 @@ public class MeetingController {
             try {
                 return UUID.fromString(principal.getName());
             } catch (Exception e) {
-                // Principal is likely an email or a user object, we can't parse as UUID directly
+                // Principal is likely email/user object
             }
         }
         // Fallback agent ID for local development and integration tests
