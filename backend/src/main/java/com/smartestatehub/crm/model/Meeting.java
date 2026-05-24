@@ -17,7 +17,7 @@ public class Meeting {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name =   "id_meeting", updatable = false, nullable = false)
+    @Column(name = "id_meeting", updatable = false, nullable = false)
     private UUID idMeeting;
 
     @Column(name = "scheduled_at", nullable = false)
@@ -26,7 +26,9 @@ public class Meeting {
     @Column(name = "notes_logged", length = 2000)
     private String notesLogged;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MeetingStatus status;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
