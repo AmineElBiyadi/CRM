@@ -5,7 +5,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import java.util.UUID;
 
 @Entity
@@ -27,7 +29,8 @@ public class Offer {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "offer_status")
     private OfferStatus status = OfferStatus.PENDING;
 
     @CreationTimestamp

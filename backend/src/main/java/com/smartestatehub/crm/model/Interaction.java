@@ -2,6 +2,8 @@ package com.smartestatehub.crm.model;
 
 import com.smartestatehub.auth.model.InternalUser;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -22,7 +24,8 @@ public class Interaction {
     private UUID idInteraction;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "interaction_type")
     private InteractionType type;
 
     @Column(length = 2000)

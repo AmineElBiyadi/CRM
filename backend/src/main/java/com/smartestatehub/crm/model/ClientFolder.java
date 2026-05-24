@@ -4,7 +4,9 @@ import com.smartestatehub.auth.model.InternalUser;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,7 +39,8 @@ public class ClientFolder {
     private InternalUser createdByAgent;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "client_type", nullable = false, length = 10)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "client_type", nullable = false, columnDefinition = "client_type")
     private ClientType clientType;
 
     @CreationTimestamp

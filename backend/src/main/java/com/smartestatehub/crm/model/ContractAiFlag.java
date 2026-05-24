@@ -2,6 +2,8 @@ package com.smartestatehub.crm.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import java.util.UUID;
 
 @Entity
@@ -19,14 +21,16 @@ public class ContractAiFlag {
     private UUID idFlag;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "flag_type", nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "flag_type", nullable = false, columnDefinition = "flag_type")
     private FlagType flagType;
 
     @Column(name = "description", length = 2000)
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "severity")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "severity", columnDefinition = "severity")
     private Severity severity;
 
     @ManyToOne(fetch = FetchType.LAZY)
