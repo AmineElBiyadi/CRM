@@ -54,3 +54,10 @@ INSERT INTO property_types (id_property_type, general_type, specific_type, descr
 (gen_random_uuid(), 'Land', 'Commercial Land', 'For retail, office, or industrial development', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (gen_random_uuid(), 'Land', 'Agricultural Land', 'For farming, crops, or livestock', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (gen_random_uuid(), 'Land', 'Vacant Land', 'Undeveloped plot with no specified use', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- ==========================================
+-- 3. ÉNUMÉRATIONS (Auth, Notification, etc.)
+-- ==========================================
+CREATE TYPE role AS ENUM ('ADMIN', 'AGENT');
+CREATE TYPE deletion_reason AS ENUM ('LEFT_AGENCY', 'ACCOUNT_VIOLATION', 'OTHER');
+CREATE TYPE sender_type AS ENUM ('CLIENT', 'INTERNAL_USER', 'SYSTEM');

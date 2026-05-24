@@ -2,6 +2,7 @@ package com.smartestatehub.crm.service;
 
 import com.smartestatehub.crm.dto.MeetingDto;
 import com.smartestatehub.crm.model.Meeting;
+import com.smartestatehub.crm.model.MeetingStatus;
 import com.smartestatehub.crm.model.MeetingType;
 import com.smartestatehub.crm.repository.MeetingRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,11 +44,11 @@ public class MeetingService {
             throw new SecurityException("Vous n'êtes pas autorisé à modifier cette réunion.");
         }
 
-        String currentStatus = meeting.getStatus();
-        if ("DONE".equalsIgnoreCase(currentStatus)) {
-            meeting.setStatus("PENDING");
+        MeetingStatus currentStatus = meeting.getStatus();
+        if (currentStatus == MeetingStatus.COMPLETED) {
+            meeting.setStatus(MeetingStatus.PENDING);
         } else {
-            meeting.setStatus("DONE");
+            meeting.setStatus(MeetingStatus.COMPLETED);
         }
 
         Meeting saved = meetingRepository.save(meeting);
@@ -69,7 +70,7 @@ public class MeetingService {
         }
 
         String frenchType = mapTypeToFrench(meeting.getType());
-        String status = meeting.getStatus() != null ? meeting.getStatus().toUpperCase() : "PENDING";
+        String status = meeting.getStatus() != null ? meeting.getStatus().name() : "PENDING";
 
         return new MeetingDto(
             meeting.getIdMeeting(),
