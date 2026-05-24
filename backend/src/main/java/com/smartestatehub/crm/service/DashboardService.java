@@ -41,7 +41,7 @@ public class DashboardService {
         InternalUser agent = userRepository.findById(agentId).orElse(null);
         String agentFirstName = agent != null ? agent.getFirstName() : "Agent";
         String agentFullName = agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Agent";
-        String agentRole = agent != null ? agent.getRole().name() : "AGENT";
+        String agentRole = (agent != null && agent.getRole() != null) ? agent.getRole().name() : "AGENT";
 
         // 2. Calcul des KPIs
         // Clients actifs (non CLOSED et non LOST)

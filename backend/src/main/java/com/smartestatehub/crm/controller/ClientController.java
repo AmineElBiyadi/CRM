@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import com.smartestatehub.crm.dto.ClientIdentityDto;
 import com.smartestatehub.crm.dto.CreateClientForm1Request;
+import com.smartestatehub.crm.dto.DossierListItemDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 
@@ -22,6 +23,11 @@ public class ClientController {
     @GetMapping("/identities")
     public List<ClientIdentityDto> getIdentities(@RequestHeader("X-Agent-Id") UUID agentId) {
         return clientService.getClientIdentitiesForAgent(agentId);
+    }
+
+    @GetMapping("/{idClient}/dossiers")
+    public List<DossierListItemDto> getClientDossiers(@PathVariable UUID idClient, @RequestHeader("X-Agent-Id") UUID agentId) {
+        return clientService.getClientDossiers(idClient, agentId);
     }
 
     @GetMapping("/check")

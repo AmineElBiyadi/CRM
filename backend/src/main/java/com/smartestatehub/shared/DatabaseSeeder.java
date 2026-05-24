@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -40,7 +41,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                 // 1. Seed Users (InternalUser)
                 if (userRepository.count() == 0) {
-                        System.out.println("🌱 Seeding Internal Users (Admin/Agent)...");
+                        System.out.println("Seeding Internal Users (Admin/Agent)...");
                         admin = InternalUser.builder()
                                         .firstName("Amine")
                                         .lastName("El Biyadi")
@@ -52,6 +53,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         admin = userRepository.save(admin);
 
                         agent = InternalUser.builder()
+                                        .idUser(UUID.fromString("8366d183-2fb7-44a1-8f16-2ec3ca78a320"))
                                         .firstName("Sarah")
                                         .lastName("Laroui")
                                         .email("agent@smartestatehub.com")
@@ -60,7 +62,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .role(Role.AGENT)
                                         .build();
                         agent = userRepository.save(agent);
-                        System.out.println("✅ Users seeded.");
+                        System.out.println("Users seeded.");
                 } else {
                         // Retrieve first admin and agent if already existing
                         admin = userRepository.findAll().stream()
@@ -88,7 +90,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                 sellerClient = clientRepository.findByEmail("seller@client.com").orElse(null);
 
                 if (buyerClient == null || sellerClient == null) {
-                        System.out.println("🌱 Seeding Clients and Folders...");
+                        System.out.println("Seeding Clients and Folders...");
 
                         if (buyerClient == null) {
                                 buyerClient = Client.builder()
@@ -143,13 +145,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 sellerClient.getClientFolders().add(sellerFolder); // needed for cascade
                                 sellerClient = clientRepository.save(sellerClient);
                         }
-                        System.out.println("✅ Clients and Folders seeded.");
+                        System.out.println("Clients and Folders seeded.");
                 }
 
                 // 4. Seed Properties
                 penthouse = propertyRepository.findAll().stream().findFirst().orElse(null);
                 if (penthouse == null && sellerClient != null) {
-                        System.out.println("🌱 Seeding Properties...");
+                        System.out.println("Seeding Properties...");
 
                         // Re-fetch folders to avoid LazyInitializationException if from previous run
                         SellerFolder sellerProfile = sellerClient.getClientFolders().stream()
@@ -186,14 +188,14 @@ public class DatabaseSeeder implements CommandLineRunner {
                                                 .isAvailable(true)
                                                 .build();
                                 propertyRepository.save(villa);
-                                System.out.println("✅ Properties seeded.");
+                                System.out.println("Properties seeded.");
                         }
                 }
 
                 // 5. Seed Deals
                 buyerDeal = dealRepository.findAll().stream().findFirst().orElse(null);
                 if (buyerDeal == null && buyerClient != null) {
-                        System.out.println("🌱 Seeding Deals...");
+                        System.out.println("Seeding Deals...");
 
                         ClientFolder buyerFolder = buyerClient.getClientFolders().stream()
                                         .filter(f -> f.getClientType() == ClientType.BUYER)
@@ -219,7 +221,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                 // 6. Seed Contracts
                 if (contractRepository.count() == 0 && buyerDeal != null) {
-                        System.out.println("🌱 Seeding Contracts...");
+                        System.out.println("Seeding Contracts...");
                         Contract contract = Contract.builder()
                                         .agreedPrice(215000.0)
                                         .depositAmount(21500.0)
@@ -228,13 +230,13 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .deal(buyerDeal)
                                         .build();
                         contractRepository.save(contract);
-                        System.out.println("✅ Contracts seeded.");
+                        System.out.println("Contracts seeded.");
                 }
 
                 // 7. Seed Offers
                 offer1 = offerRepository.findAll().stream().findFirst().orElse(null);
                 if (offer1 == null && buyerDeal != null && penthouse != null) {
-                        System.out.println("🌱 Seeding Offers...");
+                        System.out.println("Seeding Offers...");
                         offer1 = Offer.builder()
                                         .offerAmount(215000.0)
                                         .status(OfferStatus.ACCEPTED)
@@ -250,12 +252,12 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .property(penthouse)
                                         .build();
                         offerRepository.save(offer2);
-                        System.out.println("✅ Offers seeded.");
+                        System.out.println("Offers seeded.");
                 }
 
                 // 8. Seed Meetings
                 if (meetingRepository.count() == 0 && buyerDeal != null) {
-                        System.out.println("🌱 Seeding Meetings...");
+                        System.out.println("Seeding Meetings...");
                         Meeting meeting1 = Meeting.builder()
                                         .scheduledAt(LocalDateTime.now().plusDays(2))
                                         .notesLogged("Discuss contract terms and sign the draft agreement.")
@@ -283,7 +285,7 @@ public class DatabaseSeeder implements CommandLineRunner {
 
                 // 9. Seed Interactions
                 if (interactionRepository.count() == 0 && buyerDeal != null && agent != null) {
-                        System.out.println("🌱 Seeding Interactions...");
+                        System.out.println("Seeding Interactions...");
                         Interaction int1 = Interaction.builder()
                                         .type(InteractionType.CALL)
                                         .description("Initial call with Yassine Bennani. Discussed preferred budget and area.")
@@ -313,12 +315,12 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .user(agent)
                                         .build();
                         interactionRepository.save(int3);
-                        System.out.println("✅ Interactions seeded.");
+                        System.out.println("Interactions seeded.");
                 }
 
                 // 10. Seed Documents
                 if (documentRepository.count() == 0 && buyerDeal != null) {
-                        System.out.println("🌱 Seeding Documents...");
+                        System.out.println("Seeding Documents...");
                         Document doc1 = Document.builder()
                                         .documentType(DocumentType.INCOM_CERT)
                                         .filePath("/uploads/documents/income_cert_yassine.pdf")
@@ -336,7 +338,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                         .deal(buyerDeal)
                                         .build();
                         documentRepository.save(doc2);
-                        System.out.println("✅ Documents seeded.");
+                        System.out.println("Documents seeded.");
                 }
         }
 }
