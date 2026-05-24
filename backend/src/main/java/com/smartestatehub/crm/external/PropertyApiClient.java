@@ -1,8 +1,10 @@
 package com.smartestatehub.crm.external;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartestatehub.crm.dto.PropertyDto;
+import com.smartestatehub.crm.dto.RapidApiPropertyDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -25,8 +27,11 @@ public class PropertyApiClient {
     @Value("${app.rapidapi.host:realty-in-us.p.rapidapi.com}")
     private String apiHost;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final HttpClient httpClient = HttpClient.newHttpClient();
+
+    private static final double SQFT_TO_M2 = 0.092903;
 
     /**
      * Effectue une recherche immobilière via RapidAPI.
@@ -81,48 +86,51 @@ public class PropertyApiClient {
     }
 
     private PropertyDto.SearchResponse parseApiResponse(String responseBody, int page) throws IOException {
-        JsonNode root = objectMapper.readTree(responseBody);
+        RapidApiPropertyDto.ResponseWrapper wrapper = objectMapper.readValue(responseBody, RapidApiPropertyDto.ResponseWrapper.class);
         List<PropertyDto.ExternalResult> results = new ArrayList<>();
         
-        JsonNode propertiesNode = root.path("properties");
-        if (propertiesNode.isArray()) {
-            for (JsonNode prop : propertiesNode) {
+        if (wrapper.getProperties() != null) {
+            for (RapidApiPropertyDto prop : wrapper.getProperties()) {
                 List<String> imageUrls = new ArrayList<>();
-                JsonNode photosNode = prop.path("photos");
-                if (photosNode.isArray()) {
-                    for (JsonNode photo : photosNode) {
-                        imageUrls.add(photo.path("href").asText());
+                if (prop.getPhotos() != null) {
+                    for (RapidApiPropertyDto.PhotoDto photo : prop.getPhotos()) {
+                        imageUrls.add(photo.getHref());
                     }
                 }
+                
                 if (imageUrls.isEmpty()) {
                     imageUrls.add("https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80");
                 }
 
-                String addressStr = prop.path("address").path("line").asText() + ", " + prop.path("address").path("city").asText();
+                String addressStr = "";
+                String city = "";
+                if (prop.getAddress() != null) {
+                    addressStr = prop.getAddress().getLine() + ", " + prop.getAddress().getCity();
+                    city = prop.getAddress().getCity();
+                }
                 
+                // Conversion sqft en m2
+                Double surfaceM2 = prop.getSqft() != null ? prop.getSqft() * SQFT_TO_M2 : 120.0;
+
                 results.add(PropertyDto.ExternalResult.builder()
-                        .externalId(prop.path("property_id").asText())
-                        .title(prop.path("prop_type").asText("Propriété") + " - " + prop.path("address").path("city").asText())
+                        .externalId(prop.getPropertyId())
+                        .title((prop.getPropType() != null ? prop.getPropType() : "Property") + " - " + city)
                         .address(addressStr)
-                        .city(prop.path("address").path("city").asText())
-                        .price(prop.path("price").asDouble())
-                        .surfaceM2(prop.path("building_size").path("size").asDouble(120.0))
-                        .numRooms(prop.path("beds").asInt(3))
-                        .floor(prop.path("stories").asInt(1))
-                        .listingUrl(prop.path("rdc_web_url").asText("https://www.realtor.com"))
+                        .city(city)
+                        .price(prop.getPrice())
+                        .surfaceM2(Math.round(surfaceM2 * 10.0) / 10.0) // Arrondi à 1 décimale
+                        .numRooms(prop.getBeds())
+                        .floor(1) // Par défaut car non présent dans l'API simplifiée
+                        .listingUrl(prop.getListingUrl() != null ? prop.getListingUrl() : "https://www.realtor.com")
                         .source("RapidAPI (" + apiHost + ")")
                         .imageUrls(imageUrls)
-                        .latitude(prop.path("address").path("lat").asDouble(33.5731))
-                        .longitude(prop.path("address").path("lon").asDouble(-7.5898))
                         .build());
             }
         }
 
-        int totalCount = root.path("matching_rows").asInt(results.size());
-
         return PropertyDto.SearchResponse.builder()
                 .results(results)
-                .total(totalCount)
+                .total(wrapper.getTotalCount() != null ? wrapper.getTotalCount() : results.size())
                 .page(page)
                 .pageSize(10)
                 .build();
