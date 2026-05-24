@@ -5,6 +5,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 @Entity
 @Table(name = "meetings")
@@ -17,7 +19,7 @@ public class Meeting {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name =   "id_meeting", updatable = false, nullable = false)
+    @Column(name = "id_meeting", updatable = false, nullable = false)
     private UUID idMeeting;
 
     @Column(name = "scheduled_at", nullable = false)
@@ -26,10 +28,14 @@ public class Meeting {
     @Column(name = "notes_logged", length = 2000)
     private String notesLogged;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "meeting_status")
+    private MeetingStatus status;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "meeting_type")
     private MeetingType type;
 
     @Column(name = "reminder_1h_sent")

@@ -4,6 +4,8 @@ import com.smartestatehub.ai.model.DocumentEmbedding;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +25,8 @@ public class Document {
     private UUID idDocument;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "document_type", nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "document_type", nullable = false, columnDefinition = "document_type")
     private DocumentType documentType;
 
     @Column(name = "file_path", nullable = false)

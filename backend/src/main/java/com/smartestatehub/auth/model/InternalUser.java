@@ -3,7 +3,9 @@ package com.smartestatehub.auth.model;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -37,7 +39,8 @@ public class InternalUser {
     private String phone;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(nullable = false, columnDefinition = "role")
     private Role role;
 
     @CreationTimestamp
@@ -56,6 +59,7 @@ public class InternalUser {
     private InternalUser deletedBy;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "deletion_reason")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "deletion_reason", columnDefinition = "deletion_reason")
     private DeletionReason deletionReason;
 }
