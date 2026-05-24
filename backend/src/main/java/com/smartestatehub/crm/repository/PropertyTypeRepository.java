@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface PropertyTypeRepository extends JpaRepository<PropertyType, UUID> {
     Optional<PropertyType> findByGeneralTypeAndSpecificType(String generalType, String specificType);
+
     Optional<PropertyType> findByGeneralType(String generalType);
 }

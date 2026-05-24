@@ -17,6 +17,9 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
     @Query("SELECT p FROM Property p WHERE p.sellerFolder.idProfile = :sellerProfileId AND p.deletedAt IS NULL")
     List<Property> findBySellerProfileId(@Param("sellerProfileId") UUID sellerProfileId);
 
-    /** Chercher une propriété déjà enregistrée par son URL de listing (éviter les doublons) */
+    /**
+     * Chercher une propriété déjà enregistrée par son URL de listing (éviter les
+     * doublons)
+     */
     Optional<Property> findByListingUrlAndDeletedAtIsNull(String listingUrl);
 }
