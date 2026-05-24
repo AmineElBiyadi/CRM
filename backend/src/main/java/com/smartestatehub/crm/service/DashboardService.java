@@ -13,6 +13,7 @@ import com.smartestatehub.crm.repository.ContractRepository;
 import com.smartestatehub.crm.repository.DealRepository;
 import com.smartestatehub.crm.repository.MeetingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,7 +70,7 @@ public class DashboardService {
         List<MeetingDto> todayMeetings = meetingService.getTodayMeetings(agentId);
 
         // 4. Priorités IA (Top 5 deals triés par score décroissant)
-        List<Deal> topDeals = dealRepository.findTop5ByClientFolder_AssignedAgent_IdUserAndDeletedAtIsNullOrderByAiLeadScoreDesc(agentId);
+        List<Deal> topDeals = dealRepository.findTop5ByAgentIdWithClient(agentId, PageRequest.of(0, 5));
         List<DealPriorityDto> priorities = topDeals.stream()
                 .map(this::mapToPriorityDto)
                 .collect(Collectors.toList());

@@ -24,7 +24,7 @@ public class ClientFolder {
     @Column(name = "id_profile", updatable = false, nullable = false)
     private UUID idProfile;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_client", nullable = false)
     private Client client;
 

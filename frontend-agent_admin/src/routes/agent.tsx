@@ -6,7 +6,7 @@ import { LayoutDashboard, Users, FolderOpen, Search, CalendarDays } from "lucide
 const nav = [
   { to: "/agent", label: "Dashboard", icon: LayoutDashboard },
   { to: "/agent/clients", label: "Clients", icon: Users },
-  { to: "/agent/dossier", label: "Dossier client", icon: FolderOpen },
+  { to: "/agent/dossiers", label: "Mes Dossiers", icon: FolderOpen },
   { to: "/agent/recherche", label: "Recherche biens", icon: Search },
   { to: "/agent/agenda", label: "Rendez-vous", icon: CalendarDays },
 ];
