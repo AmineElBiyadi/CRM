@@ -1,30 +1,184 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
-import { Avatar, LeadScore, SoftBadge, StageBadge } from "@/components/ui/design-bits";
-import { Search, LayoutGrid, List, Plus, X, ChevronRight, ChevronLeft, Check, Users, FolderOpen } from "lucide-react";
+import { Avatar, SoftBadge, StageBadge } from "@/components/ui/design-bits";
+import { Search, LayoutGrid, List, Plus, X, Check, Users, FolderOpen, ChevronRight, ArrowRight, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useClientIdentities, useCreateClientIdentity } from "@/hooks/useClients";
-import { checkClientExistence } from "@/api/clientsApi";
+import { checkClientExistence, fetchClientDossiers, type ClientIdentityDto, type DossierListItem } from "@/api/clientsApi";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatRelativeTime } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/agent/clients")({
   component: ClientsPage,
 });
 
+// ─────────────────────────────────────────────
+// Client Dossiers Drawer
+// ─────────────────────────────────────────────
+function ClientDossierDrawer({
+  client,
+  onClose,
+}: {
+  client: ClientIdentityDto;
+  onClose: () => void;
+}) {
+  const { data: dossiers, isLoading } = useQuery({
+    queryKey: ["client-dossiers", client.idClient],
+    queryFn: () => fetchClientDossiers(client.idClient),
+    enabled: !!client.idClient,
+  });
+
+  const stageLabel: Record<string, string> = {
+    COLD: "Froid",
+    WARM: "Chaud",
+    HOT: "Très Chaud",
+    NEGOTIATION: "Négociation",
+    CLOSED_WON: "Gagné",
+    CLOSED_LOST: "Perdu",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      {/* Backdrop */}
+      <div className="flex-1 bg-eerie/40 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Panel */}
+      <div className="w-[420px] h-full bg-ghost shadow-[-20px_0_60px_rgba(0,0,0,0.15)] flex flex-col animate-slide-in-right">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Avatar name={`${client.firstName} ${client.lastName}`} size={44} />
+            <div>
+              <h2 className="font-bold text-lg leading-tight">
+                {client.firstName} {client.lastName}
+              </h2>
+              <p className="text-xs text-muted-foreground">{client.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl neu-sm flex items-center justify-center hover:bg-alice transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
+              Dossiers ({dossiers?.length ?? 0})
+            </h3>
+            <Link
+              to="/agent/dossiers/create"
+              search={{ clientId: client.idClient }}
+              className="flex items-center gap-1.5 text-xs font-bold text-eerie neu-sm px-3 py-1.5 rounded-lg hover:bg-alice/50 transition-colors"
+            >
+              <Plus size={12} /> Nouveau dossier
+            </Link>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : dossiers?.length === 0 ? (
+            <NeuCard className="py-10 flex flex-col items-center gap-3 text-center">
+              <FolderOpen size={32} className="text-muted-foreground/40" />
+              <p className="text-sm font-medium text-muted-foreground">
+                Aucun dossier pour ce client
+              </p>
+              <Link
+                to="/agent/dossiers/create"
+                search={{ clientId: client.idClient }}
+                className="mt-1 px-4 py-2 rounded-xl bg-eerie text-ghost text-xs font-bold hover:opacity-90 transition-all"
+              >
+                Créer le premier dossier
+              </Link>
+            </NeuCard>
+          ) : (
+            <div className="space-y-3">
+              {dossiers?.map((d) => (
+                <NeuCard key={d.idDeal} size="sm" className="flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <SoftBadge tone="info" className="text-[10px]">
+                        {d.type === "BUYER" ? "ACHETEUR" : "VENDEUR"}
+                      </SoftBadge>
+                      <span className="text-xs text-muted-foreground">
+                        {stageLabel[d.stage] ?? d.stage}
+                      </span>
+                      {d.isUrgent && (
+                        <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-100">
+                          <AlertCircle size={8} /> Urgent
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div
+                        className="text-sm font-bold"
+                        style={{
+                          color:
+                            d.aiLeadScore >= 70
+                              ? "#f97316"
+                              : d.aiLeadScore >= 40
+                              ? "#eab308"
+                              : "#94a3b8",
+                        }}
+                      >
+                        Score IA : {d.aiLeadScore}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        <Clock size={10} />
+                        Dernier échange : {formatRelativeTime(d.lastInteractionAt)}
+                      </div>
+                    </div>
+                  </div>
+                  <Link 
+                    to="/agent/dossier" 
+                    search={{ id: d.idDeal }}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-honeydew transition-colors text-muted-foreground hover:text-eerie"
+                    title="Voir les détails"
+                  >
+                    <ChevronRight size={18} />
+                  </Link>
+                </NeuCard>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-border">
+          <Link
+            to="/agent/dossiers"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl neu-sm text-sm font-bold hover:bg-alice/30 transition-colors"
+          >
+            Voir tous les dossiers <ArrowRight size={14} />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Main Page
+// ─────────────────────────────────────────────
 function ClientsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
-  
-  // Creation state
   const [creating, setCreating] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientIdentityDto | null>(null);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    source: "Saisie manuelle"
+    source: "Saisie manuelle",
   });
   const [existingClient, setExistingClient] = useState<any>(null);
 
@@ -33,10 +187,9 @@ function ClientsPage() {
 
   const resetForm = () => {
     setCreating(false);
+    setQuery("");
     setExistingClient(null);
-    setForm({
-      firstName: "", lastName: "", email: "", phone: "", source: "Saisie manuelle"
-    });
+    setForm({ firstName: "", lastName: "", email: "", phone: "", source: "Saisie manuelle" });
   };
 
   const handleCreate = async () => {
@@ -46,13 +199,12 @@ function ClientsPage() {
         setExistingClient(existing);
         return;
       }
-      
       createIdentityMutation.mutate(form, {
         onSuccess: () => {
           toast.success("Client créé avec succès. Ses identifiants seront envoyés par email.");
           resetForm();
         },
-        onError: () => toast.error("Erreur lors de la création")
+        onError: () => toast.error("Erreur lors de la création"),
       });
     } catch (err) {
       toast.error("Erreur lors de la vérification");
@@ -63,10 +215,11 @@ function ClientsPage() {
     const data = identities || [];
     if (!query) return data;
     const q = query.toLowerCase();
-    return data.filter(c => 
-      c.firstName.toLowerCase().includes(q) || 
-      c.lastName.toLowerCase().includes(q) || 
-      c.email.toLowerCase().includes(q)
+    return data.filter(
+      (c) =>
+        c.firstName.toLowerCase().includes(q) ||
+        c.lastName.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q)
     );
   }, [identities, query]);
 
@@ -88,28 +241,50 @@ function ClientsPage() {
             />
           </div>
           <div className="neu-sm rounded-xl p-1 flex gap-1">
-            <button onClick={() => setView("grid")} className={`w-9 h-9 rounded-lg flex items-center justify-center ${view === "grid" ? "neu-inset" : ""}`}><LayoutGrid size={14} /></button>
-            <button onClick={() => setView("list")} className={`w-9 h-9 rounded-lg flex items-center justify-center ${view === "list" ? "neu-inset" : ""}`}><List size={14} /></button>
+            <button
+              onClick={() => setView("grid")}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center ${view === "grid" ? "neu-inset" : ""}`}
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center ${view === "list" ? "neu-inset" : ""}`}
+            >
+              <List size={14} />
+            </button>
           </div>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
       ) : filtered.length === 0 ? (
         <NeuCard className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-alice flex items-center justify-center"><Search size={20} /></div>
+          <div className="w-14 h-14 rounded-2xl bg-alice flex items-center justify-center">
+            <Search size={20} />
+          </div>
           <div className="font-semibold text-lg">Aucun client trouvé</div>
-          <p className="text-sm text-muted-foreground max-w-[280px]">Utilisez le bouton + pour enregistrer un nouveau client dans votre base.</p>
+          <p className="text-sm text-muted-foreground max-w-[280px]">
+            Utilisez le bouton + pour enregistrer un nouveau client dans votre base.
+          </p>
         </NeuCard>
       ) : view === "grid" ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((c) => (
-            <NeuCard key={c.idClient} className="flex flex-col gap-4">
+            <NeuCard
+              key={c.idClient}
+              className="flex flex-col gap-4 cursor-pointer hover:shadow-lg transition-all group"
+              onClick={() => setSelectedClient(c)}
+            >
               <div className="flex items-center gap-4">
                 <Avatar name={`${c.firstName} ${c.lastName}`} size={56} />
                 <div className="min-w-0">
-                  <div className="font-bold text-lg truncate">{c.firstName} {c.lastName}</div>
+                  <div className="font-bold text-lg truncate group-hover:text-eerie transition-colors">
+                    {c.firstName} {c.lastName}
+                  </div>
                   <div className="text-xs text-muted-foreground font-medium">{c.email}</div>
                 </div>
               </div>
@@ -126,10 +301,12 @@ function ClientsPage() {
               <div className="flex items-center justify-between mt-auto">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <FolderOpen size={13} />
-                  <span>{c.dossierCount} dossier{c.dossierCount > 1 ? 's' : ''}</span>
+                  <span>
+                    {c.dossierCount} dossier{c.dossierCount > 1 ? "s" : ""}
+                  </span>
                 </div>
-                <div className="text-[10px] text-muted-foreground">
-                  Inscrit le {format(new Date(c.createdAt), "dd MMM yyyy", { locale: fr })}
+                <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground group-hover:text-eerie transition-colors">
+                  Voir dossiers <ChevronRight size={13} />
                 </div>
               </div>
             </NeuCard>
@@ -145,11 +322,16 @@ function ClientsPage() {
                 <th className="p-4">Source</th>
                 <th className="p-4 text-center">Dossiers</th>
                 <th className="p-4">Date de création</th>
+                <th className="p-4" />
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.idClient} className="border-b border-border last:border-0 hover:bg-alice/30 transition-colors">
+                <tr
+                  key={c.idClient}
+                  className="border-b border-border last:border-0 hover:bg-alice/30 transition-colors cursor-pointer"
+                  onClick={() => setSelectedClient(c)}
+                >
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <Avatar name={`${c.firstName} ${c.lastName}`} size={36} />
@@ -166,12 +348,13 @@ function ClientsPage() {
                     <SoftBadge tone="info">{c.source}</SoftBadge>
                   </td>
                   <td className="p-4 text-center">
-                    <span className="neu-inset px-2.5 py-1 rounded-lg font-bold text-xs">
-                      {c.dossierCount}
-                    </span>
+                    <span className="neu-inset px-2.5 py-1 rounded-lg font-bold text-xs">{c.dossierCount}</span>
                   </td>
                   <td className="p-4 text-muted-foreground text-xs">
                     {format(new Date(c.createdAt), "dd/MM/yyyy HH:mm")}
+                  </td>
+                  <td className="p-4">
+                    <ChevronRight size={16} className="text-muted-foreground" />
                   </td>
                 </tr>
               ))}
@@ -180,6 +363,7 @@ function ClientsPage() {
         </NeuCard>
       )}
 
+      {/* FAB */}
       <button
         onClick={() => setCreating(true)}
         className="fixed bottom-8 right-8 w-16 h-16 rounded-full bg-eerie text-ghost shadow-[0_10px_40px_rgba(0,0,0,0.3)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-30"
@@ -187,13 +371,25 @@ function ClientsPage() {
         <Plus size={28} />
       </button>
 
+      {/* Client Dossier Drawer */}
+      {selectedClient && (
+        <ClientDossierDrawer client={selectedClient} onClose={() => setSelectedClient(null)} />
+      )}
+
+      {/* Create Client Modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-eerie/40 backdrop-blur-md" onClick={resetForm}>
-          <div 
-            className="relative bg-ghost rounded-[2.5rem] max-w-lg w-full p-8 md:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.4)] flex flex-col gap-8" 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-eerie/40 backdrop-blur-md"
+          onClick={resetForm}
+        >
+          <div
+            className="relative bg-ghost rounded-[2.5rem] max-w-lg w-full p-8 md:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.4)] flex flex-col gap-8"
             onClick={(e) => e.stopPropagation()}
           >
-            <button onClick={resetForm} className="absolute top-6 right-6 w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors">
+            <button
+              onClick={resetForm}
+              className="absolute top-6 right-6 w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors"
+            >
               <X size={18} />
             </button>
 
@@ -220,15 +416,17 @@ function ClientsPage() {
                 <div className="p-4 rounded-2xl bg-alice/50 border border-border text-center">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest leading-relaxed">
                     Souhaitez-vous créer un <br />
-                    <span className="text-eerie text-sm tracking-normal capitalize font-bold">Nouveau Dossier Transactionnel</span> <br />
+                    <span className="text-eerie text-sm tracking-normal capitalize font-bold">Nouveau Dossier Transactionnel</span>{" "}
+                    <br />
                     pour ce client ?
                   </p>
-                  <button 
-                    disabled
-                    className="mt-4 w-full py-3.5 rounded-2xl bg-eerie/10 text-eerie/50 text-sm font-bold cursor-not-allowed opacity-60"
+                  <Link
+                    to="/agent/dossiers/create"
+                    className="mt-4 mx-auto block w-full py-3.5 rounded-2xl bg-eerie text-ghost text-sm font-bold text-center hover:opacity-90 transition-all"
+                    onClick={resetForm}
                   >
-                    Bientôt disponible (Phase 2)
-                  </button>
+                    Créer un dossier →
+                  </Link>
                 </div>
               </div>
             ) : (
@@ -291,7 +489,7 @@ function ClientsPage() {
             )}
 
             <div className="flex gap-4 pt-2">
-              <button 
+              <button
                 onClick={existingClient ? resetForm : handleCreate}
                 disabled={!existingClient && (!form.firstName || !form.lastName || !form.email || !form.phone)}
                 className="w-full py-5 rounded-[1.5rem] bg-eerie text-ghost text-base font-black flex items-center justify-center gap-3 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
@@ -299,7 +497,7 @@ function ClientsPage() {
                 {existingClient ? (
                   <>Compris</>
                 ) : createIdentityMutation.isPending ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ghost"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ghost" />
                 ) : (
                   <>Enregistrer l'identité <Check size={20} /></>
                 )}

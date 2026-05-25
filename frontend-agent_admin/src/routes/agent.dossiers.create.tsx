@@ -11,15 +11,26 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+type CreateDossierSearch = {
+  clientId?: string;
+};
+
 export const Route = createFileRoute("/agent/dossiers/create")({
+  validateSearch: (search: Record<string, unknown>): CreateDossierSearch => {
+    return {
+      clientId: search.clientId as string | undefined,
+    };
+  },
   component: CreateDossierPage,
 });
 
 function CreateDossierPage() {
+  const { clientId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(clientId ? 2 : 1);
   const [formData, setFormData] = useState<Partial<CreateDossierRequest>>({
+    idClient: clientId,
     type: 'BUYER',
     budgetMin: 0,
     budgetMax: 0,
@@ -126,9 +137,19 @@ function CreateDossierPage() {
 
         {step === 2 && (
           <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ShoppingCart className="text-muted-foreground" size={20} />
-              <h2 className="text-xl font-bold">Type & Budget</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="text-muted-foreground" size={20} />
+                <h2 className="text-xl font-bold">Type & Budget</h2>
+              </div>
+              {formData.idClient && identities && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-alice/50 border border-alice">
+                  <Avatar name={identities.find(id => id.idClient === formData.idClient)?.firstName || ""} size={20} />
+                  <span className="text-xs font-medium text-eerie">
+                    {identities.find(id => id.idClient === formData.idClient)?.firstName} {identities.find(id => id.idClient === formData.idClient)?.lastName}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">

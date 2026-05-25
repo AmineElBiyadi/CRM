@@ -1,186 +1,260 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState, useEffect } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
-import { clients, properties, type Property } from "@/lib/mock-data";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  MessageSquare, Send, FileSignature, X, Upload, Paperclip, Loader2, Eye,
+  MessageSquare, Send, FileSignature, X, Upload, Paperclip, Loader2, Eye, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
 import { getContractsByDeal, updateContractStatus } from "@/api/contractApi";
 import { getPropertiesByDeal } from "@/api/propertyApi"; 
+import { 
+  fetchDossierDetail, 
+  fetchInteractions, 
+  logInteraction, 
+  fetchDealMeetings, 
+  createMeeting,
+  type InteractionType,
+  type MeetingType,
+  type DossierDetail,
+  type InteractionItem,
+  type MeetingItem
+} from "@/api/dossiersApi";
 
+interface DossierSearch {
+  id?: string;
+}
 
 export const Route = createFileRoute("/agent/dossier")({
+  validateSearch: (search: Record<string, unknown>): DossierSearch => {
+    return {
+      id: search.id as string | undefined,
+    };
+  },
   component: DossierPage,
 });
 
-const client = clients[0];
-
-const initialInteractions = [
-  { type: "Visite", icon: MapPin, date: "16 nov. · 15:00", duration: "45 min", desc: "Visite appartement Anfa, très intéressé. Demande infos sur charges." },
-  { type: "Appel", icon: Phone, date: "14 nov. · 11:20", duration: "12 min", desc: "Discussion budget et critères. Validation zone Anfa/Bourgogne." },
-  { type: "Email", icon: Mail, date: "12 nov.", desc: "Envoi sélection 5 biens correspondant aux critères." },
-  { type: "Note", icon: FileText, date: "10 nov.", desc: "Premier contact via formulaire site. Couple, 2 enfants, recherche T3/T4." },
-];
-
 const tabs = ["Interactions", "Propriétés", "Rendez-vous", "Contrats"] as const;
 
-/* Mock deal ID — en production, récupéré depuis le dossier client */
-const MOCK_DEAL_ID = "00000000-0000-0000-0000-000000000001";
+const iconMap: Record<InteractionType, any> = {
+  CALL: Phone,
+  VISIT: MapPin,
+  EMAIL: Mail,
+  MEETING: CalendarDays,
+  NOTE: FileText,
+  SYSTEM: Sparkles,
+};
 
-/* Mock contrat existant pour la démo */
-const mockContract = {
-  idContract: "00000000-0000-0000-0000-000000000099",
-  status: "SENT",
-  agreedPrice: 2400000,
-  depositAmount: 100000,
-  payments: [
-    { idPayment: "p1", label: "1er versement", amount: 700000, dueDate: "2025-12-01", isPaid: true },
-    { idPayment: "p2", label: "2ème versement", amount: 800000, dueDate: "2026-02-01", isPaid: false },
-    { idPayment: "p3", label: "Solde", amount: 800000, dueDate: "2026-04-01", isPaid: false },
-  ],
+const meetingIconMap: Record<string, any> = {
+  PROPERTY_VISIT: Building2,
+  PHONE_CALL: Phone,
+  OFFICE_APPOINTMENT: MapPin,
+  CONTRACT_SIGNING: FileSignature,
 };
 
 function DossierPage() {
+  const { id } = Route.useSearch();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const dossierId = id || "00000000-0000-0000-0000-000000000001";
+
   const [tab, setTab] = useState<typeof tabs[number]>("Interactions");
-  const [interactions, setInteractions] = useState(initialInteractions);
   const [logging, setLogging] = useState(false);
+  const [planningMeeting, setPlanningMeeting] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
   const [propDetail, setPropDetail] = useState<any | null>(null);
-  const [newType, setNewType] = useState("Appel");
+
+  // Interaction Form State
+  const [newType, setNewType] = useState<InteractionType>("CALL");
   const [newDesc, setNewDesc] = useState("");
-  const [contract, setContract] = useState<any>(null);
-  const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
-  /* documents */
+  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newTime, setNewTime] = useState(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+  const [newDurationHrs, setNewDurationHrs] = useState(0);
+  const [newDurationMins, setNewDurationMins] = useState(15);
+
+  // Meeting Form State
+  const [newMeetingType, setNewMeetingType] = useState<MeetingType>("OFFICE_APPOINTMENT");
+  const [newMeetingDate, setNewMeetingDate] = useState("");
+  const [newMeetingTime, setNewMeetingTime] = useState("");
+  const [newMeetingPropertyId, setNewMeetingPropertyId] = useState("");
+  const [newMeetingNotes, setNewMeetingNotes] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  const fetchDossierData = async () => {
-    setLoading(true);
-    try {
-      const [contracts, props, documents] = await Promise.all([
-        getContractsByDeal(MOCK_DEAL_ID),
-        getPropertiesByDeal(MOCK_DEAL_ID),
-        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/documents/deal/${MOCK_DEAL_ID}`, { credentials: 'include' }).then(res => res.json())
-      ]);
-      setContract(contracts?.[0] || null);
-      setLinkedProperties(props || []);
-      setDocs(documents || []);
-    } catch (e: any) {
-      toast.error("Erreur de chargement : " + e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Queries
+  const { data: dossier, isLoading: loadingDossier } = useQuery({
+    queryKey: ["dossier", dossierId],
+    queryFn: () => fetchDossierDetail(dossierId),
+  });
 
-  useEffect(() => {
-    fetchDossierData();
-  }, []);
+  const { data: interactions, isLoading: loadingInteractions } = useQuery({
+    queryKey: ["interactions", dossierId],
+    queryFn: () => fetchInteractions(dossierId),
+  });
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    
-    setUploading(true);
-    const formData = new FormData();
-    formData.append("dealId", MOCK_DEAL_ID);
-    formData.append("file", files[0]);
-    formData.append("type", "OTHER");
+  const { data: meetings, isLoading: loadingMeetings } = useQuery({
+    queryKey: ["meetings", dossierId],
+    queryFn: () => fetchDealMeetings(dossierId),
+  });
 
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/documents/upload`, {
+  const { data: linkedProperties, isLoading: loadingProps } = useQuery({
+    queryKey: ["linkedProperties", dossierId],
+    queryFn: () => getPropertiesByDeal(dossierId),
+  });
+
+  const { data: contracts, isLoading: loadingContracts } = useQuery({
+    queryKey: ["contracts", dossierId],
+    queryFn: () => getContractsByDeal(dossierId),
+  });
+
+  const { data: docs, isLoading: loadingDocs } = useQuery({
+    queryKey: ["documents", dossierId],
+    queryFn: () => fetch(`${import.meta.env.VITE_API_BASE_URL || ""}/api/documents/deal/${dossierId}`, { credentials: 'include' }).then(res => res.json()),
+  });
+
+  // Mutations
+  const interactionMutation = useMutation({
+    mutationFn: (req: any) => logInteraction(req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["interactions", dossierId] });
+      setLogging(false);
+      setNewDesc("");
+      toast.success("Interaction enregistrée");
+    },
+    onError: (e: any) => toast.error("Erreur : " + e.message),
+  });
+
+  const meetingMutation = useMutation({
+    mutationFn: (req: any) => createMeeting(req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meetings", dossierId] });
+      setPlanningMeeting(false);
+      toast.success("Rendez-vous planifié");
+    },
+    onError: (e: any) => toast.error("Erreur : " + e.message),
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ""}/api/documents/upload`, {
         method: "POST",
         body: formData,
         credentials: "include"
       });
       if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["documents", dossierId] });
       toast.success("Document uploadé");
-      fetchDossierData();
-    } catch (e: any) {
-      toast.error("Upload échoué : " + e.message);
-    } finally {
-      setUploading(false);
+    },
+    onError: (e: any) => toast.error("Upload échoué : " + e.message),
+    onSettled: () => setUploading(false),
+  });
+
+  const contractStatusMutation = useMutation({
+    mutationFn: ({ contractId, status }: { contractId: string, status: string }) => updateContractStatus(contractId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contracts", dossierId] });
+      toast.success("Statut mis à jour");
+    },
+    onError: (e: any) => toast.error("Erreur : " + e.message),
+  });
+
+  // Handlers
+  const handleLogInteraction = () => {
+    if (!newDesc.trim()) return;
+    interactionMutation.mutate({
+      idDeal: dossierId,
+      type: newType,
+      description: newDesc,
+      occurredAt: `${newDate}T${newTime}:00`,
+      durationMinutes: newDurationHrs * 60 + newDurationMins,
+    });
+  };
+
+  const handleCreateMeeting = () => {
+    if (!newMeetingDate || !newMeetingTime) {
+      toast.error("Veuillez sélectionner une date et une heure");
+      return;
     }
+    meetingMutation.mutate({
+      idDeal: dossierId,
+      type: newMeetingType,
+      scheduledAt: `${newMeetingDate}T${newMeetingTime}:00`,
+      notes: newMeetingNotes,
+      propertyAddress: newMeetingPropertyId || undefined,
+    });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("dealId", dossierId);
+    formData.append("file", files[0]);
+    formData.append("type", "OTHER");
+    uploadMutation.mutate(formData);
     e.target.value = "";
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!contract) return;
-    try {
-      await updateContractStatus(contract.idContract, newStatus);
-      setContract((c: any) => ({ ...c, status: newStatus }));
-      toast.success(`Statut → ${newStatus}`);
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-  };
+  if (loadingDossier) {
+    return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin text-eerie" size={40} /></div>;
+  }
 
-  const logInteraction = () => {
-    if (!newDesc.trim()) return;
-    const iconMap: Record<string, typeof Phone> = { Appel: Phone, Visite: MapPin, Email: Mail, Note: FileText };
-    setInteractions((prev) => [
-      { type: newType, icon: iconMap[newType] || FileText, date: "à l'instant", desc: newDesc as any },
-      ...prev
-    ]);
-    setNewDesc("");
-    setLogging(false);
-    toast.success("Interaction loggée");
-  };
-
+  if (!dossier) {
+    return <div className="text-center py-20">Dossier non trouvé. <Link to="/agent/clients" className="text-alice underline">Retour</Link></div>;
+  }
 
   return (
     <div className="grid grid-cols-12 gap-5 md:gap-6 max-w-[1500px]">
       {/* Left — profile */}
       <div className="col-span-12 lg:col-span-3 space-y-5">
         <NeuCard className="text-center">
-          <Avatar name={client.name} size={88} />
-          <h2 className="font-bold text-lg mt-3">{client.name}</h2>
-          <SoftBadge tone="info" className="mt-1">{client.type}</SoftBadge>
+          <Avatar name={dossier.clientName} size={88} />
+          <h2 className="font-bold text-lg mt-3">{dossier.clientName}</h2>
+          <SoftBadge tone="info" className="mt-1">{dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}</SoftBadge>
           <div className="text-left mt-5 space-y-2 text-sm">
-            <a href={`tel:${client.phone}`} className="flex items-center gap-2 hover:underline">
-              <Phone size={14} /> {client.phone}
+            <a href={`tel:${dossier.clientPhone}`} className="flex items-center gap-2 hover:underline">
+              <Phone size={14} /> {dossier.clientPhone}
             </a>
-            <a href={`mailto:${client.email}`} className="flex items-center gap-2 hover:underline">
-              <Mail size={14} /> {client.email}
+            <a href={`mailto:${dossier.clientEmail}`} className="flex items-center gap-2 hover:underline">
+              <Mail size={14} /> {dossier.clientEmail}
             </a>
           </div>
           <div className="mt-5 pt-5 border-t border-border space-y-3 text-left">
             <div>
               <div className="text-xs text-muted-foreground">Budget</div>
-              <div className="text-xl font-bold">{client.budget}</div>
+              <div className="text-xl font-bold">
+                {(dossier.budgetMin || 0).toLocaleString()} - {(dossier.budgetMax || 0).toLocaleString()} MAD
+              </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Source</div>
-              <div className="text-sm font-medium">{client.source}</div>
+              <div className="text-sm font-medium">{dossier.clientSource}</div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Agent assigné</div>
               <div className="flex items-center gap-2 mt-1">
-                <Avatar name={client.agent} size={24} />
-                <span className="text-sm">{client.agent}</span>
+                <Avatar name={dossier.assignedAgentName} size={24} />
+                <span className="text-sm">{dossier.assignedAgentName}</span>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => toast("Édition du profil — démo statique")}
-            className="w-full mt-5 py-2.5 rounded-lg neu-sm hover:neu-pressable text-sm font-medium"
-          >
-            Modifier le profil
-          </button>
         </NeuCard>
 
         <NeuCard className="text-center bg-alice/40">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Lead Score IA</div>
           <div className="my-4 flex justify-center">
-            <LeadScore score={client.score} size={120} />
+            <LeadScore score={dossier.aiLeadScore} size={120} />
           </div>
           <p className="text-xs italic text-muted-foreground">
-            Engagement élevé : visites régulières, budget confirmé, décision attendue sous 2 semaines.
+            {dossier.aiScoreExplanation || "Analyse de score en cours..."}
           </p>
         </NeuCard>
       </div>
@@ -210,51 +284,126 @@ function DossierPage() {
                   <Plus size={16} /> Logger une interaction
                 </button>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    {["Appel", "Visite", "Email", "Note"].map((t) => (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      { label: "Appel", value: "CALL" },
+                      { label: "Visite", value: "VISIT" },
+                      { label: "Email", value: "EMAIL" },
+                      { label: "Réunion", value: "MEETING" },
+                      { label: "Note", value: "NOTE" }
+                    ].map((t) => (
                       <button
-                        key={t}
-                        onClick={() => setNewType(t)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-medium ${newType === t ? "neu-inset" : "neu-sm"}`}
+                        key={t.value}
+                        onClick={() => setNewType(t.value as InteractionType)}
+                        className={`py-2 rounded-lg text-xs font-medium ${newType === t.value ? "neu-inset" : "neu-sm"}`}
                       >
-                        {t}
+                        {t.label}
                       </button>
                     ))}
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Date</label>
+                      <input
+                        type="date"
+                        value={newDate}
+                        onChange={(e) => setNewDate(e.target.value)}
+                        className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Heure</label>
+                      <input
+                        type="time"
+                        value={newTime}
+                        onChange={(e) => setNewTime(e.target.value)}
+                        className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1 flex items-center gap-1.5"><Clock size={12} /> Durée</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] text-muted-foreground px-1">Heures</div>
+                        <select
+                          value={newDurationHrs}
+                          onChange={(e) => setNewDurationHrs(Number(e.target.value))}
+                          className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+                        >
+                          {Array.from({ length: 13 }, (_, i) => (
+                            <option key={i} value={i}>{i}h</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] text-muted-foreground px-1">Minutes</div>
+                        <select
+                          value={newDurationMins}
+                          onChange={(e) => setNewDurationMins(Number(e.target.value))}
+                          className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+                        >
+                          {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
+                            <option key={m} value={m}>{m}min</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
                   <textarea
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    rows={3}
+                    rows={2}
                     placeholder="Décrivez l'échange…"
                     className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
                   />
                   <div className="flex gap-2">
-                    <button onClick={logInteraction} className="flex-1 py-2.5 rounded-lg bg-eerie text-ghost text-sm font-medium">Sauvegarder</button>
+                    <button
+                      onClick={handleLogInteraction}
+                      disabled={interactionMutation.isPending}
+                      className="flex-1 py-2.5 rounded-lg bg-eerie text-ghost text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {interactionMutation.isPending && <Loader2 size={16} className="animate-spin" />}
+                      Sauvegarder
+                    </button>
                     <button onClick={() => setLogging(false)} className="px-5 py-2.5 rounded-lg neu-sm text-sm">Annuler</button>
                   </div>
                 </div>
               )}
             </NeuCard>
-            <div className="relative pl-8">
-              <div className="absolute left-3 top-2 bottom-2 w-px bg-border" />
-              {interactions.map((it, i) => {
-                const Icon = it.icon;
-                return (
-                  <div key={i} className="relative mb-4">
-                    <div className="absolute -left-8 top-3 w-6 h-6 rounded-full bg-honeydew flex items-center justify-center ring-4 ring-ghost">
-                      <Icon size={12} />
-                    </div>
-                    <NeuCard size="sm">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <span className="font-semibold text-sm">{it.type}</span>
-                        <span className="text-xs text-muted-foreground">{it.date}{it.duration ? ` · ${it.duration}` : ""}</span>
+
+            <div className="relative pl-8 mt-6">
+              <div className="absolute left-3 top-2 bottom-2 w-px bg-border " />
+              {loadingInteractions ? (
+                <div className="text-center py-4 text-sm text-muted-foreground">Chargement...</div>
+              ) : interactions?.length === 0 ? (
+                <div className="text-center py-4 text-sm text-muted-foreground italic">Aucune interaction.</div>
+              ) : (
+                interactions?.map((it) => {
+                  const Icon = iconMap[it.type] || FileText;
+                  return (
+                    <div key={it.idInteraction} className="relative mb-4">
+                      <div className="absolute -left-8 top-3 w-6 h-6 rounded-full bg-honeydew flex items-center justify-center ring-4 ring-ghost border border-honeydew/20">
+                        <Icon size={12} className="text-eerie" />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1.5">{it.desc}</p>
-                    </NeuCard>
-                  </div>
-                );
-              })}
+                      <NeuCard size="sm">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="font-semibold text-sm">{it.type}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(it.occurredAt).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1.5">{it.description}</p>
+                        <div className="mt-2 flex items-center gap-1.5 opacity-50 text-[10px]">
+                           <span className="font-medium">{it.agentName}</span>
+                        </div>
+                      </NeuCard>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </>
         )}
@@ -266,261 +415,215 @@ function DossierPage() {
                 <Building2 size={16} /> Rechercher biens
               </Link>
               <button
-                onClick={() => toast.success("3 nouvelles recommandations IA générées")}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["linkedProperties", dossierId] })}
                 className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl bg-vanilla text-eerie text-sm font-medium hover:opacity-90"
               >
-                <Sparkles size={16} /> Recommandation IA
+                <Sparkles size={16} /> Rafraîchir
               </button>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              {linkedProperties.map((p) => (
+              {loadingProps ? <Loader2 className="animate-spin col-span-2 mx-auto mt-10" /> : 
+               linkedProperties?.map((p: any) => (
                 <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <img src={p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                  <img src={p.imageUrls?.[0] || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
                   <div className="font-medium text-sm">{p.address}</div>
                   <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="font-bold text-sm">{p.price.toLocaleString('fr-MA')} MAD</span>
+                    <span className="font-bold text-sm">{p.price?.toLocaleString('fr-MA')} MAD</span>
                     <SoftBadge tone={p.isAvailable ? "success" : "info"}>{p.isAvailable ? "Disponible" : "Vendu"}</SoftBadge>
                   </div>
                 </NeuCard>
               ))}
-              {linkedProperties.length === 0 && (
-                <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
+              {linkedProperties?.length === 0 && (
+                <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée.</p>
               )}
             </div>
-
           </>
         )}
 
         {tab === "Rendez-vous" && (
-          <NeuCard>
-            <div className="space-y-3">
-              {[
-                { d: "21 nov. · 10:00", t: "Visite — Bois de Boulogne", s: "À venir" },
-                { d: "16 nov. · 15:00", t: "Visite — Anfa", s: "Effectué" },
-                { d: "08 nov. · 11:00", t: "Réunion conseil", s: "Effectué" },
-              ].map((r, i) => (
-                <div key={i} className="flex items-center gap-4 p-3 rounded-lg neu-sm">
-                  <CalendarDays size={18} className="text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{r.t}</div>
-                    <div className="text-xs text-muted-foreground">{r.d}</div>
+          <div className="space-y-4">
+            <NeuCard>
+              {!planningMeeting ? (
+                <button origin-label="btndate"
+                  onClick={() => setPlanningMeeting(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-eerie text-ghost text-sm font-medium hover:opacity-90"
+                >
+                  <Plus size={16} /> Planifier un rendez-vous
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold px-1 uppercase">Type</label>
+                      <select
+                        value={newMeetingType}
+                        onChange={(e) => setNewMeetingType(e.target.value as MeetingType)}
+                        className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm"
+                      >
+                        <option value="OFFICE_APPOINTMENT">RDV Agence</option>
+                        <option value="PROPERTY_VISIT">Visite immobilière</option>
+                        <option value="PHONE_CALL">Appel téléphonique</option>
+                        <option value="CONTRACT_SIGNING">Signature de contrat</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold px-1 uppercase">Date</label>
+                        <input type="date" value={newMeetingDate} onChange={(e) => setNewMeetingDate(e.target.value)} className="w-full px-2 py-2 neu-inset rounded-lg bg-transparent text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold px-1 uppercase">Heure</label>
+                        <input type="time" value={newMeetingTime} onChange={(e) => setNewMeetingTime(e.target.value)} className="w-full px-2 py-2 neu-inset rounded-lg bg-transparent text-xs" />
+                      </div>
+                    </div>
                   </div>
-                  <SoftBadge tone={r.s === "À venir" ? "warn" : "success"}>{r.s}</SoftBadge>
+                  <textarea
+                    value={newMeetingNotes}
+                    onChange={(e) => setNewMeetingNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Notes…"
+                    className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCreateMeeting}
+                      disabled={meetingMutation.isPending}
+                      className="flex-1 py-2.5 rounded-lg bg-eerie text-ghost text-sm font-medium flex items-center justify-center"
+                    >
+                      {meetingMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : "Confirmer"}
+                    </button>
+                    <button onClick={() => setPlanningMeeting(false)} className="px-5 py-2.5 rounded-lg neu-sm text-sm">Annuler</button>
+                  </div>
                 </div>
-              ))}
+              )}
+            </NeuCard>
+
+            <div className="space-y-3">
+              {loadingMeetings ? <Loader2 className="animate-spin mx-auto" /> : 
+                meetings?.map((r) => (
+                  <div key={r.idMeeting} className="flex items-center gap-4 p-3 rounded-lg neu-sm">
+                    <div className="p-2 rounded-lg bg-vanilla/20 text-vanilla">
+                      <CalendarDays size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{r.type}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(r.scheduledAt).toLocaleString()}</div>
+                    </div>
+                    <SoftBadge tone={r.status === "COMPLETED" ? "success" : "warn"}>{r.status}</SoftBadge>
+                  </div>
+                ))
+              }
             </div>
-            <Link to="/agent/agenda" className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-sm font-medium flex items-center justify-center gap-2">
-              <Plus size={14} /> Planifier RDV
-            </Link>
-          </NeuCard>
+          </div>
         )}
 
         {tab === "Contrats" && (
           <div className="space-y-4">
-            {/* Bouton nouveau contrat */}
             <button
               onClick={() => setShowContractForm(true)}
               className="w-full py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90 flex items-center justify-center gap-2"
             >
               <Plus size={16} /> Nouveau contrat
             </button>
-
-            {/* Contrat existant */}
-            {contract && (
-              <NeuCard>
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <FileSignature size={16} /> Contrat en cours
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Réf : MR-2025-0142 · {(contract.agreedPrice / 1_000_000).toFixed(2)}M MAD
-                    </p>
-                  </div>
-                </div>
-
-                {/* Tracker statut */}
-                <ContractStatusTracker
-                  contract={contract}
-                  onStatusChange={handleStatusChange}
-                />
-
-                {/* Calendrier de paiement */}
-                {contract.payments && contract.payments.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                      Calendrier de paiement
-                    </p>
-                    <div className="space-y-2">
-                      {contract.payments.map((p: any) => (
-                        <div
-                          key={p.idPayment}
-                          className={`flex items-center gap-3 p-3 rounded-xl ${
-                            p.isPaid ? "bg-honeydew/40" : "neu-sm"
-                          }`}
-                        >
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                              p.isPaid ? "bg-honeydew" : "border-2 border-border"
-                            }`}
-                          >
-                            {p.isPaid && <span className="text-[10px] text-eerie">✓</span>}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium">{p.label}</div>
-                            <div className="text-xs text-muted-foreground">{p.dueDate}</div>
-                          </div>
-                          <div className="text-sm font-bold shrink-0">
-                            {p.amount.toLocaleString("fr-MA")} MAD
-                          </div>
-                        </div>
-                      ))}
+            <div className="space-y-4">
+              {loadingContracts ? <Loader2 className="animate-spin mx-auto" /> : 
+                contracts?.map((c: any) => (
+                  <NeuCard key={c.idContract}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <FileSignature size={16} /> Contrat {c.status}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {c.agreedPrice?.toLocaleString('fr-MA')} MAD
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </NeuCard>
-            )}
+                    <ContractStatusTracker
+                      contract={c}
+                      onStatusChange={(status) => contractStatusMutation.mutate({ contractId: c.idContract, status })}
+                    />
+                  </NeuCard>
+                ))
+              }
+            </div>
           </div>
         )}
       </div>
 
-      {/* Right — IA */}
+      {/* Right — IA & Docs */}
       <div className="col-span-12 lg:col-span-3 space-y-5">
-        <NeuCard className="bg-alice/40">
+        <NeuCard className="bg-alice/40 border border-alice">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Sparkles size={12} /> Résumé IA</span>
-            <button
-              onClick={() => toast.success("Résumé régénéré")}
-              className="w-7 h-7 rounded-lg neu-sm flex items-center justify-center"
-              aria-label="Régénérer"
-            >
-              <RefreshCw size={12} />
-            </button>
           </div>
-          <p className="text-sm leading-relaxed">
-            Acheteur sérieux, 2.4M MAD, recherche T3/T4 à Anfa. A déjà visité 2 biens, retour positif.
-            Décision probable sous 15 jours. Recommandation : maintenir le rythme de propositions.
-          </p>
+          <p className="text-sm leading-relaxed">{dossier.aiSummary || "En cours..."}</p>
         </NeuCard>
 
         <NeuCard>
           <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">Action recommandée</div>
-          <SoftBadge tone="warn" className="mb-3">Priorité haute</SoftBadge>
-          <p className="text-sm font-medium">{client.recommendation}</p>
+          <SoftBadge tone="warn" className="mb-3">Priorité {dossier.isUrgent ? 'Urgente' : 'Standard'}</SoftBadge>
+          <p className="text-sm font-medium">{dossier.aiRecommendedAction}</p>
         </NeuCard>
 
         <NeuCard>
           <h3 className="font-semibold flex items-center gap-2 text-sm mb-4">
-            <FileText size={14} /> Documents ({docs.length})
+            <FileText size={14} /> Documents ({docs?.length || 0})
           </h3>
           <div className="space-y-2">
-            {docs.map((f, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group"
-              >
-                <Paperclip size={13} className="text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{f.filePath.split(/[\\/]/).pop().substring(37)}</span>
-                <button
-                  onClick={() => toast(`Aperçu : ${f.filePath}`)}
-                  className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
-                  aria-label="Voir"
-                >
-                  <Eye size={11} />
-                </button>
-              </div>
-            ))}
-            {docs.length === 0 && (
-                <p className="text-center py-4 text-[10px] text-muted-foreground">Aucun document.</p>
-            )}
+            {loadingDocs ? <Loader2 className="animate-spin mx-auto" /> : 
+              docs?.map((f: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group">
+                  <Paperclip size={13} className="text-muted-foreground shrink-0" />
+                  <span className="flex-1 truncate">{f.filePath?.split(/[\\/]/).pop().substring(37)}</span>
+                  <button onClick={() => toast(`Aperçu : ${f.filePath}`)} className="opacity-0 group-hover:opacity-100"><Eye size={11} /></button>
+                </div>
+              ))
+            }
           </div>
-
-
-          {/* Upload */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
+          <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} />
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2"
           >
-            {uploading ? (
-              <><Loader2 size={12} className="animate-spin" /> Upload…</>
-            ) : (
-              <><Upload size={12} /> Ajouter un document</>
-            )}
-          </button>
-
-          <button
-            onClick={() => toast("Assistant IA documents — démo")}
-            className="w-full mt-2 py-2.5 rounded-lg bg-alice/40 text-xs font-medium flex items-center justify-center gap-2 hover:bg-alice/60 transition-colors"
-          >
-            <MessageSquare size={12} /> Poser une question sur les docs
+            {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} Ajouter
           </button>
         </NeuCard>
 
         <NeuCard className="bg-vanilla/40">
-          <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Send size={14} /> Email de suivi IA</h3>
-          <p className="text-xs text-muted-foreground mb-3">Générer un draft personnalisé prêt à envoyer.</p>
-          <button
-            onClick={() => toast.success("Brouillon email généré — copié dans la boîte d'envoi")}
-            className="w-full py-2.5 rounded-lg bg-eerie text-ghost text-xs font-medium hover:opacity-90"
-          >
-            Générer email
-          </button>
+          <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Send size={14} /> Suivi Dossier</h3>
+          <button onClick={() => toast.info("Email copié")} className="w-full py-2.5 rounded-lg bg-eerie text-ghost text-xs font-medium">Générer email</button>
         </NeuCard>
       </div>
 
-      {/* Modale : Nouveau contrat (formulaire guidé) */}
-      {showContractForm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowContractForm(false)}
-        >
+      {propDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setPropDetail(null)}>
           <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
-          <div
-            className="relative bg-ghost rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto soft-scroll p-7 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ContractForm
-              dealId={MOCK_DEAL_ID}
-              onClose={() => setShowContractForm(false)}
-              onCreated={(c) => {
-                setContract(c);
-                setTab("Contrats");
-              }}
-            />
+          <div className="relative bg-ghost rounded-3xl max-w-md w-full shadow-2xl overflow-hidden p-6" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setPropDetail(null)} className="absolute top-4 right-4"><X size={16} /></button>
+            <h3 className="font-bold text-lg">{propDetail.title}</h3>
+            <p className="text-sm text-muted-foreground">{propDetail.address}</p>
+            <div className="mt-4 flex justify-between">
+              <span className="font-bold">{propDetail.price?.toLocaleString()} MAD</span>
+              <span>{propDetail.surfaceM2} m²</span>
+            </div>
+            <button onClick={() => setPropDetail(null)} className="w-full mt-6 py-2.5 rounded-xl bg-eerie text-ghost">Fermer</button>
           </div>
         </div>
       )}
 
-      {/* Property quick view */}
-      {propDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setPropDetail(null)}>
-          <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
-          <div className="relative bg-ghost rounded-3xl max-w-md w-full shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <img src={propDetail.image} alt={propDetail.address} className="w-full h-48 object-cover" />
-            <button onClick={() => setPropDetail(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full glass flex items-center justify-center" aria-label="Fermer"><X size={16} /></button>
-            <div className="p-6 space-y-3">
-              <h3 className="font-bold text-lg">{propDetail.title || propDetail.address}</h3>
-              <div className="text-sm text-muted-foreground">{propDetail.city} · {propDetail.surfaceM2} m²</div>
-              <div className="flex items-center justify-between">
-                <span className="text-xl font-bold">{propDetail.price?.toLocaleString('fr-MA')} MAD</span>
-                <SoftBadge tone="info">{propDetail.numRooms} pièces</SoftBadge>
-              </div>
-              <button onClick={() => setPropDetail(null)} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Fermer</button>
-            </div>
-
+      {showContractForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" onClick={() => setShowContractForm(false)} />
+          <div className="relative bg-ghost rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto p-7 shadow-2xl">
+            <ContractForm dealId={dossierId} onClose={() => setShowContractForm(false)} onCreated={() => queryClient.invalidateQueries({ queryKey: ["contracts", dossierId] })} />
           </div>
         </div>
       )}
     </div>
   );
 }
+
+

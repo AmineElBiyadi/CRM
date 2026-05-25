@@ -41,7 +41,7 @@ public class DashboardService {
         InternalUser agent = userRepository.findById(agentId).orElse(null);
         String agentFirstName = agent != null ? agent.getFirstName() : "Agent";
         String agentFullName = agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Agent";
-        String agentRole = agent != null ? agent.getRole().name() : "AGENT";
+        String agentRole = (agent != null && agent.getRole() != null) ? agent.getRole().name() : "AGENT";
 
         // 2. Calcul des KPIs
         // Clients actifs (non CLOSED et non LOST)
@@ -125,7 +125,8 @@ public class DashboardService {
         if (dateTime == null) return "jamais";
         LocalDateTime now = LocalDateTime.now();
         long days = java.time.temporal.ChronoUnit.DAYS.between(dateTime, now);
-        if (days <= 0) {
+        if (days < 0) return "à venir";
+        if (days == 0) {
             long hours = java.time.temporal.ChronoUnit.HOURS.between(dateTime, now);
             if (hours <= 0) {
                 long minutes = java.time.temporal.ChronoUnit.MINUTES.between(dateTime, now);

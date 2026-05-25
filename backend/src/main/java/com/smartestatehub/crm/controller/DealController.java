@@ -1,6 +1,7 @@
 package com.smartestatehub.crm.controller;
 
 import com.smartestatehub.crm.dto.CreateDossierRequest;
+import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
 import com.smartestatehub.crm.service.DealService;
 import lombok.RequiredArgsConstructor;
@@ -24,5 +25,10 @@ public class DealController {
     @PostMapping
     public DossierSummaryDto createDossier(@RequestBody CreateDossierRequest request, @RequestHeader("X-Agent-Id") UUID agentId) {
         return dealService.createDossier(request, agentId);
+    }
+
+    @GetMapping("/{id}")
+    public DossierDetailDto getDossierDetail(@PathVariable("id") UUID dealId) {
+        return dealService.getDossierDetail(dealId);
     }
 }
