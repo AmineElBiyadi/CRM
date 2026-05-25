@@ -145,3 +145,8 @@ export const createMeeting = async (request: CreateMeetingDto): Promise<MeetingI
   const response = await api.post<MeetingItem>('/api/agent/meetings', request);
   return response.data;
 };
+
+export const updateDealStage = async (idDeal: string, stage: DealStage): Promise<DossierDetail> => {
+  const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/stage?stage=${stage}`);
+  return response.data;
+};
