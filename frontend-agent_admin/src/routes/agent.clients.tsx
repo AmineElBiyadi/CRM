@@ -139,6 +139,7 @@ function ClientDossierDrawer({
                   </div>
                   <Link 
                     to="/agent/dossier" 
+                    search={{ id: d.idDeal }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-honeydew transition-colors text-muted-foreground hover:text-eerie"
                     title="Voir les détails"
                   >

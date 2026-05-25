@@ -86,7 +86,7 @@ function AgentDashboard() {
   const handleToggleTask = (meetingId: string, clientName: string) => {
     toggleMeetingMutation.mutate(meetingId, {
       onSuccess: (updated: any) => {
-        const isDone = updated.status === "DONE";
+        const isDone = updated.status === "COMPLETED";
         if (isDone) {
           toast.success(`RDV avec ${clientName} marqué comme effectué ! 🎯`);
         } else {
@@ -174,7 +174,7 @@ function AgentDashboard() {
               priorities.map((c: any) => (
                 <div 
                   key={c.idDeal} 
-                  onClick={() => navigate({ to: "/agent/dossier" })}
+                  onClick={() => navigate({ to: "/agent/dossier", search: { id: c.idDeal } })}
                   className="flex flex-wrap items-center gap-3 md:gap-4 p-3 rounded-xl hover:bg-alice/40 transition-colors cursor-pointer group"
                 >
                   <Avatar name={c.clientFullName} size={44} />
@@ -188,7 +188,14 @@ function AgentDashboard() {
                   </div>
                   <LeadScore score={c.aiLeadScore} size={48} />
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Link to="/agent/dossier" className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" aria-label="Dossier"><FileText size={14} /></Link>
+                    <Link 
+                      to="/agent/dossier" 
+                      search={{ id: c.idDeal }}
+                      className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" 
+                      aria-label="Dossier"
+                    >
+                      <FileText size={14} />
+                    </Link>
                     <button onClick={() => toast.success(`Message envoyé à ${c.clientFullName}`)} className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center" aria-label="Message"><MessageSquarePlus size={14} /></button>
                     <button onClick={() => toast(`Appel vers ${c.clientPhone}…`)} className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center" aria-label="Appeler"><Phone size={14} /></button>
                   </div>
@@ -208,7 +215,7 @@ function AgentDashboard() {
               </div>
             ) : (
               todayTasks.map((t: any) => {
-                const isDone = t.status === "DONE";
+                const isDone = t.status === "COMPLETED";
                 return (
                   <div key={t.idMeeting} className="flex items-center gap-3 p-3 rounded-xl neu-sm">
                     <button
