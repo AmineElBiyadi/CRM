@@ -24,39 +24,42 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Désactiver CSRF (inutile pour une API REST stateless)
-            .csrf(AbstractHttpConfigurer::disable)
+                // Désactiver CSRF (inutile pour une API REST stateless)
+                .csrf(AbstractHttpConfigurer::disable)
 
-            // Appliquer la config CORS définie dans CorsConfig
-            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                // Appliquer la config CORS définie dans CorsConfig
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
 
-            // Mode STATELESS : pas de session HTTP, pas de redirection vers /login
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+                // Mode STATELESS : pas de session HTTP, pas de redirection vers /login
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // Désactiver la page de login par défaut de Spring Security
-            .formLogin(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
+                // Désactiver la page de login par défaut de Spring Security
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
 
-            // Règles d'autorisation
-            .authorizeHttpRequests(auth -> auth
-                // Endpoints publics d'authentification
-                .requestMatchers("/api/auth/**").permitAll()
+                // Règles d'autorisation
+                .authorizeHttpRequests(auth -> auth
+                        // Endpoints publics d'authentification
+                        .requestMatchers("/api/auth/**").permitAll()
 
-                // Endpoints du dashboard agent : autorisés sans JWT en dev (via X-Agent-Id)
-                .requestMatchers("/api/agent/**").permitAll()
+                        // Endpoints du dashboard agent : autorisés sans JWT en dev (via X-Agent-Id)
+                        .requestMatchers("/api/agent/**").permitAll()
 
-                // Actuator (supervision)
-                .requestMatchers("/actuator/**").permitAll()
+                        // Actuator (supervision)
+                        .requestMatchers("/actuator/**").permitAll()
 
-                // Toutes les autres routes nécessitent une authentification
-                // (le filtre JWT sera branché ici quand il sera implémenté)
-                .anyRequest().authenticated()
-            );
+                        .requestMatchers("/api/properties/**").permitAll()
 
-        // TODO: Brancher le JwtAuthenticationFilter ici quand TokenService sera implémenté
-        // http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers("/api/contracts/**").permitAll()
+
+                        // Toutes les autres routes nécessitent une authentification
+                        // (le filtre JWT sera branché ici quand il sera implémenté)
+                        .anyRequest().authenticated());
+
+        // TODO: Brancher le JwtAuthenticationFilter ici quand TokenService sera
+        // implémenté
+        // http.addFilterBefore(jwtAuthenticationFilter,
+        // UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

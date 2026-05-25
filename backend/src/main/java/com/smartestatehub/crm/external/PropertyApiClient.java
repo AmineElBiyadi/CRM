@@ -11,9 +11,11 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,9 +55,10 @@ public class PropertyApiClient {
             // On s'adapte dynamiquement selon l'API choisie par l'utilisateur.
             String url = "https://" + apiHost + "/properties/v2/list-for-sale";
             
-            // Construction des query params
+            // Construction des query params (avec encodage URL pour éviter les espaces)
+            String encodedCity = URLEncoder.encode(city != null ? city : "Casablanca", StandardCharsets.UTF_8);
             StringBuilder urlBuilder = new StringBuilder(url);
-            urlBuilder.append("?city=").append(city != null ? city : "Casablanca");
+            urlBuilder.append("?city=").append(encodedCity);
             urlBuilder.append("&limit=10");
             urlBuilder.append("&offset=").append((page - 1) * 10);
             
