@@ -27,17 +27,17 @@ public class DashboardController {
     }
 
     private UUID resolveAgentId(String devAgentId, Principal principal) {
-        if (devAgentId != null && !devAgentId.isBlank()) {
-            return UUID.fromString(devAgentId);
-        }
-        if (principal != null) {
-            try {
-                return UUID.fromString(principal.getName());
-            } catch (Exception e) {
-                // Principal is likely email/user object
+        try {
+            if (devAgentId != null && !devAgentId.isBlank()) {
+                return UUID.fromString(devAgentId);
             }
+            if (principal != null) {
+                return UUID.fromString(principal.getName());
+            }
+        } catch (Exception e) {
+            // Fallback if conversion fails
         }
-        // Fallback agent ID for local development and integration tests
-        return UUID.fromString("b8a260b2-aad3-4923-97ff-2a3e761fcafd");
+        // Fallback agent ID (Sarah Laroui - seeded in DatabaseSeeder)
+        return UUID.fromString("8366d183-2fb7-44a1-8f16-2ec3ca78a320");
     }
 }

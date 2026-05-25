@@ -59,4 +59,7 @@ public class Meeting {
     @JoinColumn(name = "id_offer")
     private Offer offer;
 
+    @Column(name = "property_address")
+    private String propertyAddress;
+
 }
