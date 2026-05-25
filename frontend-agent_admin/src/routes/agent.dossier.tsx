@@ -7,10 +7,12 @@ import {
   logInteraction as apiLogInteraction,
   fetchDealMeetings,
   createMeeting as apiCreateMeeting,
+  updateDealStage as apiUpdateDealStage,
   type InteractionType,
   type CreateInteractionRequest,
   type MeetingType,
-  type CreateMeetingDto
+  type CreateMeetingDto,
+  type DealStage
 } from "@/api/dossiersApi";
 import { getPropertiesByDeal } from "@/api/propertyApi";
 import { NeuCard } from "@/components/ui/neu-card";
@@ -43,6 +45,15 @@ function DossierPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<typeof tabs[number]>("Interactions");
+
+  const STAGES: { value: DealStage, label: string }[] = [
+    { value: 'COLD', label: 'COLD' },
+    { value: 'WARM', label: 'WARM' },
+    { value: 'HOT', label: 'HOT' },
+    { value: 'NEGOTIATION', label: 'NEGOTIATION' },
+    { value: 'CLOSED', label: 'CLOSED' },
+    { value: 'LOST', label: 'LOST' },
+  ];
   
   const [logging, setLogging] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
@@ -117,6 +128,17 @@ function DossierPage() {
       toast.error("Erreur lors de la planification");
     }
   });
+  
+  const stageMutation = useMutation({
+    mutationFn: ({ id, stage }: { id: string, stage: DealStage }) => apiUpdateDealStage(id, stage),
+    onSuccess: (updated) => {
+      toast.success(`Étape mise à jour : ${STAGES.find(s => s.value === updated.stage)?.label}`);
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour de l'étape");
+    }
+  });
 
   /* documents */
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,6 +210,8 @@ function DossierPage() {
   if (loadingDossier) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin" /></div>;
   if (!dossier) return <div className="p-10 text-center">Dossier introuvable.</div>;
 
+  const currentStageIdx = STAGES.findIndex(s => s.value === dossier.stage);
+
   const iconMap: Record<string, any> = { 
     CALL: Phone, 
     VISIT: MapPin, 
@@ -247,6 +271,37 @@ function DossierPage() {
 
       {/* Center — activity */}
       <div className="col-span-12 lg:col-span-6 space-y-5">
+        {/* Pipeline Status Bar */}
+        <NeuCard size="sm" className="p-1 px-1.5 md:p-1.5">
+          <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-1">
+            {STAGES.map((s, idx) => {
+              const isActive = s.value === dossier.stage;
+              const isPast = idx < currentStageIdx;
+              
+              return (
+                <button
+                  key={s.value}
+                  onClick={() => stageMutation.mutate({ id: id!, stage: s.value })}
+                  disabled={stageMutation.isPending}
+                  className={`relative flex-1 min-w-[75px] py-2 px-1 rounded-lg text-[10px] font-bold uppercase tracking-tight transition-all flex flex-col items-center gap-1.5 ${
+                    isActive 
+                      ? "bg-eerie text-ghost shadow-lg scale-[1.02] z-10" 
+                      : (isPast ? "text-eerie/60 hover:bg-alice/20" : "text-muted-foreground/40 hover:bg-alice/10")
+                  }`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${
+                    isActive ? "bg-vanilla animate-pulse" : (isPast ? "bg-honeydew" : "bg-border")
+                  }`} />
+                  {s.label}
+                  {isActive && (
+                    <div className="absolute -bottom-1 left-1.2 right-1.2 h-0.5 bg-vanilla rounded-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </NeuCard>
+
         <NeuCard size="sm" className="flex gap-1 md:gap-2 p-2 overflow-x-auto">
           {tabs.map((t) => (
             <button

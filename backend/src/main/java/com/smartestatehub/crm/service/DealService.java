@@ -135,6 +135,17 @@ public class DealService {
         return builder.build();
     }
 
+    @Transactional
+    public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+        
+        deal.setStage(newStage);
+        deal = dealRepository.save(deal);
+        
+        return getDossierDetail(deal.getIdDeal());
+    }
+
     private DossierSummaryDto mapToSummaryDto(Deal deal) {
         String clientName = "Inconnu";
         ClientType type = ClientType.BUYER;
