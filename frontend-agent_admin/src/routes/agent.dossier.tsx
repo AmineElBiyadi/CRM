@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import { clients, properties, type Property } from "@/lib/mock-data";
@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
-import { updateContractStatus } from "@/api/contractApi";
+import { getContractsByDeal, updateContractStatus } from "@/api/contractApi";
+import { getPropertiesByDeal } from "@/api/propertyApi"; 
+
 
 export const Route = createFileRoute("/agent/dossier")({
   component: DossierPage,
@@ -47,43 +49,70 @@ function DossierPage() {
   const [interactions, setInteractions] = useState(initialInteractions);
   const [logging, setLogging] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
-  const [propDetail, setPropDetail] = useState<Property | null>(null);
+  const [propDetail, setPropDetail] = useState<any | null>(null);
   const [newType, setNewType] = useState("Appel");
   const [newDesc, setNewDesc] = useState("");
-  const [contract, setContract] = useState<any>(mockContract);
+  const [contract, setContract] = useState<any>(null);
+  const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
   /* documents */
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [docs, setDocs] = useState([
-    { name: "CNI_recto.pdf", size: "245 Ko", type: "PDF" },
-    { name: "Justif_revenus.pdf", size: "1.2 Mo", type: "PDF" },
-    { name: "Pré-accord_banque.pdf", size: "320 Ko", type: "PDF" },
-  ]);
+  const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fetchDossierData = async () => {
+    setLoading(true);
+    try {
+      const [contracts, props, documents] = await Promise.all([
+        getContractsByDeal(MOCK_DEAL_ID),
+        getPropertiesByDeal(MOCK_DEAL_ID),
+        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/documents/deal/${MOCK_DEAL_ID}`, { credentials: 'include' }).then(res => res.json())
+      ]);
+      setContract(contracts?.[0] || null);
+      setLinkedProperties(props || []);
+      setDocs(documents || []);
+    } catch (e: any) {
+      toast.error("Erreur de chargement : " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDossierData();
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    
     setUploading(true);
-    setTimeout(() => {
-      setDocs((prev) => [
-        ...prev,
-        ...files.map((f) => ({
-          name: f.name,
-          size: f.size > 1024 * 1024
-            ? `${(f.size / 1024 / 1024).toFixed(1)} Mo`
-            : `${Math.round(f.size / 1024)} Ko`,
-          type: f.name.split(".").pop()?.toUpperCase() || "FILE",
-        })),
-      ]);
+    const formData = new FormData();
+    formData.append("dealId", MOCK_DEAL_ID);
+    formData.append("file", files[0]);
+    formData.append("type", "OTHER");
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/documents/upload`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Document uploadé");
+      fetchDossierData();
+    } catch (e: any) {
+      toast.error("Upload échoué : " + e.message);
+    } finally {
       setUploading(false);
-      toast.success(`${files.length} fichier(s) uploadé(s)`);
-    }, 1200);
+    }
     e.target.value = "";
   };
 
   const handleStatusChange = async (newStatus: string) => {
+    if (!contract) return;
     try {
-      // await updateContractStatus(contract.idContract, newStatus); // décommenter en prod
+      await updateContractStatus(contract.idContract, newStatus);
       setContract((c: any) => ({ ...c, status: newStatus }));
       toast.success(`Statut → ${newStatus}`);
     } catch (e: any) {
@@ -95,13 +124,14 @@ function DossierPage() {
     if (!newDesc.trim()) return;
     const iconMap: Record<string, typeof Phone> = { Appel: Phone, Visite: MapPin, Email: Mail, Note: FileText };
     setInteractions((prev) => [
-      { type: newType, icon: iconMap[newType] || FileText, date: "à l'instant", desc: newDesc },
-      ...prev,
+      { type: newType, icon: iconMap[newType] || FileText, date: "à l'instant", desc: newDesc as any },
+      ...prev
     ]);
     setNewDesc("");
     setLogging(false);
     toast.success("Interaction loggée");
   };
+
 
   return (
     <div className="grid grid-cols-12 gap-5 md:gap-6 max-w-[1500px]">
@@ -243,18 +273,22 @@ function DossierPage() {
               </button>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              {properties.slice(0, 4).map((p) => (
-                <NeuCard key={p.id} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <img src={p.image} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+              {linkedProperties.map((p) => (
+                <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
+                  <img src={p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
                   <div className="font-medium text-sm">{p.address}</div>
-                  <div className="text-xs text-muted-foreground">{p.surface} · {p.rooms} pcs</div>
+                  <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="font-bold text-sm">{p.price}</span>
-                    <SoftBadge tone={p.status === "Visitée" ? "success" : "info"}>{p.status}</SoftBadge>
+                    <span className="font-bold text-sm">{p.price.toLocaleString('fr-MA')} MAD</span>
+                    <SoftBadge tone={p.isAvailable ? "success" : "info"}>{p.isAvailable ? "Disponible" : "Vendu"}</SoftBadge>
                   </div>
                 </NeuCard>
               ))}
+              {linkedProperties.length === 0 && (
+                <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
+              )}
             </div>
+
           </>
         )}
 
@@ -387,10 +421,9 @@ function DossierPage() {
                 className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group"
               >
                 <Paperclip size={13} className="text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{f.name}</span>
-                <span className="text-muted-foreground shrink-0">{f.size}</span>
+                <span className="flex-1 truncate">{f.filePath.split(/[\\/]/).pop().substring(37)}</span>
                 <button
-                  onClick={() => toast(`Aperçu : ${f.name}`)}
+                  onClick={() => toast(`Aperçu : ${f.filePath}`)}
                   className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
                   aria-label="Voir"
                 >
@@ -398,7 +431,11 @@ function DossierPage() {
                 </button>
               </div>
             ))}
+            {docs.length === 0 && (
+                <p className="text-center py-4 text-[10px] text-muted-foreground">Aucun document.</p>
+            )}
           </div>
+
 
           {/* Upload */}
           <input
@@ -472,14 +509,15 @@ function DossierPage() {
             <img src={propDetail.image} alt={propDetail.address} className="w-full h-48 object-cover" />
             <button onClick={() => setPropDetail(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full glass flex items-center justify-center" aria-label="Fermer"><X size={16} /></button>
             <div className="p-6 space-y-3">
-              <h3 className="font-bold text-lg">{propDetail.address}</h3>
-              <div className="text-sm text-muted-foreground">{propDetail.city} · {propDetail.floor}</div>
+              <h3 className="font-bold text-lg">{propDetail.title || propDetail.address}</h3>
+              <div className="text-sm text-muted-foreground">{propDetail.city} · {propDetail.surfaceM2} m²</div>
               <div className="flex items-center justify-between">
-                <span className="text-xl font-bold">{propDetail.price}</span>
-                <SoftBadge tone="info">{propDetail.surface}</SoftBadge>
+                <span className="text-xl font-bold">{propDetail.price?.toLocaleString('fr-MA')} MAD</span>
+                <SoftBadge tone="info">{propDetail.numRooms} pièces</SoftBadge>
               </div>
-              <button onClick={() => { toast.success("Bien proposé au client"); setPropDetail(null); }} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Proposer au client</button>
+              <button onClick={() => setPropDetail(null)} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Fermer</button>
             </div>
+
           </div>
         </div>
       )}
