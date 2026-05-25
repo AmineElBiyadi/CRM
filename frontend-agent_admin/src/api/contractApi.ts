@@ -1,7 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 /** Créer un contrat (avec son calendrier de paiement) */
-export async function createContract(dealId, body) {
+export async function createContract(dealId: string, body: any) {
   const res = await fetch(`${BASE}/api/contracts?dealId=${dealId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -13,7 +13,7 @@ export async function createContract(dealId, body) {
 }
 
 /** Récupérer tous les contrats d'un deal */
-export async function getContractsByDeal(dealId) {
+export async function getContractsByDeal(dealId: string) {
   const res = await fetch(`${BASE}/api/contracts/deal/${dealId}`, {
     credentials: "include",
   });
@@ -22,7 +22,7 @@ export async function getContractsByDeal(dealId) {
 }
 
 /** Récupérer un contrat par ID */
-export async function getContractById(contractId) {
+export async function getContractById(contractId: string) {
   const res = await fetch(`${BASE}/api/contracts/${contractId}`, {
     credentials: "include",
   });
@@ -31,7 +31,7 @@ export async function getContractById(contractId) {
 }
 
 /** Changer le statut d'un contrat */
-export async function updateContractStatus(contractId, status) {
+export async function updateContractStatus(contractId: string, status: string) {
   const res = await fetch(`${BASE}/api/contracts/${contractId}/status`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -43,7 +43,7 @@ export async function updateContractStatus(contractId, status) {
 }
 
 /** Marquer un paiement comme payé */
-export async function markPaymentPaid(contractId, paymentId) {
+export async function markPaymentPaid(contractId: string, paymentId: string) {
   const res = await fetch(
     `${BASE}/api/contracts/${contractId}/payments/${paymentId}/paid`,
     { method: "PATCH", credentials: "include" }

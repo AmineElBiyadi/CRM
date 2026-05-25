@@ -411,7 +411,7 @@ function DossierPage() {
         {tab === "Propriétés" && (
           <>
             <div className="flex gap-3 flex-wrap">
-              <Link to="/agent/recherche" className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
+              <Link to="/agent/recherche" search={{ dealId: dossierId }} className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
                 <Building2 size={16} /> Rechercher biens
               </Link>
               <button
@@ -542,7 +542,7 @@ function DossierPage() {
                     </div>
                     <ContractStatusTracker
                       contract={c}
-                      onStatusChange={(status) => contractStatusMutation.mutate({ contractId: c.idContract, status })}
+                      onStatusChange={(status: string) => contractStatusMutation.mutate({ contractId: c.idContract, status })}
                     />
                   </NeuCard>
                 ))

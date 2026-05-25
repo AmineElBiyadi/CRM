@@ -8,7 +8,7 @@ import { createContract } from "@/api/contractApi";
 
 /* ─── constantes ─── */
 const STATUS_STEPS = ["DRAFT", "SENT", "SIGNED", "ARCHIVED"];
-const STATUS_LABELS = {
+const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Brouillon", SENT: "Envoyé", SIGNED: "Reçu signé", ARCHIVED: "Archivé",
 };
 
@@ -20,20 +20,35 @@ const FORM_STEPS = [
 ];
 
 /* ─── helpers ─── */
-function fmtMAD(n) {
+function fmtMAD(n: string | number | undefined) {
   if (!n) return "—";
   return Number(n).toLocaleString("fr-MA") + " MAD";
 }
 
+interface PropertyRef {
+  title?: string;
+  address?: string;
+  city?: string;
+}
+
+interface PaymentItem {
+  id: number;
+  amount: string;
+  dueDate: string;
+  label: string;
+}
+
+interface ContractFormProps {
+  dealId: string;
+  propertyRef?: PropertyRef;
+  onClose?: () => void;
+  onCreated?: (contract: any) => void;
+}
+
 /* ─────────────────────────────────────────────
    ContractForm
-   Props:
-     dealId       : UUID du deal associé
-     propertyRef  : { title, address, city } optionnel (pré-rempli)
-     onClose      : fn() appelée quand on ferme
-     onCreated    : fn(contract) quand le contrat est créé
    ───────────────────────────────────────────── */
-export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
+export function ContractForm({ dealId, propertyRef, onClose, onCreated }: ContractFormProps) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
@@ -49,11 +64,11 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
   });
 
   /* calendrier de paiement : liste de { amount, dueDate, label } */
-  const [payments, setPayments] = useState([
+  const [payments, setPayments] = useState<PaymentItem[]>([
     { id: Date.now(), amount: "", dueDate: "", label: "Versement 1" },
   ]);
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   /* ── paiements ── */
   const addPayment = () =>
@@ -62,10 +77,10 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
       { id: Date.now(), amount: "", dueDate: "", label: `Versement ${p.length + 1}` },
     ]);
 
-  const removePayment = (id) =>
+  const removePayment = (id: number) =>
     setPayments((p) => p.filter((x) => x.id !== id));
 
-  const setPayment = (id, k, v) =>
+  const setPayment = (id: number, k: keyof PaymentItem, v: string) =>
     setPayments((p) => p.map((x) => (x.id === id ? { ...x, [k]: v } : x)));
 
   /* ── total des paiements ── */
@@ -95,7 +110,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
       toast.success("Contrat créé !");
       onCreated?.(contract);
       onClose?.();
-    } catch (e) {
+    } catch (e: any) {
       toast.error("Erreur : " + e.message);
     } finally {
       setSaving(false);
@@ -170,7 +185,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
         <div className="space-y-4">
           <Field label="Titre du bien">
             <input
-              className="input-neu"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none"
               placeholder="Ex : Appartement Anfa, 3 pièces"
               value={form.propertyTitle}
               onChange={(e) => set("propertyTitle", e.target.value)}
@@ -178,7 +193,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           </Field>
           <Field label="Adresse">
             <input
-              className="input-neu"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none"
               placeholder="Adresse complète"
               value={form.propertyAddress}
               onChange={(e) => set("propertyAddress", e.target.value)}
@@ -187,7 +202,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <Field label="Prix convenu (MAD)">
             <input
               type="number"
-              className="input-neu"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none"
               placeholder="2 400 000"
               value={form.agreedPrice}
               onChange={(e) => set("agreedPrice", e.target.value)}
@@ -202,7 +217,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <Field label="Dépôt de garantie (MAD)">
             <input
               type="number"
-              className="input-neu"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none"
               placeholder="100 000"
               value={form.depositAmount}
               onChange={(e) => set("depositAmount", e.target.value)}
@@ -218,7 +233,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <Field label="Date du dépôt">
             <input
               type="date"
-              className="input-neu"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none"
               value={form.depositDate}
               onChange={(e) => set("depositDate", e.target.value)}
             />
@@ -226,7 +241,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <Field label="Date clé de remise">
             <input
               type="date"
-              className="input-neu"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none"
               value={form.keyDate}
               onChange={(e) => set("keyDate", e.target.value)}
             />
@@ -234,7 +249,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <Field label="Notes internes">
             <textarea
               rows={3}
-              className="input-neu resize-none"
+              className="px-4 py-3 neu-inset rounded-lg bg-transparent w-full focus:outline-none resize-none"
               placeholder="Conditions particulières, remarques…"
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
@@ -278,7 +293,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
                       Versement {i + 1}
                     </span>
                     <input
-                      className="input-neu text-sm"
+                      className="px-3 py-2 neu-inset rounded-lg bg-transparent text-sm w-full"
                       placeholder="Libellé"
                       value={p.label}
                       onChange={(e) => setPayment(p.id, "label", e.target.value)}
@@ -289,7 +304,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
                       <label className="text-[10px] text-muted-foreground">Montant (MAD)</label>
                       <input
                         type="number"
-                        className="input-neu mt-1"
+                        className="px-3 py-2 neu-inset rounded-lg bg-transparent text-sm w-full mt-1"
                         placeholder="500 000"
                         value={p.amount}
                         onChange={(e) => setPayment(p.id, "amount", e.target.value)}
@@ -299,7 +314,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
                       <label className="text-[10px] text-muted-foreground">Date d'échéance</label>
                       <input
                         type="date"
-                        className="input-neu mt-1"
+                        className="px-3 py-2 neu-inset rounded-lg bg-transparent text-sm w-full mt-1"
                         value={p.dueDate}
                         onChange={(e) => setPayment(p.id, "dueDate", e.target.value)}
                       />
@@ -404,7 +419,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
 }
 
 /* ─── sous-composants internes ─── */
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
@@ -413,7 +428,7 @@ function Field({ label, children }) {
   );
 }
 
-function RecapRow({ label, value }) {
+function RecapRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
       <span className="text-muted-foreground">{label}</span>
@@ -422,12 +437,12 @@ function RecapRow({ label, value }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   ContractStatusTracker
-   Affiche la barre de progression d'un contrat + bouton changement de statut
-   Props: contract { idContract, status }, onStatusChange fn(newStatus)
-   ───────────────────────────────────────────── */
-export function ContractStatusTracker({ contract, onStatusChange }) {
+interface ContractStatusTrackerProps {
+  contract: { idContract: string; status: string };
+  onStatusChange?: (newStatus: string) => void;
+}
+
+export function ContractStatusTracker({ contract, onStatusChange }: ContractStatusTrackerProps) {
   const currentIdx = STATUS_STEPS.indexOf(contract.status);
 
   return (
@@ -464,7 +479,7 @@ export function ContractStatusTracker({ contract, onStatusChange }) {
       </div>
 
       {/* Action button — only if not archived */}
-      {contract.status !== "ARCHIVED" && (
+      {contract.status !== "ARCHIVED" && currentIdx < STATUS_STEPS.length - 1 && (
         <button
           onClick={() => onStatusChange?.(STATUS_STEPS[currentIdx + 1])}
           className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90 flex items-center justify-center gap-2"

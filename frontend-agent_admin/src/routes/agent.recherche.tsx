@@ -6,11 +6,21 @@ import { searchProperties, linkPropertyToDeal } from "@/api/propertyApi";
 import { Search, Sparkles, MapPin, Link2, Loader2, X, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
+interface RechercheSearch {
+  dealId?: string;
+}
+
 export const Route = createFileRoute("/agent/recherche")({
+  validateSearch: (search: Record<string, unknown>): RechercheSearch => {
+    return {
+      dealId: search.dealId as string | undefined,
+    };
+  },
   component: RecherchePage,
 });
 
 function RecherchePage() {
+  const { dealId } = Route.useSearch();
   const [searching, setSearching] = useState(false);
   const [city, setCity] = useState("Casablanca");
   const [propType, setPropType] = useState("Appartement");
@@ -19,8 +29,8 @@ function RecherchePage() {
   const [results, setResults] = useState<any[]>([]);
   const [detail, setDetail] = useState<any | null>(null);
   
-  // Simulation de l'ID du dossier client (en prod, récupéré du contexte ou URL)
-  const MOCK_DEAL_ID = "00000000-0000-0000-0000-000000000001";
+  // ID du dossier (URL > Mock)
+  const targetDealId = dealId || "00000000-0000-0000-0000-000000000001";
 
   const handleSearch = async () => {
     setSearching(true);
@@ -43,7 +53,7 @@ function RecherchePage() {
 
   const handleLink = async (prop: any) => {
     try {
-      await linkPropertyToDeal(MOCK_DEAL_ID, {
+      await linkPropertyToDeal(targetDealId, {
         externalId: prop.externalId,
         title: prop.title,
         address: prop.address,
@@ -67,10 +77,16 @@ function RecherchePage() {
 
   return (
     <div className="space-y-6 md:space-y-8 max-w-[1400px]">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Recherche immobilière</h1>
-        <p className="text-sm text-muted-foreground mt-1">Connecté à Mubawab, Avito et Sarouty via RapidAPI</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Recherche immobilière</h1>
+          <p className="text-sm text-muted-foreground mt-1 text-alice">Cible : {dealId ? `Dossier #${dealId.substring(0,8)}` : "Mode exploration"}</p>
+        </div>
+        {dealId && (
+          <SoftBadge tone="info" className="mb-1">Liaison active</SoftBadge>
+        )}
       </div>
+
       <NeuCard>
         <div className="grid md:grid-cols-4 gap-4">
           <div>
@@ -121,7 +137,6 @@ function RecherchePage() {
         >
           {searching ? <><Loader2 size={16} className="animate-spin" /> Recherche…</> : <><Search size={16} /> Lancer la recherche</>}
         </button>
-
       </NeuCard>
 
       <div>
@@ -140,7 +155,7 @@ function RecherchePage() {
                 <SoftBadge>{p.source}</SoftBadge>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <div className="text-lg font-bold">{p.price.toLocaleString('fr-MA')} MAD</div>
+                <div className="text-lg font-bold">{p.price?.toLocaleString('fr-MA') || "Prix N.C"} {p.price ? "MAD" : ""}</div>
                 <div className="text-xs text-muted-foreground">{p.surfaceM2} m²</div>
               </div>
               <div className="flex gap-2 mt-4">
@@ -174,7 +189,6 @@ function RecherchePage() {
         )}
       </div>
 
-
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
           <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
@@ -195,10 +209,10 @@ function RecherchePage() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { l: "Prix", v: detail.price.toLocaleString('fr-MA') + " MAD" },
+                  { l: "Prix", v: (detail.price?.toLocaleString('fr-MA') || "N.C") + (detail.price ? " MAD" : "") },
                   { l: "Surface", v: detail.surfaceM2 + " m²" },
                   { l: "Pièces", v: String(detail.numRooms) },
-                  { l: "Source", v: detail.source.split(" ")[0] },
+                  { l: "Source", v: detail.source?.split(" ")[0] || "Inconnu" },
                 ].map((s) => (
                   <div key={s.l} className="neu-inset rounded-xl p-3 text-center">
                     <div className="font-bold text-xs truncate">{s.v}</div>
@@ -230,8 +244,6 @@ function RecherchePage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
-

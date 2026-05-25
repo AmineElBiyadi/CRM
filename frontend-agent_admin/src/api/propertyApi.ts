@@ -1,22 +1,27 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || "";
 
+export interface SearchParams {
+  city?: string;
+  propertyType?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRooms?: number;
+  maxRooms?: number;
+  page?: number;
+}
+
 /**
  * Recherche de propriétés via l'API backend (qui appelle RapidAPI).
- *
- * Pour changer d'API : modifiez PropertyApiClient.java côté backend.
- * Le frontend n'a besoin que de ces paramètres normalisés.
- *
- * @param {Object} params - { city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page }
  */
-export async function searchProperties(params = {}) {
+export async function searchProperties(params: SearchParams = {}) {
   const qs = new URLSearchParams();
   if (params.city) qs.set("city", params.city);
   if (params.propertyType) qs.set("propertyType", params.propertyType);
-  if (params.minPrice) qs.set("minPrice", params.minPrice);
-  if (params.maxPrice) qs.set("maxPrice", params.maxPrice);
-  if (params.minRooms) qs.set("minRooms", params.minRooms);
-  if (params.maxRooms) qs.set("maxRooms", params.maxRooms);
-  if (params.page) qs.set("page", params.page);
+  if (params.minPrice) qs.set("minPrice", params.minPrice.toString());
+  if (params.maxPrice) qs.set("maxPrice", params.maxPrice.toString());
+  if (params.minRooms) qs.set("minRooms", params.minRooms.toString());
+  if (params.maxRooms) qs.set("maxRooms", params.maxRooms.toString());
+  if (params.page) qs.set("page", params.page.toString());
 
   const res = await fetch(`${BASE}/api/properties/search?${qs}`, {
     credentials: "include",
@@ -26,7 +31,7 @@ export async function searchProperties(params = {}) {
 }
 
 /** Lier une propriété externe à un dossier client (crée la Property en base) */
-export async function linkPropertyToDeal(dealId, propertyData) {
+export async function linkPropertyToDeal(dealId: string, propertyData: any) {
   const res = await fetch(`${BASE}/api/properties/link?dealId=${dealId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -38,7 +43,7 @@ export async function linkPropertyToDeal(dealId, propertyData) {
 }
 
 /** Propriétés déjà liées à un deal */
-export async function getPropertiesByDeal(dealId) {
+export async function getPropertiesByDeal(dealId: string) {
   const res = await fetch(`${BASE}/api/properties/deal/${dealId}`, {
     credentials: "include",
   });
