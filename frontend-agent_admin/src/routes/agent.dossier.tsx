@@ -61,7 +61,7 @@ function DossierPage() {
   const [logging, setLogging] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
   const [propDetail, setPropDetail] = useState<any | null>(null);
-  const [contract, setContract] = useState<any>(null);
+  const [contracts, setContracts] = useState<any[]>([]);
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
   
   // Interaction form state
@@ -150,17 +150,21 @@ function DossierPage() {
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loadingContext, setLoadingContext] = useState(true);
+  const [newDocType, setNewDocType] = useState<string>("OTHER");
 
   const fetchDossierData = async () => {
     if (!id) return;
     setLoadingContext(true);
     try {
-      const [contracts, props, documents] = await Promise.all([
+      const [contractsList, props, documents] = await Promise.all([
         getContractsByDeal(id),
         getPropertiesByDeal(id),
-        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/deal/${id}`, { credentials: 'include' }).then(res => res.json())
+        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/deal/${id}`, { 
+          credentials: 'include', 
+          cache: 'no-store' 
+        }).then(res => res.json())
       ]);
-      setContract(contracts?.[0] || null);
+      setContracts(contractsList || []);
       setLinkedProperties(props || []);
       setDocs(documents || []);
     } catch (e: any) {
@@ -182,7 +186,7 @@ function DossierPage() {
     const formData = new FormData();
     formData.append("dealId", id);
     formData.append("file", files[0]);
-    formData.append("type", "OTHER");
+    formData.append("type", newDocType);
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/upload`, {
@@ -201,11 +205,10 @@ function DossierPage() {
     e.target.value = "";
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!contract) return;
+  const handleStatusChange = async (contractId: string, newStatus: string) => {
     try {
-      await updateContractStatus(contract.idContract, newStatus);
-      setContract((c: any) => ({ ...c, status: newStatus }));
+      await updateContractStatus(contractId, newStatus);
+      setContracts((prev) => prev.map((c) => c.idContract === contractId ? { ...c, status: newStatus } : c));
       toast.success(`Statut → ${newStatus}`);
     } catch (e: any) {
       toast.error(e.message);
@@ -658,60 +661,73 @@ function DossierPage() {
             >
               <Plus size={16} /> Nouveau contrat
             </button>
-            {/* Contrat existant */}
-            {contract && (
-              <NeuCard className="mt-4">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <FileSignature size={16} /> Contrat en cours
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Réf : MR-2025-0142 · {(contract.agreedPrice / 1_000_000).toFixed(2)}M MAD
-                    </p>
-                  </div>
+
+            {/* Historique des contrats depuis l'API */}
+            {loadingContext ? (
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
+            ) : contracts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                <FileSignature size={40} className="text-muted-foreground/25" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Aucun contrat</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">Créez le premier contrat pour ce dossier.</p>
                 </div>
-
-                {/* Tracker statut */}
-                <ContractStatusTracker
-                  contract={contract}
-                  onStatusChange={handleStatusChange}
-                />
-
-                {/* Calendrier de paiement */}
-                {contract.payments && contract.payments.length > 0 && (
-                  <div className="mt-5">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                      Calendrier de paiement
-                    </p>
-                    <div className="space-y-2">
-                      {contract.payments.map((p: any) => (
-                        <div
-                          key={p.idPayment}
-                          className={`flex items-center gap-3 p-3 rounded-xl ${
-                            p.isPaid ? "bg-honeydew/40" : "neu-sm"
-                          }`}
-                        >
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                              p.isPaid ? "bg-honeydew" : "border-2 border-border"
-                            }`}
-                          >
-                            {p.isPaid && <span className="text-[10px] text-eerie">✓</span>}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium">{p.label}</div>
-                            <div className="text-xs text-muted-foreground">{p.dueDate}</div>
-                          </div>
-                          <div className="text-sm font-bold shrink-0">
-                            {p.amount.toLocaleString("fr-MA")} MAD
-                          </div>
-                        </div>
-                      ))}
+              </div>
+            ) : (
+              contracts.map((c: any, index: number) => (
+                <NeuCard key={c.idContract} className="mt-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <FileSignature size={16} /> {index === 0 ? "Contrat en cours" : "Contrat archivé"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
+                      </p>
                     </div>
                   </div>
-                )}
-              </NeuCard>
+
+                  {/* Tracker statut */}
+                  <ContractStatusTracker
+                    contract={c}
+                    onStatusChange={(status: string) => handleStatusChange(c.idContract, status)}
+                  />
+
+                  {/* Calendrier de paiement */}
+                  {c.payments && c.payments.length > 0 && (
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                        Calendrier de paiement
+                      </p>
+                      <div className="space-y-2">
+                        {c.payments.map((p: any) => (
+                          <div
+                            key={p.idPayment || Math.random()}
+                            className={`flex items-center gap-3 p-3 rounded-xl ${
+                              p.isPaid ? "bg-honeydew/40" : "neu-sm"
+                            }`}
+                          >
+                            <div
+                              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                                p.isPaid ? "bg-honeydew" : "border-2 border-border"
+                              }`}
+                            >
+                              {p.isPaid && <span className="text-[10px] text-eerie">✓</span>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium">{p.label || `Versement ${p.paymentOrder}`}</div>
+                              <div className="text-xs text-muted-foreground">{p.dueDate}</div>
+                            </div>
+                            <div className="text-sm font-bold shrink-0">
+                              {(p.amount || 0).toLocaleString("fr-MA")} MAD
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </NeuCard>
+              ))
             )}
           </div>
         )}
@@ -746,22 +762,28 @@ function DossierPage() {
             <FileText size={14} /> Documents ({docs.length})
           </h3>
           <div className="space-y-2">
-            {docs.map((f, i) => (
+            {docs.map((f, i) => {
+              const filename = f.filePath?.split(/[\\/]/).pop() || "Document";
+              const displayName = filename.includes('_') ? filename.substring(filename.indexOf('_') + 1) : filename;
+              return (
               <div
                 key={i}
                 className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group"
               >
                 <Paperclip size={13} className="text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{f.filePath?.split(/[\\/]/).pop().substring(37) || "Document"}</span>
+                <span className="flex-1 truncate">
+                  {displayName}
+                  <div className="text-[10px] text-muted-foreground opacity-70 mt-0.5">{f.documentType || f.type || "Document"}</div>
+                </span>
                 <button
-                  onClick={() => toast(`Aperçu : ${f.filePath}`)}
+                  onClick={() => toast(`Aperçu non disponible pour: ${displayName}`)}
                   className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
                   aria-label="Voir"
                 >
                   <Eye size={11} />
                 </button>
               </div>
-            ))}
+            )})}
             {docs.length === 0 && !loadingContext && (
                 <p className="text-center py-4 text-[10px] text-muted-foreground">Aucun document.</p>
             )}
@@ -770,25 +792,39 @@ function DossierPage() {
             )}
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {uploading ? (
-              <><Loader2 size={12} className="animate-spin" /> Upload…</>
-            ) : (
-              <><Upload size={12} /> Ajouter un document</>
-            )}
-          </button>
+          <div className="mt-4 space-y-2">
+            <select
+              value={newDocType}
+              onChange={(e) => setNewDocType(e.target.value)}
+              className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+            >
+              <option value="INCOM_CERT">Certificat de revenus</option>
+              <option value="BANK_STATMENT">Relevé bancaire</option>
+              <option value="NATIONAL_ID">Carte d'identité</option>
+              <option value="PROOF_OF_ADDRESS">Justificatif de domicile</option>
+              <option value="CONTRACT_SIGNED">Contrat signé</option>
+              <option value="OTHER">Autre</option>
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple={false}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {uploading ? (
+                <><Loader2 size={12} className="animate-spin" /> Upload…</>
+              ) : (
+                <><Upload size={12} /> Ajouter un document</>
+              )}
+            </button>
+          </div>
         </NeuCard>
 
         <NeuCard className="bg-vanilla/40">
@@ -818,7 +854,7 @@ function DossierPage() {
               dealId={id!}
               onClose={() => setShowContractForm(false)}
               onCreated={(c: any) => {
-                setContract(c);
+                fetchDossierData();
                 setTab("Contrats");
                 setShowContractForm(false);
               }}
