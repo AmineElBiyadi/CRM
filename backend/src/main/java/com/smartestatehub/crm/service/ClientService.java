@@ -4,6 +4,7 @@ import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.crm.dto.ClientIdentityDto;
 import com.smartestatehub.crm.dto.CreateClientForm1Request;
+import com.smartestatehub.crm.dto.DossierListItemDto;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,8 @@ public class ClientService {
                         c.getSource() != null ? c.getSource() : "Inconnu",
                         (int) c.getClientFolders().stream()
                                 .filter(f -> f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId))
+                                .flatMap(f -> f.getDeals().stream())
+                                .filter(d -> d.getDeletedAt() == null)
                                 .count(),
                         c.getCreatedAt()
                 ))
@@ -68,15 +71,35 @@ public class ClientService {
                 .password("PORTAL_PENDING")
                 .build();
 
-        // Create an initial folder linking this client to the creating agent
-        ClientFolder folder = ClientFolder.builder()
+        // Create an initial shell folder to allow the agent to manage this identity
+        ClientFolder shellFolder = ClientFolder.builder()
                 .client(client)
                 .assignedAgent(agent)
                 .createdByAgent(agent)
-                .clientType(ClientType.BUYER) // Default type; can be changed later
+                .clientType(ClientType.BUYER) // Default initial link
                 .build();
 
-        client.getClientFolders().add(folder);
+        client.getClientFolders().add(shellFolder);
         clientRepository.save(client);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DossierListItemDto> getClientDossiers(UUID idClient, UUID agentId) {
+        Client client = clientRepository.findById(idClient)
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        return client.getClientFolders().stream()
+                .filter(f -> f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId))
+                .flatMap(f -> f.getDeals().stream())
+                .filter(d -> d.getDeletedAt() == null)
+                .map(d -> new DossierListItemDto(
+                        d.getIdDeal(),
+                        d.getClientFolder().getClientType(),
+                        d.getStage(),
+                        d.getAiLeadScore(),
+                        d.getLastInteractionAt(),
+                        d.getIsUrgent()
+                ))
+                .collect(Collectors.toList());
     }
 }

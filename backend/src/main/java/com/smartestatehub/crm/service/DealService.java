@@ -3,6 +3,7 @@ package com.smartestatehub.crm.service;
 import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.crm.dto.CreateDossierRequest;
+import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
@@ -91,6 +92,58 @@ public class DealService {
         deal = dealRepository.save(deal);
 
         return mapToSummaryDto(deal);
+    }
+
+    @Transactional(readOnly = true)
+    public DossierDetailDto getDossierDetail(UUID dealId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+        
+        ClientFolder folder = deal.getClientFolder();
+        Client client = folder.getClient();
+        InternalUser agent = folder.getAssignedAgent();
+
+        String agentName = (agent != null) ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné";
+
+        DossierDetailDto.DossierDetailDtoBuilder builder = DossierDetailDto.builder()
+                .idDeal(deal.getIdDeal())
+                .idClient(client.getIdClient())
+                .clientName(client.getFirstName() + " " + client.getLastName())
+                .clientEmail(client.getEmail())
+                .clientPhone(client.getPhone())
+                .clientSource(client.getSource())
+                .clientType(folder.getClientType())
+                .stage(deal.getStage())
+                .aiLeadScore(deal.getAiLeadScore())
+                .aiScoreExplanation(deal.getAiScoreExplanation())
+                .aiRecommendedAction(deal.getAiRecommendedAction())
+                .aiSummary(deal.getAiSummary())
+                .isUrgent(deal.getIsUrgent())
+                .assignedAgentName(agentName)
+                .lastInteractionAt(deal.getLastInteractionAt());
+
+        if (folder.getClientType() == ClientType.BUYER && folder.getBuyerFolder() != null) {
+            BuyerFolder buyer = folder.getBuyerFolder();
+            builder.budgetMin(buyer.getBudgetMin())
+                    .budgetMax(buyer.getBudgetMax())
+                    .preferredArea(buyer.getPreferredArea())
+                    .preferredSizeM2(buyer.getPreferredSizeM2())
+                    .preferredFloor(buyer.getPreferredFloor())
+                    .propertyType(buyer.getPropertyType() != null ? buyer.getPropertyType().getSpecificType() : null);
+        }
+
+        return builder.build();
+    }
+
+    @Transactional
+    public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+        
+        deal.setStage(newStage);
+        deal = dealRepository.save(deal);
+        
+        return getDossierDetail(deal.getIdDeal());
     }
 
     private DossierSummaryDto mapToSummaryDto(Deal deal) {
