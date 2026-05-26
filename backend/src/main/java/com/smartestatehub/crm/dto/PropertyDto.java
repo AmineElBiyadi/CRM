@@ -15,6 +15,7 @@ public class PropertyDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LinkRequest {
+        private String externalId;            // ID externe de l'API (déduplication)
         private String title;
         private String address;
         private String city;
@@ -23,7 +24,8 @@ public class PropertyDto {
         private Integer numRooms;
         private Integer floor;
         private String listingUrl;
-        private String propertyTypeGeneral;  // ex : "Appartement"
+        private String propertyTypeGeneral;   // ex : "Residential Properties"
+        private String propertyTypeSpecific;  // ex : "Apartment / Flat"
         /** URLs des photos récupérées depuis l'API externe */
         private List<String> imageUrls;
     }

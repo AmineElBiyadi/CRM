@@ -50,30 +50,13 @@ public class PropertyService {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
 
-        // Résolution du type de propriété (mappage vers les catégories du script SQL Supabase)
-        String rawType = request.getPropertyTypeGeneral() != null ? request.getPropertyTypeGeneral().toLowerCase() : "property";
-        String generalType = "Residential Properties";
-        String specificType = "Apartment / Flat"; 
-
-        if (rawType.contains("condo") || rawType.contains("apartment") || rawType.contains("coop")) {
-            generalType = "Residential Properties";
-            specificType = "Apartment / Flat";
-        } else if (rawType.contains("family") || rawType.contains("house")) {
-            generalType = "Residential Properties";
-            specificType = "House";
-        } else if (rawType.contains("villa")) {
-            generalType = "Residential Properties";
-            specificType = "Villa";
-        } else if (rawType.contains("land") || rawType.contains("lot")) {
-            generalType = "Land";
-            specificType = "Vacant Land";
-        } else if (rawType.contains("multi")) {
-            generalType = "Special Purpose Properties";
-            specificType = "Multi-Family Building";
-        } else if (rawType.contains("office") || rawType.contains("commercial")) {
-            generalType = "Commercial Properties";
-            specificType = "Office Space";
-        }
+        // Résolution du type via les champs envoyés directement par le frontend
+        String generalType = request.getPropertyTypeGeneral() != null
+                ? request.getPropertyTypeGeneral()
+                : "Residential Properties";
+        String specificType = request.getPropertyTypeSpecific() != null
+                ? request.getPropertyTypeSpecific()
+                : "Apartment / Flat";
 
         final String finalGeneralType = generalType;
         final String finalSpecificType = specificType;

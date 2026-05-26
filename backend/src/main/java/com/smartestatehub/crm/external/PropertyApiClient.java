@@ -44,10 +44,10 @@ public class PropertyApiClient {
         log.info("Recherche immobilière sur la ville: {}, type: {}, prix: [{} - {}], chambres: [{} - {}], page: {}",
                 city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
 
-        // Fallback si pas de clé API konfigurée
+        // Si pas de clé, on retourne vide sans erreur
         if (apiKey == null || apiKey.trim().isEmpty() || apiKey.equals("${RAPIDAPI_KEY}")) {
-            log.warn("Aucune clé RapidAPI configurée (${RAPIDAPI_KEY} manquante). Utilisation du mock Maroc de haute qualité.");
-            return generateMockProperties(city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
+            log.warn("Aucune clé RapidAPI configurée (${RAPIDAPI_KEY} manquante). Retour vide.");
+            return emptyResponse(page);
         }
 
         try {
@@ -75,16 +75,16 @@ public class PropertyApiClient {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-            if (response.statusCode() == 200) {
+            if (response.statusCode() == 200 && response.body() != null && !response.body().trim().isEmpty()) {
                 return parseApiResponse(response.body(), page);
             } else {
-                log.error("Erreur HTTP RapidAPI: {} - {}. Fallback vers données locales simulées.", response.statusCode(), response.body());
-                return generateMockProperties(city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
+                log.error("Erreur/Avertissement HTTP RapidAPI: {} - {}", response.statusCode(), response.body());
+                return emptyResponse(page);
             }
 
         } catch (Exception e) {
-            log.error("Exception lors de l'appel RapidAPI: {}. Fallback vers données locales simulées.", e.getMessage(), e);
-            return generateMockProperties(city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
+            log.error("Exception lors de l'appel RapidAPI: {}", e.getMessage());
+            return emptyResponse(page);
         }
     }
 
@@ -139,123 +139,10 @@ public class PropertyApiClient {
                 .build();
     }
 
-    /**
-     * Génère des biens immobiliers marocains de qualité supérieure pour la démonstration ou le fallback.
-     */
-    private PropertyDto.SearchResponse generateMockProperties(String city, String propertyType, Double minPrice, Double maxPrice, Integer minRooms, Integer maxRooms, int page) {
-        String finalCity = (city == null || city.trim().isEmpty()) ? "Casablanca" : city;
-        String finalType = (propertyType == null || propertyType.trim().isEmpty()) ? "Appartement" : propertyType;
-
-        List<PropertyDto.ExternalResult> mockList = new ArrayList<>();
-        
-        // 1. Appartement de standing à Anfa, Casablanca
-        mockList.add(PropertyDto.ExternalResult.builder()
-                .externalId("ext-m1")
-                .title("Appartement de standing Anfa")
-                .address("Boulevard d'Anfa, Quartier Anfa")
-                .city("Casablanca")
-                .price(2800000.0)
-                .surfaceM2(140.0)
-                .numRooms(3)
-                .floor(4)
-                .listingUrl("https://www.mubawab.ma/fr/a/appartement-standing-anfa-casa")
-                .source("Mubawab")
-                .imageUrls(List.of("https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80"))
-                .latitude(33.5951)
-                .longitude(-7.6324)
-                .build());
-
-        // 2. Splendide Villa à Souissi, Rabat
-        mockList.add(PropertyDto.ExternalResult.builder()
-                .externalId("ext-m2")
-                .title("Splendide Villa Contemporaine Souissi")
-                .address("Avenue Mohammed VI, Souissi")
-                .city("Rabat")
-                .price(7500000.0)
-                .surfaceM2(450.0)
-                .numRooms(5)
-                .floor(0)
-                .listingUrl("https://www.avito.ma/fr/souissi/appartements/villa-contemporaine-souissi")
-                .source("Avito")
-                .imageUrls(List.of("https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"))
-                .latitude(33.9715)
-                .longitude(-6.8498)
-                .build());
-
-        // 3. Penthouse vue mer Bourgogne, Casablanca
-        mockList.add(PropertyDto.ExternalResult.builder()
-                .externalId("ext-m3")
-                .title("Penthouse avec vue mer exceptionnelle")
-                .address("Rue des Lilas, Bourgogne")
-                .city("Casablanca")
-                .price(3900000.0)
-                .surfaceM2(190.0)
-                .numRooms(4)
-                .floor(8)
-                .listingUrl("https://www.sarouty.ma/fr/a/penthouse-vue-mer-bourgogne")
-                .source("Sarouty")
-                .imageUrls(List.of("https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80"))
-                .latitude(33.6002)
-                .longitude(-7.6410)
-                .build());
-
-        // 4. Bel Appartement à Gueliz, Marrakech
-        mockList.add(PropertyDto.ExternalResult.builder()
-                .externalId("ext-m4")
-                .title("Bel Appartement moderne à Gueliz")
-                .address("Avenue Hassan II, Gueliz")
-                .city("Marrakech")
-                .price(1850000.0)
-                .surfaceM2(95.0)
-                .numRooms(2)
-                .floor(2)
-                .listingUrl("https://www.mubawab.ma/fr/a/bel-appartement-gueliz")
-                .source("Mubawab")
-                .imageUrls(List.of("https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80"))
-                .latitude(31.6346)
-                .longitude(-8.0150)
-                .build());
-
-        // 5. Villa d'architecte, Route de l'Ourika, Marrakech
-        mockList.add(PropertyDto.ExternalResult.builder()
-                .externalId("ext-m5")
-                .title("Villa d'Architecte avec Piscine")
-                .address("Km 12 Route de l'Ourika")
-                .city("Marrakech")
-                .price(5900000.0)
-                .surfaceM2(380.0)
-                .numRooms(4)
-                .floor(0)
-                .listingUrl("https://www.avito.ma/fr/ourika/villas/villa-architecte-piscine")
-                .source("Avito")
-                .imageUrls(List.of("https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=800&q=80"))
-                .latitude(31.5120)
-                .longitude(-7.9540)
-                .build());
-
-        // Filtrage dynamique sur les critères de recherche
-        List<PropertyDto.ExternalResult> filtered = mockList.stream()
-                .filter(p -> p.getCity().equalsIgnoreCase(finalCity))
-                .filter(p -> {
-                    if (minPrice != null && p.getPrice() < minPrice) return false;
-                    if (maxPrice != null && p.getPrice() > maxPrice) return false;
-                    if (minRooms != null && p.getNumRooms() < minRooms) return false;
-                    if (maxRooms != null && p.getNumRooms() > maxRooms) return false;
-                    return true;
-                })
-                .toList();
-
-        // Si aucun résultat ne matche le filtre, on retourne Casablanca/Anfa par défaut pour éviter un vide frustrant
-        if (filtered.isEmpty()) {
-            filtered = mockList.stream().filter(p -> p.getCity().equalsIgnoreCase(finalCity)).toList();
-            if (filtered.isEmpty()) {
-                filtered = List.of(mockList.get(0)); // au moins 1 bien
-            }
-        }
-
+    private PropertyDto.SearchResponse emptyResponse(int page) {
         return PropertyDto.SearchResponse.builder()
-                .results(filtered)
-                .total(filtered.size())
+                .results(new ArrayList<>())
+                .total(0)
                 .page(page)
                 .pageSize(10)
                 .build();

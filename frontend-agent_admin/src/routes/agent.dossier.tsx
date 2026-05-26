@@ -658,7 +658,6 @@ function DossierPage() {
             >
               <Plus size={16} /> Nouveau contrat
             </button>
-            <div className="py-8 text-center text-muted-foreground italic text-sm">Gestion des contrats dynamiques désactivée pour cette phase.</div>
             {/* Contrat existant */}
             {contract && (
               <NeuCard className="mt-4">
@@ -803,6 +802,30 @@ function DossierPage() {
           </button>
         </NeuCard>
       </div>
+
+      {/* Modale : Nouveau contrat (formulaire guidé) */}
+      {showContractForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowContractForm(false)}
+        >
+          <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
+          <div
+            className="relative bg-ghost rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto soft-scroll p-7 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ContractForm
+              dealId={id!}
+              onClose={() => setShowContractForm(false)}
+              onCreated={(c: any) => {
+                setContract(c);
+                setTab("Contrats");
+                setShowContractForm(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Property quick view */}
       {propDetail && (
