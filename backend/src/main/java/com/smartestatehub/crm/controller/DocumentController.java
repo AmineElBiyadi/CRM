@@ -1,6 +1,6 @@
 package com.smartestatehub.crm.controller;
 
-import com.smartestatehub.crm.model.Document;
+import com.smartestatehub.crm.dto.DocumentDto;
 import com.smartestatehub.crm.model.DocumentType;
 import com.smartestatehub.crm.service.DocumentService;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class DocumentController {
     private final DocumentService documentService;
 
     @PostMapping("/upload")
-    public ResponseEntity<Document> uploadDocument(
+    public ResponseEntity<DocumentDto> uploadDocument(
             @RequestParam("dealId") UUID dealId,
             @RequestParam("file") MultipartFile file,
             @RequestParam("type") DocumentType type) throws IOException {
@@ -30,7 +30,7 @@ public class DocumentController {
     }
 
     @GetMapping("/deal/{dealId}")
-    public ResponseEntity<List<Document>> getDocumentsByDeal(@PathVariable UUID dealId) {
+    public ResponseEntity<List<DocumentDto>> getDocumentsByDeal(@PathVariable UUID dealId) {
         return ResponseEntity.ok(documentService.getDocumentsByDeal(dealId));
     }
 }

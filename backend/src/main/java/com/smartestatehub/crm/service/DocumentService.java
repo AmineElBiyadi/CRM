@@ -1,5 +1,6 @@
 package com.smartestatehub.crm.service;
 
+import com.smartestatehub.crm.dto.DocumentDto;
 import com.smartestatehub.crm.model.Document;
 import com.smartestatehub.crm.model.DocumentType;
 import com.smartestatehub.crm.model.Deal;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,8 +31,19 @@ public class DocumentService {
 
     private final String uploadDir = "uploads/documents/";
 
+    private DocumentDto toDto(Document doc) {
+        return DocumentDto.builder()
+                .idDocument(doc.getIdDocument())
+                .documentType(doc.getDocumentType() != null ? doc.getDocumentType().name() : null)
+                .filePath(doc.getFilePath())
+                .confirmedReceived(doc.getConfirmedReceived())
+                .createdAt(doc.getCreatedAt())
+                .dealId(doc.getDeal() != null ? doc.getDeal().getIdDeal() : null)
+                .build();
+    }
+
     @Transactional
-    public Document uploadDocument(UUID dealId, MultipartFile file, DocumentType type) throws IOException {
+    public DocumentDto uploadDocument(UUID dealId, MultipartFile file, DocumentType type) throws IOException {
         log.info("Upload de document pour le deal ID: {}, type: {}", dealId, type);
 
         Deal deal = dealRepository.findById(dealId)
@@ -55,10 +68,13 @@ public class DocumentService {
                 .isEmbedded(false)
                 .build();
 
-        return documentRepository.save(doc);
+        return toDto(documentRepository.save(doc));
     }
 
-    public List<Document> getDocumentsByDeal(UUID dealId) {
-        return documentRepository.findByDeal_IdDeal(dealId);
+    public List<DocumentDto> getDocumentsByDeal(UUID dealId) {
+        return documentRepository.findByDeal_IdDeal(dealId)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 }

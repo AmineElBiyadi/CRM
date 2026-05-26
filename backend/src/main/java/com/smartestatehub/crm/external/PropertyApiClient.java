@@ -4,18 +4,15 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartestatehub.crm.dto.PropertyDto;
-import com.smartestatehub.crm.dto.RapidApiPropertyDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,65 +32,108 @@ public class PropertyApiClient {
 
     private static final double SQFT_TO_M2 = 0.092903;
 
-    /**
-     * Effectue une recherche immobilière via RapidAPI.
-     * Si la clé API n'est pas fournie ou en cas d'erreur de communication,
-     * retombe gracieusement sur une liste de biens simulés de qualité supérieure au Maroc (Casablanca, Marrakech, Rabat).
-     */
-    public PropertyDto.SearchResponse searchProperties(String city, String propertyType, Double minPrice, Double maxPrice, Integer minRooms, Integer maxRooms, int page) {
+    public PropertyDto.SearchResponse searchProperties(String city, String propertyType, Double minPrice,
+            Double maxPrice, Integer minRooms, Integer maxRooms, int page) {
         log.info("Recherche immobilière sur la ville: {}, type: {}, prix: [{} - {}], chambres: [{} - {}], page: {}",
                 city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
 
         // Si pas de clé, on retourne vide sans erreur
         if (apiKey == null || apiKey.trim().isEmpty() || apiKey.equals("${RAPIDAPI_KEY}")) {
-            log.warn("Aucune clé RapidAPI configurée (${RAPIDAPI_KEY} manquante). Retour vide.");
+            log.warn("Aucune clé RapidAPI configurée. Retour vide.");
             return emptyResponse(page);
         }
 
         try {
-            // RapidAPI Realty in US ou autre API configurée via le host.
-            // On s'adapte dynamiquement selon l'API choisie par l'utilisateur.
-            String url = "https://" + apiHost + "/properties/v2/list-for-sale";
-            
-            // Déduire un state_code à partir de la ville pour éviter l'erreur 204
+            // Endpoint v3 (POST) — le seul qui fonctionne sur realty-in-us.p.rapidapi.com
+            String url = "https://" + apiHost + "/properties/v3/list";
+
+            // Déduire le state_code
             String stateCode = "NY";
-            String rapidApiCity = city != null ? city : "Casablanca";
+            String apiCity = city != null ? city : "New York City";
             if (city != null) {
                 String c = city.toLowerCase();
                 if (c.contains("new york")) {
                     stateCode = "NY";
-                    rapidApiCity = "New York City";
+                    apiCity = "New York City";
+                } else if (c.contains("los angeles")) {
+                    stateCode = "CA";
+                } else if (c.contains("san francisco")) {
+                    stateCode = "CA";
+                } else if (c.contains("san diego")) {
+                    stateCode = "CA";
+                } else if (c.contains("miami")) {
+                    stateCode = "FL";
+                } else if (c.contains("orlando")) {
+                    stateCode = "FL";
+                } else if (c.contains("chicago")) {
+                    stateCode = "IL";
+                } else if (c.contains("houston")) {
+                    stateCode = "TX";
+                } else if (c.contains("dallas")) {
+                    stateCode = "TX";
+                } else if (c.contains("austin")) {
+                    stateCode = "TX";
+                } else if (c.contains("seattle")) {
+                    stateCode = "WA";
+                } else if (c.contains("boston")) {
+                    stateCode = "MA";
+                } else if (c.contains("denver")) {
+                    stateCode = "CO";
+                } else if (c.contains("phoenix")) {
+                    stateCode = "AZ";
                 }
-                else if (c.contains("los angeles") || c.contains("san diego") || c.contains("san francisco")) stateCode = "CA";
-                else if (c.contains("miami") || c.contains("orlando") || c.contains("tampa")) stateCode = "FL";
-                else if (c.contains("chicago")) stateCode = "IL";
-                else if (c.contains("houston") || c.contains("dallas") || c.contains("austin")) stateCode = "TX";
             }
-            
-            // Construction des query params (avec encodage URL pour éviter les espaces)
-            String encodedCity = URLEncoder.encode(rapidApiCity, StandardCharsets.UTF_8);
-            StringBuilder urlBuilder = new StringBuilder(url);
-            urlBuilder.append("?state_code=").append(stateCode);
-            urlBuilder.append("&city=").append(encodedCity);
-            urlBuilder.append("&limit=10");
-            urlBuilder.append("&offset=").append((page - 1) * 10);
-            
-            if (minPrice != null) urlBuilder.append("&price_min=").append(minPrice.intValue());
-            if (maxPrice != null) urlBuilder.append("&price_max=").append(maxPrice.intValue());
-            if (minRooms != null) urlBuilder.append("&beds_min=").append(minRooms);
+
+            // Construction du body JSON pour l'API v3
+            StringBuilder bodyBuilder = new StringBuilder();
+            bodyBuilder.append("{");
+            bodyBuilder.append("\"limit\":10,");
+            bodyBuilder.append("\"offset\":").append((page - 1) * 10).append(",");
+            bodyBuilder.append("\"city\":\"").append(apiCity.replace("\"", "\\\"")).append("\",");
+            bodyBuilder.append("\"state_code\":\"").append(stateCode).append("\",");
+            bodyBuilder.append("\"status\":[\"for_sale\"],");
+            bodyBuilder.append("\"sort\":{\"direction\":\"desc\",\"field\":\"list_date\"}");
+            if (minPrice != null)
+                bodyBuilder.append(",\"list_price\":{\"min\":").append(minPrice.intValue()).append("}");
+            if (maxPrice != null) {
+                // Si déjà un min_price, on refait l'objet complet
+                if (minPrice != null) {
+                    // Remplacer le dernier objet list_price pour inclure max
+                    String existing = ",\"list_price\":{\"min\":" + minPrice.intValue() + "}";
+                    int idx = bodyBuilder.lastIndexOf(existing);
+                    if (idx >= 0) {
+                        bodyBuilder.replace(idx, idx + existing.length(),
+                                ",\"list_price\":{\"min\":" + minPrice.intValue() + ",\"max\":" + maxPrice.intValue()
+                                        + "}");
+                    }
+                } else {
+                    bodyBuilder.append(",\"list_price\":{\"max\":").append(maxPrice.intValue()).append("}");
+                }
+            }
+            if (minRooms != null)
+                bodyBuilder.append(",\"beds\":{\"min\":").append(minRooms).append("}");
+            bodyBuilder.append("}");
+
+            String requestBody = bodyBuilder.toString();
+            log.debug("RapidAPI v3 body: {}", requestBody);
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(urlBuilder.toString()))
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
                     .header("x-rapidapi-key", apiKey)
                     .header("x-rapidapi-host", apiHost)
-                    .GET()
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("RapidAPI v3 réponse: status={}, bodyLength={}", response.statusCode(),
+                    response.body() != null ? response.body().length() : 0);
 
             if (response.statusCode() == 200 && response.body() != null && !response.body().trim().isEmpty()) {
                 PropertyDto.SearchResponse parsed = parseApiResponse(response.body(), page);
-                if (parsed.getTotal() == 0) return emptyResponse(page);
+                if (parsed.getTotal() == 0) {
+                    log.warn("Aucun résultat pour: {} ({})", apiCity, stateCode);
+                }
                 return parsed;
             } else {
                 log.error("Erreur/Avertissement HTTP RapidAPI: {} - {}", response.statusCode(), response.body());
@@ -101,7 +141,7 @@ public class PropertyApiClient {
             }
 
         } catch (Exception e) {
-            log.error("Exception lors de l'appel RapidAPI: {}", e.getMessage());
+            log.error("Exception lors de l'appel RapidAPI: {}", e.getMessage(), e);
             return emptyResponse(page);
         }
     }
@@ -109,7 +149,7 @@ public class PropertyApiClient {
     private PropertyDto.SearchResponse parseApiResponse(String responseBody, int page) throws IOException {
         JsonNode root = objectMapper.readTree(responseBody);
         List<PropertyDto.ExternalResult> results = new ArrayList<>();
-        
+
         JsonNode dataNode = root.path("data").path("home_search");
         JsonNode propertiesNode;
         if (!dataNode.isMissingNode() && !dataNode.path("results").isMissingNode()) {
@@ -117,7 +157,7 @@ public class PropertyApiClient {
         } else {
             propertiesNode = root.path("properties");
         }
-        
+
         int totalCount = 0;
         if (!dataNode.isMissingNode() && dataNode.has("count")) {
             totalCount = dataNode.path("count").asInt();
@@ -137,47 +177,60 @@ public class PropertyApiClient {
                 } else if (prop.has("photos") && prop.path("photos").isArray() && prop.path("photos").size() > 0) {
                     imageUrl = prop.path("photos").get(0).path("href").asText();
                 }
-                
+
                 // Addresse
                 String addressStr = "";
                 String city = "";
                 JsonNode addressNode = prop.path("location").path("address");
-                if (addressNode.isMissingNode() || addressNode.isNull()) addressNode = prop.path("address");
-                
+                if (addressNode.isMissingNode() || addressNode.isNull())
+                    addressNode = prop.path("address");
+
                 if (!addressNode.isMissingNode() && !addressNode.isNull()) {
                     String line = addressNode.path("line").asText("");
                     city = addressNode.path("city").asText("");
                     addressStr = line + ", " + city;
                 }
-                
+
                 // Description (surface, lits)
                 JsonNode descNode = prop.path("description");
                 Double sqft = null;
                 Integer beds = null;
                 String propTypeStr = "Property";
-                
+
                 if (!descNode.isMissingNode() && !descNode.isNull()) {
-                    if (descNode.has("sqft") && !descNode.path("sqft").isNull()) sqft = descNode.path("sqft").asDouble();
-                    if (descNode.has("beds") && !descNode.path("beds").isNull()) beds = descNode.path("beds").asInt();
-                    if (descNode.has("type") && !descNode.path("type").isNull()) propTypeStr = descNode.path("type").asText();
+                    if (descNode.has("sqft") && !descNode.path("sqft").isNull())
+                        sqft = descNode.path("sqft").asDouble();
+                    if (descNode.has("beds") && !descNode.path("beds").isNull())
+                        beds = descNode.path("beds").asInt();
+                    if (descNode.has("type") && !descNode.path("type").isNull())
+                        propTypeStr = descNode.path("type").asText();
                 } else {
-                    if (prop.has("sqft") && !prop.path("sqft").isNull()) sqft = prop.path("sqft").asDouble();
-                    if (prop.has("beds") && !prop.path("beds").isNull()) beds = prop.path("beds").asInt();
-                    if (prop.has("prop_type") && !prop.path("prop_type").isNull()) propTypeStr = prop.path("prop_type").asText();
+                    if (prop.has("sqft") && !prop.path("sqft").isNull())
+                        sqft = prop.path("sqft").asDouble();
+                    if (prop.has("beds") && !prop.path("beds").isNull())
+                        beds = prop.path("beds").asInt();
+                    if (prop.has("prop_type") && !prop.path("prop_type").isNull())
+                        propTypeStr = prop.path("prop_type").asText();
                 }
 
                 Double surfaceM2 = sqft != null ? sqft * SQFT_TO_M2 : 120.0;
-                
+
                 // Identifiant & Prix
-                String propertyId = prop.has("property_id") && !prop.path("property_id").isNull() ? prop.path("property_id").asText() : "N/A";
+                String propertyId = prop.has("property_id") && !prop.path("property_id").isNull()
+                        ? prop.path("property_id").asText()
+                        : "N/A";
                 Double price = 0.0;
-                if (prop.has("list_price") && !prop.path("list_price").isNull()) price = prop.path("list_price").asDouble();
-                else if (prop.has("price") && !prop.path("price").isNull()) price = prop.path("price").asDouble();
+                if (prop.has("list_price") && !prop.path("list_price").isNull())
+                    price = prop.path("list_price").asDouble();
+                else if (prop.has("price") && !prop.path("price").isNull())
+                    price = prop.path("price").asDouble();
 
                 // Lien
                 String listingUrl = "";
-                if (prop.has("href") && !prop.path("href").isNull()) listingUrl = prop.path("href").asText();
-                else if (prop.has("listingUrl") && !prop.path("listingUrl").isNull()) listingUrl = prop.path("listingUrl").asText();
+                if (prop.has("href") && !prop.path("href").isNull())
+                    listingUrl = prop.path("href").asText();
+                else if (prop.has("listingUrl") && !prop.path("listingUrl").isNull())
+                    listingUrl = prop.path("listingUrl").asText();
 
                 if (!listingUrl.isEmpty() && !listingUrl.startsWith("http")) {
                     listingUrl = "https://www.realtor.com" + (listingUrl.startsWith("/") ? "" : "/") + listingUrl;
