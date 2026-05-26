@@ -40,7 +40,7 @@ public class InternalUser {
 
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(columnDefinition = "role")
+    @Column(nullable = false, columnDefinition = "role")
     private Role role;
 
     @CreationTimestamp
