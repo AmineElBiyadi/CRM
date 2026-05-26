@@ -50,15 +50,24 @@ public class PropertyService {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
 
-        // Résolution du type de propriété (création à la volée si inexistant pour éviter les erreurs de contrainte)
-        String generalType = request.getPropertyTypeGeneral() != null ? request.getPropertyTypeGeneral() : "Appartement";
-        PropertyType propertyType = propertyTypeRepository.findByGeneralType(generalType)
+        // Résolution du type via les champs envoyés directement par le frontend
+        String generalType = request.getPropertyTypeGeneral() != null
+                ? request.getPropertyTypeGeneral()
+                : "Residential Properties";
+        String specificType = request.getPropertyTypeSpecific() != null
+                ? request.getPropertyTypeSpecific()
+                : "Apartment / Flat";
+
+        final String finalGeneralType = generalType;
+        final String finalSpecificType = specificType;
+
+        PropertyType propertyType = propertyTypeRepository.findByGeneralTypeAndSpecificType(generalType, specificType)
                 .orElseGet(() -> {
-                    log.info("Type de propriété '{}' non trouvé. Création par défaut.", generalType);
+                    log.info("Type de propriété '{} - {}' non trouvé. Création.", finalGeneralType, finalSpecificType);
                     return propertyTypeRepository.save(PropertyType.builder()
-                            .generalType(generalType)
-                            .specificType("Standard")
-                            .description("Type de bien généré automatiquement lors de la liaison")
+                            .generalType(finalGeneralType)
+                            .specificType(finalSpecificType)
+                            .description("Type importé automatiquement depuis l'API externe")
                             .build());
                 });
 

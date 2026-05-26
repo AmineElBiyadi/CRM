@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { createContract } from "@/api/contractApi";
 
 /* ─── constantes ─── */
-const STATUS_STEPS = ["DRAFT", "SENT", "SIGNED", "ARCHIVED"];
+const STATUS_STEPS = ["DRAFT", "SENT", "RECEIVED_SIGNED", "ARCHIVED"];
 const STATUS_LABELS = {
-  DRAFT: "Brouillon", SENT: "Envoyé", SIGNED: "Reçu signé", ARCHIVED: "Archivé",
+  DRAFT: "Brouillon", SENT: "Envoyé", RECEIVED_SIGNED: "Reçu signé", ARCHIVED: "Archivé",
 };
 
 const FORM_STEPS = [

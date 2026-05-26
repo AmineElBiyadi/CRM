@@ -16,10 +16,11 @@ spring:
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-
+  
+  #hange-la en ddl-auto: validate (qui vérifie la DB mais ne la modifie pas) ou ddl-auto: none (désactive tout).
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

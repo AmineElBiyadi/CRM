@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   fetchDossierDetail, 
@@ -14,16 +14,19 @@ import {
   type CreateMeetingDto,
   type DealStage
 } from "@/api/dossiersApi";
+// @ts-ignore
 import { getPropertiesByDeal } from "@/api/propertyApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
-import { properties, type Property } from "@/lib/mock-data";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  MessageSquare, Send, FileSignature, X, Upload, Paperclip, Loader2, Eye, Clock,
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
+// @ts-ignore
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
+// @ts-ignore
+import { getContractsByDeal, updateContractStatus } from "@/api/contractApi";
 
 type DossierSearch = {
   id?: string;
@@ -57,7 +60,9 @@ function DossierPage() {
   
   const [logging, setLogging] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
-  const [propDetail, setPropDetail] = useState<Property | null>(null);
+  const [propDetail, setPropDetail] = useState<any | null>(null);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
   
   // Interaction form state
   const [newType, setNewType] = useState<InteractionType>("CALL");
@@ -142,32 +147,72 @@ function DossierPage() {
 
   /* documents */
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [docs, setDocs] = useState([
-    { name: "CNI_recto.pdf", size: "245 Ko", type: "PDF" },
-    { name: "Justif_revenus.pdf", size: "1.2 Mo", type: "PDF" },
-    { name: "Pré-accord_banque.pdf", size: "320 Ko", type: "PDF" },
-  ]);
+  const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [loadingContext, setLoadingContext] = useState(true);
+  const [newDocType, setNewDocType] = useState<string>("OTHER");
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    setUploading(true);
-    setTimeout(() => {
-      setDocs((prev) => [
-        ...prev,
-        ...files.map((f) => ({
-          name: f.name,
-          size: f.size > 1024 * 1024
-            ? `${(f.size / 1024 / 1024).toFixed(1)} Mo`
-            : `${Math.round(f.size / 1024)} Ko`,
-          type: f.name.split(".").pop()?.toUpperCase() || "FILE",
-        })),
+  const fetchDossierData = async () => {
+    if (!id) return;
+    setLoadingContext(true);
+    try {
+      const [contractsList, props, documents] = await Promise.all([
+        getContractsByDeal(id),
+        getPropertiesByDeal(id),
+        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/deal/${id}`, { 
+          credentials: 'include', 
+          cache: 'no-store' 
+        }).then(res => res.json())
       ]);
+      setContracts(contractsList || []);
+      setLinkedProperties(props || []);
+      setDocs(documents || []);
+    } catch (e: any) {
+      toast.error("Erreur de chargement : " + e.message);
+    } finally {
+      setLoadingContext(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDossierData();
+  }, [id]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0 || !id) return;
+    
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("dealId", id);
+    formData.append("file", files[0]);
+    formData.append("type", newDocType);
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/upload`, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Document uploadé");
+      fetchDossierData();
+    } catch (e: any) {
+      toast.error("Upload échoué : " + e.message);
+    } finally {
       setUploading(false);
-      toast.success(`${files.length} fichier(s) uploadé(s)`);
-    }, 1200);
+    }
     e.target.value = "";
+  };
+
+  const handleStatusChange = async (contractId: string, newStatus: string) => {
+    try {
+      await updateContractStatus(contractId, newStatus);
+      setContracts((prev) => prev.map((c) => c.idContract === contractId ? { ...c, status: newStatus } : c));
+      toast.success(`Statut → ${newStatus}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   const handleLogInteraction = () => {
@@ -261,7 +306,7 @@ function DossierPage() {
         <NeuCard className="text-center bg-alice/40">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Lead Score IA</div>
           <div className="my-4 flex justify-center">
-            <LeadScore score={dossier.aiLeadScore} size={120} />
+            <LeadScore score={dossier.aiLeadScore || 0} size={120} />
           </div>
           <p className="text-xs italic text-muted-foreground">
             {dossier.aiScoreExplanation || "Analyse de score en cours..."}
@@ -459,7 +504,7 @@ function DossierPage() {
         {tab === "Propriétés" && (
           <>
             <div className="flex gap-3 flex-wrap">
-              <Link to="/agent/recherche" className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
+              <Link to="/agent/recherche" search={{ dealId: id }} className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
                 <Building2 size={16} /> Rechercher biens
               </Link>
               <button
@@ -470,17 +515,20 @@ function DossierPage() {
               </button>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              {properties.slice(0, 4).map((p) => (
-                <NeuCard key={p.id} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <img src={p.image} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+              {linkedProperties.map((p) => (
+                <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
+                  <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
                   <div className="font-medium text-sm">{p.address}</div>
-                  <div className="text-xs text-muted-foreground">{p.surface} · {p.rooms} pcs</div>
+                  <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="font-bold text-sm">{p.price}</span>
-                    <SoftBadge tone={p.status === "Visitée" ? "success" : "info"}>{p.status}</SoftBadge>
+                    <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
+                    <SoftBadge tone={p.isAvailable ? "success" : "info"}>{p.isAvailable ? "Disponible" : "Vendu"}</SoftBadge>
                   </div>
                 </NeuCard>
               ))}
+              {linkedProperties.length === 0 && !loadingContext && (
+                <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
+              )}
             </div>
           </>
         )}
@@ -605,7 +653,6 @@ function DossierPage() {
           </div>
         )}
 
-
         {tab === "Contrats" && (
           <div className="space-y-4">
             <button
@@ -614,7 +661,74 @@ function DossierPage() {
             >
               <Plus size={16} /> Nouveau contrat
             </button>
-            <div className="py-8 text-center text-muted-foreground italic text-sm">Gestion des contrats dynamiques désactivée pour cette phase.</div>
+
+            {/* Historique des contrats depuis l'API */}
+            {loadingContext ? (
+              <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
+            ) : contracts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                <FileSignature size={40} className="text-muted-foreground/25" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Aucun contrat</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5">Créez le premier contrat pour ce dossier.</p>
+                </div>
+              </div>
+            ) : (
+              contracts.map((c: any, index: number) => (
+                <NeuCard key={c.idContract} className="mt-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <FileSignature size={16} /> {index === 0 ? "Contrat en cours" : "Contrat archivé"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Tracker statut */}
+                  <ContractStatusTracker
+                    contract={c}
+                    onStatusChange={(status: string) => handleStatusChange(c.idContract, status)}
+                  />
+
+                  {/* Calendrier de paiement */}
+                  {c.payments && c.payments.length > 0 && (
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                        Calendrier de paiement
+                      </p>
+                      <div className="space-y-2">
+                        {c.payments.map((p: any) => (
+                          <div
+                            key={p.idPayment || Math.random()}
+                            className={`flex items-center gap-3 p-3 rounded-xl ${
+                              p.isPaid ? "bg-honeydew/40" : "neu-sm"
+                            }`}
+                          >
+                            <div
+                              className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                                p.isPaid ? "bg-honeydew" : "border-2 border-border"
+                              }`}
+                            >
+                              {p.isPaid && <span className="text-[10px] text-eerie">✓</span>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium">{p.label || `Versement ${p.paymentOrder}`}</div>
+                              <div className="text-xs text-muted-foreground">{p.dueDate}</div>
+                            </div>
+                            <div className="text-sm font-bold shrink-0">
+                              {(p.amount || 0).toLocaleString("fr-MA")} MAD
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </NeuCard>
+              ))
+            )}
           </div>
         )}
       </div>
@@ -648,44 +762,75 @@ function DossierPage() {
             <FileText size={14} /> Documents ({docs.length})
           </h3>
           <div className="space-y-2">
-            {docs.map((f, i) => (
+            {docs.map((f, i) => {
+              const filename = f.filePath?.split(/[\\/]/).pop() || "Document";
+              const displayName = filename.includes('_') ? filename.substring(filename.indexOf('_') + 1) : filename;
+              return (
               <div
                 key={i}
                 className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group"
               >
                 <Paperclip size={13} className="text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{f.name}</span>
-                <span className="text-muted-foreground shrink-0">{f.size}</span>
+                <span className="flex-1 truncate">
+                  {displayName}
+                  <div className="text-[10px] text-muted-foreground opacity-70 mt-0.5">{f.documentType || f.type || "Document"}</div>
+                </span>
                 <button
-                  onClick={() => toast(`Aperçu : ${f.name}`)}
+                  onClick={() => {
+                    if (f.filePath) {
+                      window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                    } else {
+                      toast.error("Le lien vers ce document n'est pas disponible.");
+                    }
+                  }}
                   className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
                   aria-label="Voir"
                 >
                   <Eye size={11} />
                 </button>
               </div>
-            ))}
+            )})}
+            {docs.length === 0 && !loadingContext && (
+                <p className="text-center py-4 text-[10px] text-muted-foreground">Aucun document.</p>
+            )}
+            {loadingContext && (
+                <p className="text-center py-4 text-[10px] text-muted-foreground"><Loader2 size={12} className="animate-spin inline mr-2" /> Chargement...</p>
+            )}
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="w-full mt-4 py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {uploading ? (
-              <><Loader2 size={12} className="animate-spin" /> Upload…</>
-            ) : (
-              <><Upload size={12} /> Ajouter un document</>
-            )}
-          </button>
+          <div className="mt-4 space-y-2">
+            <select
+              value={newDocType}
+              onChange={(e) => setNewDocType(e.target.value)}
+              className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+            >
+              <option value="INCOM_CERT">Certificat de revenus</option>
+              <option value="BANK_STATMENT">Relevé bancaire</option>
+              <option value="NATIONAL_ID">Carte d'identité</option>
+              <option value="PROOF_OF_ADDRESS">Justificatif de domicile</option>
+              <option value="CONTRACT_SIGNED">Contrat signé</option>
+              <option value="OTHER">Autre</option>
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple={false}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {uploading ? (
+                <><Loader2 size={12} className="animate-spin" /> Upload…</>
+              ) : (
+                <><Upload size={12} /> Ajouter un document</>
+              )}
+            </button>
+          </div>
         </NeuCard>
 
         <NeuCard className="bg-vanilla/40">
@@ -700,21 +845,45 @@ function DossierPage() {
         </NeuCard>
       </div>
 
+      {/* Modale : Nouveau contrat (formulaire guidé) */}
+      {showContractForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowContractForm(false)}
+        >
+          <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
+          <div
+            className="relative bg-ghost rounded-3xl max-w-2xl w-full max-h-[92vh] overflow-y-auto soft-scroll p-7 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ContractForm
+              dealId={id!}
+              onClose={() => setShowContractForm(false)}
+              onCreated={(c: any) => {
+                fetchDossierData();
+                setTab("Contrats");
+                setShowContractForm(false);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Property quick view */}
       {propDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setPropDetail(null)}>
           <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
           <div className="relative bg-ghost rounded-3xl max-w-md w-full shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <img src={propDetail.image} alt={propDetail.address} className="w-full h-48 object-cover" />
+            <img src={propDetail.imageUrls?.[0] || propDetail.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={propDetail.address} className="w-full h-48 object-cover" />
             <button onClick={() => setPropDetail(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full glass flex items-center justify-center" aria-label="Fermer"><X size={16} /></button>
             <div className="p-6 space-y-3">
-              <h3 className="font-bold text-lg">{propDetail.address}</h3>
-              <div className="text-sm text-muted-foreground">{propDetail.city} · {propDetail.floor}</div>
+              <h3 className="font-bold text-lg">{propDetail.title || propDetail.address}</h3>
+              <div className="text-sm text-muted-foreground">{propDetail.city} · {propDetail.surfaceM2} m²</div>
               <div className="flex items-center justify-between">
-                <span className="text-xl font-bold">{propDetail.price}</span>
-                <SoftBadge tone="info">{propDetail.surface}</SoftBadge>
+                <span className="text-xl font-bold">{propDetail.price?.toLocaleString('en-US')} $</span>
+                <SoftBadge tone="info">{propDetail.numRooms} pièces</SoftBadge>
               </div>
-              <button onClick={() => { toast.success("Bien proposé au client"); setPropDetail(null); }} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Proposer au client</button>
+              <button onClick={() => setPropDetail(null)} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Fermer</button>
             </div>
           </div>
         </div>
