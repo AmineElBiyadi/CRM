@@ -84,6 +84,25 @@ public class PropertyApiClient {
                 }
             }
 
+            // Déduire le statut et le type de bien pour RapidAPI
+            String apiType = "single_family";
+            String[] apiTypeWords = propertyType != null ? propertyType.toLowerCase().split(" ") : new String[0];
+            String typeStr = propertyType != null ? propertyType.toLowerCase() : "";
+            
+            if (typeStr.contains("apartment") || typeStr.contains("condo") || typeStr.contains("flat")) {
+                apiType = "condo";
+            } else if (typeStr.contains("multi")) {
+                apiType = "multi_family";
+            } else if (typeStr.contains("land") || typeStr.contains("lot") || typeStr.contains("agriculture")) {
+                apiType = "land";
+            } else if (typeStr.contains("farm") || typeStr.contains("ranch")) {
+                apiType = "farm";
+            } else if (typeStr.contains("mobile") || typeStr.contains("manufactured")) {
+                apiType = "mobile";
+            } else {
+                apiType = "single_family"; // default or "house"
+            }
+
             // Construction du body JSON pour l'API v3
             StringBuilder bodyBuilder = new StringBuilder();
             bodyBuilder.append("{");
@@ -91,6 +110,9 @@ public class PropertyApiClient {
             bodyBuilder.append("\"offset\":").append((page - 1) * 10).append(",");
             bodyBuilder.append("\"city\":\"").append(apiCity.replace("\"", "\\\"")).append("\",");
             bodyBuilder.append("\"state_code\":\"").append(stateCode).append("\",");
+            if (propertyType != null && !propertyType.trim().isEmpty() && !propertyType.equalsIgnoreCase("Any")) {
+                bodyBuilder.append("\"type\":[\"").append(apiType).append("\"],");
+            }
             bodyBuilder.append("\"status\":[\"for_sale\"],");
             bodyBuilder.append("\"sort\":{\"direction\":\"desc\",\"field\":\"list_date\"}");
             if (minPrice != null)
@@ -176,6 +198,13 @@ public class PropertyApiClient {
                     imageUrl = photoNode.path("href").asText();
                 } else if (prop.has("photos") && prop.path("photos").isArray() && prop.path("photos").size() > 0) {
                     imageUrl = prop.path("photos").get(0).path("href").asText();
+                }
+                
+                // Améliorer la résolution des images RapidAPI (passer de 's' small à 'od' original dimension)
+                if (imageUrl.contains("-w_s.jpg")) {
+                    imageUrl = imageUrl.replace("-w_s.jpg", "-w_od.jpg"); // haute résolution
+                } else if (imageUrl.contains("s.jpg")) {
+                    imageUrl = imageUrl.replace("s.jpg", "od.jpg");
                 }
 
                 // Addresse

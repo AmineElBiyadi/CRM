@@ -776,7 +776,14 @@ function DossierPage() {
                   <div className="text-[10px] text-muted-foreground opacity-70 mt-0.5">{f.documentType || f.type || "Document"}</div>
                 </span>
                 <button
-                  onClick={() => toast(`Aperçu non disponible pour: ${displayName}`)}
+                  onClick={() => {
+                    if (f.filePath) {
+                      const safePath = f.filePath.replace(/\\/g, '/');
+                      window.open(`${API_BASE}${safePath.startsWith('/') ? '' : '/'}${safePath}`, '_blank');
+                    } else {
+                      toast.error("Le lien vers ce document n'est pas disponible.");
+                    }
+                  }}
                   className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
                   aria-label="Voir"
                 >

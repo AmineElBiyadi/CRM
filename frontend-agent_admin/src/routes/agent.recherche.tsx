@@ -58,6 +58,7 @@ function RecherchePage() {
   const [budget, setBudget] = useState(3);
   const [rooms, setRooms] = useState(2);
   const [results, setResults] = useState<any[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
   const [detail, setDetail] = useState<any | null>(null);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -129,6 +130,7 @@ function RecherchePage() {
         page: 1,
       });
       setResults(data.results || []);
+      setTotalResults(data.total || data.results?.length || 0);
       if ((data.results?.length || 0) === 0) {
         toast.info(`Aucun bien trouvé à ${searchCity} pour ces critères.`);
       }
@@ -336,7 +338,7 @@ function RecherchePage() {
           Résultats
           {!searching && hasSearched && (
             <span className="text-xs font-normal text-muted-foreground">
-              · {results.length} bien{results.length !== 1 ? "s" : ""} trouvé{results.length !== 1 ? "s" : ""}
+              · {results.length} affiché{results.length !== 1 ? "s" : ""} sur {totalResults} trouvé{totalResults !== 1 ? "s" : ""}
             </span>
           )}
         </h2>
@@ -358,8 +360,8 @@ function RecherchePage() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {results.map((p) => (
-              <NeuCard key={p.externalId}>
+            {results.map((p, index) => (
+              <NeuCard key={p.externalId + "-" + index}>
                 <button onClick={() => setDetail(p)} className="block w-full text-left group" aria-label={`Détails ${p.address}`}>
                   <img
                     src={p.imageUrls?.[0] || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"}

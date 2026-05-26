@@ -63,7 +63,7 @@ public class DocumentService {
         Document doc = Document.builder()
                 .deal(deal)
                 .documentType(type)
-                .filePath(targetPath.toString())
+                .filePath(targetPath.toString().replace("\\", "/"))
                 .confirmedReceived(true)
                 .isEmbedded(false)
                 .build();
