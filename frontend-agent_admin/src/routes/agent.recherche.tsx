@@ -376,9 +376,11 @@ function RecherchePage() {
                   </div>
                   <SoftBadge className="shrink-0">{p.source?.split(" ")[0]}</SoftBadge>
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                  <div className="text-lg font-bold">${p.price?.toLocaleString("en-US")}</div>
-                  <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} ch.</div>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="font-bold">{p.price?.toLocaleString('en-US')} $</span>
+                  <SoftBadge tone="info">
+                    {p.numRooms ? `${p.numRooms} pièces` : "N/D"}
+                  </SoftBadge>
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button

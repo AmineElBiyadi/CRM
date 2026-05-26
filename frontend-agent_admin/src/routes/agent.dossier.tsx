@@ -517,11 +517,11 @@ function DossierPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               {linkedProperties.map((p) => (
                 <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <img src={p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                  <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
                   <div className="font-medium text-sm">{p.address}</div>
                   <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="font-bold text-sm">{p.price?.toLocaleString('fr-MA')} MAD</span>
+                    <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
                     <SoftBadge tone={p.isAvailable ? "success" : "info"}>{p.isAvailable ? "Disponible" : "Vendu"}</SoftBadge>
                   </div>
                 </NeuCard>
@@ -778,7 +778,7 @@ function DossierPage() {
                 <button
                   onClick={() => {
                     if (f.filePath) {
-                      window.open(`${API_BASE}/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                      window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
                     } else {
                       toast.error("Le lien vers ce document n'est pas disponible.");
                     }
@@ -874,13 +874,13 @@ function DossierPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setPropDetail(null)}>
           <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
           <div className="relative bg-ghost rounded-3xl max-w-md w-full shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <img src={propDetail.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={propDetail.address} className="w-full h-48 object-cover" />
+            <img src={propDetail.imageUrls?.[0] || propDetail.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={propDetail.address} className="w-full h-48 object-cover" />
             <button onClick={() => setPropDetail(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full glass flex items-center justify-center" aria-label="Fermer"><X size={16} /></button>
             <div className="p-6 space-y-3">
               <h3 className="font-bold text-lg">{propDetail.title || propDetail.address}</h3>
               <div className="text-sm text-muted-foreground">{propDetail.city} · {propDetail.surfaceM2} m²</div>
               <div className="flex items-center justify-between">
-                <span className="text-xl font-bold">{propDetail.price?.toLocaleString('fr-MA')} MAD</span>
+                <span className="text-xl font-bold">{propDetail.price?.toLocaleString('en-US')} $</span>
                 <SoftBadge tone="info">{propDetail.numRooms} pièces</SoftBadge>
               </div>
               <button onClick={() => setPropDetail(null)} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Fermer</button>
