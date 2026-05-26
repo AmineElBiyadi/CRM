@@ -504,7 +504,7 @@ function DossierPage() {
         {tab === "Propriétés" && (
           <>
             <div className="flex gap-3 flex-wrap">
-              <Link to="/agent/recherche" className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
+              <Link to="/agent/recherche" search={{ dealId: id }} className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
                 <Building2 size={16} /> Rechercher biens
               </Link>
               <button
@@ -778,8 +778,7 @@ function DossierPage() {
                 <button
                   onClick={() => {
                     if (f.filePath) {
-                      const safePath = f.filePath.replace(/\\/g, '/');
-                      window.open(`${API_BASE}${safePath.startsWith('/') ? '' : '/'}${safePath}`, '_blank');
+                      window.open(`${API_BASE}/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
                     } else {
                       toast.error("Le lien vers ce document n'est pas disponible.");
                     }
