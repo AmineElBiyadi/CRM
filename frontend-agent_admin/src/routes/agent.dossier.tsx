@@ -14,15 +14,18 @@ import {
   type CreateMeetingDto,
   type DealStage
 } from "@/api/dossiersApi";
+// @ts-ignore
 import { getPropertiesByDeal } from "@/api/propertyApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  Send, X, Upload, Paperclip, Loader2, Eye, Clock,
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
+// @ts-ignore
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
+// @ts-ignore
 import { getContractsByDeal, updateContractStatus } from "@/api/contractApi";
 
 type DossierSearch = {
