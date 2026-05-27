@@ -12,6 +12,7 @@ import java.util.UUID;
 @Builder
 public class DossierDetailDto {
     private UUID idDeal;
+    private UUID idProfile;
     private UUID idClient;
     private String clientName;
     private String clientEmail;

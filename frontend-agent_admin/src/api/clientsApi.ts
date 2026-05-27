@@ -9,7 +9,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const devAgentId = localStorage.getItem('dev_agent_id') || '8366d183-2fb7-44a1-8f16-2ec3ca78a320';
+  const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
   config.headers['X-Agent-Id'] = devAgentId;
   return config;
 });
@@ -25,6 +25,7 @@ export interface ClientIdentityDto {
   source: string;
   dossierCount: number;
   createdAt: string;
+  isNew: boolean;
 }
 
 export interface CreateClientForm1Request {
@@ -64,9 +65,14 @@ export interface DossierListItem {
   aiLeadScore: number;
   lastInteractionAt: string | null;
   isUrgent: boolean;
+  isNew: boolean;
 }
 
 export const fetchClientDossiers = async (idClient: string): Promise<DossierListItem[]> => {
   const response = await api.get<DossierListItem[]>(`/api/agent/clients/${idClient}/dossiers`);
   return response.data;
+};
+
+export const confirmClient = async (id: string, data: any): Promise<void> => {
+  await api.patch(`/api/clients/${id}/confirm`, data);
 };

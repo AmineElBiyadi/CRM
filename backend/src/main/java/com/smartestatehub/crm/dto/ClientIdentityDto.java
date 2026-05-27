@@ -12,5 +12,6 @@ public record ClientIdentityDto(
     String email,
     String source,
     Integer dossierCount,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    Boolean isNew
 ) {}

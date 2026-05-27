@@ -1,6 +1,5 @@
 package com.smartestatehub.crm.model;
 
-import com.smartestatehub.auth.model.DeletionReason;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -10,6 +9,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 @Entity
 @Table(name = "client")
@@ -59,7 +61,17 @@ public class Client {
     @Column(name = "source")
     private String source;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Builder.Default
+    @Column(name = "status", nullable = false, columnDefinition = "client_status")
+    private ClientStatus status = ClientStatus.PENDING;
+
     @Builder.Default
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ClientFolder> clientFolders = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_agent_creator")
+    private com.smartestatehub.auth.model.InternalUser registeredBy;
 }

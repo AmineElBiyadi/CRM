@@ -9,7 +9,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const devAgentId = localStorage.getItem('dev_agent_id') || '8366d183-2fb7-44a1-8f16-2ec3ca78a320';
+  const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
   config.headers['X-Agent-Id'] = devAgentId;
   return config;
 });
@@ -39,14 +39,17 @@ export interface CreateMeetingDto {
 }
 
 export interface DossierSummary {
-  idDeal: string;
+  idDeal: string | null;
+  idProfile: string;
+  idClient?: string;
   clientFullName: string;
   clientType: ClientType;
   stage: string;
-  aiLeadScore: number;
+  aiLeadScore: number | null;
   isUrgent: boolean;
   lastInteractionAt: string | null;
   aiRecommendedAction: string;
+  isNew: boolean;
 }
 
 export interface CreateDossierRequest {
@@ -60,8 +63,20 @@ export interface CreateDossierRequest {
   floor?: number;
 }
 
+export interface PropertyType {
+  idPropertyType: string;
+  generalType: string;
+  specificType: string;
+}
+
+export const fetchPropertyTypes = async (): Promise<PropertyType[]> => {
+  const response = await api.get<PropertyType[]>('/api/property-types');
+  return response.data;
+};
+
 export interface DossierDetail {
-  idDeal: string;
+  idDeal: string | null;
+  idProfile: string;
   idClient: string;
   clientName: string;
   clientEmail: string;
@@ -102,7 +117,12 @@ export interface CreateInteractionRequest {
 }
 
 export const fetchDossiers = async (): Promise<DossierSummary[]> => {
-  const response = await api.get('/api/agent/dossiers');
+  const response = await api.get<DossierSummary[]>('/api/agent/dossiers');
+  return response.data;
+};
+
+export const fetchAgentDossiers = async (agentId: string): Promise<DossierSummary[]> => {
+  const response = await api.get<DossierSummary[]>(`/api/agents/${agentId}/dossiers`);
   return response.data;
 };
 
@@ -149,4 +169,8 @@ export const createMeeting = async (request: CreateMeetingDto): Promise<MeetingI
 export const updateDealStage = async (idDeal: string, stage: DealStage): Promise<DossierDetail> => {
   const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/stage?stage=${stage}`);
   return response.data;
+};
+
+export const confirmDossier = async (id: string, data: any): Promise<void> => {
+  await api.patch(`/api/dossiers/${id}/confirm`, data);
 };

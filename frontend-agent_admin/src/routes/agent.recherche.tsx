@@ -27,13 +27,6 @@ const US_CITIES = [
   "Arlington", "Bakersfield", "Honolulu", "Anaheim", "Aurora",
 ];
 
-// Icônes par général type
-const GENERAL_TYPE_ICONS: Record<string, string> = {
-  "Residential Properties": "🏠",
-  "Commercial Properties": "🏢",
-  "Special Purpose Properties": "🏫",
-  "Land": "🌿",
-};
 
 type GroupedTypes = Record<string, string[]>;
 
@@ -245,7 +238,7 @@ function RecherchePage() {
               >
                 {Object.keys(groupedTypes).map((generalType) => (
                   <option key={generalType} value={generalType}>
-                    {GENERAL_TYPE_ICONS[generalType] || "🏗️"} {generalType}
+                    {generalType}
                   </option>
                 ))}
               </select>
@@ -398,7 +391,7 @@ function RecherchePage() {
                     </button>
                   )}
                   <button
-                    onClick={() => toast.info(`📍 ${p.city}`)}
+                    onClick={() => toast.info(p.city)}
                     className="px-3 py-2.5 rounded-lg neu-sm hover:neu-pressable"
                     aria-label="Voir sur carte"
                   >
