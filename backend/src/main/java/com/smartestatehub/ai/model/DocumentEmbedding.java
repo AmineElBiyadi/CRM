@@ -24,10 +24,9 @@ public class DocumentEmbedding {
     private String chunkText;
 
     /**
-     * Stored as text representation of the pgvector type.
-     * The actual vector column is managed by the pgvector extension.
+     * Géré par pgvector (dimension 1536 pour OpenAI).
      */
-    @Column(name = "embedding", columnDefinition = "TEXT")
+    @Column(name = "embedding", columnDefinition = "vector(1536)")
     private String embedding;
 
     @ManyToOne(fetch = FetchType.LAZY)
