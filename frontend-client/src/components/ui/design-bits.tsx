@@ -50,13 +50,13 @@ export function LeadScore({ score, size = 64 }: { score: number; size?: number }
   );
 }
 
-export function Avatar({ name, size = 40, color }: { name: string; size?: number; color?: string }) {
+export function Avatar({ name, size = 40, color, className }: { name: string; size?: number; color?: string; className?: string }) {
   const initials = name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
   const palette = ["bg-alice", "bg-honeydew", "bg-vanilla", "bg-[oklch(0.85_0.06_30)]", "bg-[oklch(0.82_0.08_280)]"];
   const idx = name.charCodeAt(0) % palette.length;
   return (
     <div
-      className={cn("inline-flex items-center justify-center rounded-full font-semibold text-eerie shrink-0", color ?? palette[idx])}
+      className={cn("inline-flex items-center justify-center rounded-full font-semibold text-eerie shrink-0", color ?? palette[idx], className)}
       style={{ width: size, height: size, fontSize: size * 0.36 }}
     >
       {initials}
