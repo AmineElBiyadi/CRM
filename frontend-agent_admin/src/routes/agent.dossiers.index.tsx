@@ -41,7 +41,7 @@ function DossiersListing() {
           </NeuCard>
         ) : (
           dossiers?.map((dossier) => (
-            <DossierRow key={dossier.idDeal} dossier={dossier} />
+            <DossierRow key={dossier.idDeal || dossier.idProfile} dossier={dossier} />
           ))
         )}
       </div>
@@ -51,17 +51,25 @@ function DossiersListing() {
 
 function DossierRow({ dossier }: { dossier: DossierSummary }) {
   return (
-    <NeuCard size="sm" className="relative group">
+    <NeuCard 
+      size="sm" 
+      className={`relative group transition-all ${dossier.isNew ? 'border-amber-200 bg-amber-50/30 shadow-sm' : ''}`}
+    >
       <div className="flex flex-col md:flex-row items-center gap-6 p-1">
         {/* Score IA */}
         <div className="shrink-0">
-          <LeadScore score={dossier.aiLeadScore} size={70} />
+          <LeadScore score={dossier.aiLeadScore ?? 0} size={70} />
         </div>
 
         {/* Info Client & Dossier */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-bold text-lg text-eerie truncate">{dossier.clientFullName}</h3>
+            {dossier.isNew && (
+              <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter shadow-sm">
+                NEW
+              </span>
+            )}
             {dossier.isUrgent && (
               <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
                 <AlertCircle size={10} /> Urgent
@@ -89,14 +97,24 @@ function DossierRow({ dossier }: { dossier: DossierSummary }) {
         </div>
 
         {/* Action Button */}
-        <div className="shrink-0 w-full md:w-auto">
-          <Link 
-            to="/agent/dossier" 
-            search={{ id: dossier.idDeal }}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-bold group-hover:bg-alice/10"
-          >
-            Détails <ChevronRight size={16} />
-          </Link>
+        <div className="shrink-0 w-full md:w-auto flex items-center gap-2">
+          {dossier.isNew ? (
+            <Link
+              to="/agent/dossiers/create"
+              search={{ confirmId: dossier.idDeal || dossier.idProfile }}
+              className="px-4 py-3 rounded-xl bg-amber-500 text-ghost text-sm font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
+            >
+              Confirmer
+            </Link>
+          ) : (
+            <Link 
+              to="/agent/dossier" 
+              search={{ id: dossier.idDeal! }}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-bold group-hover:bg-alice/10"
+            >
+              Détails <ChevronRight size={16} />
+            </Link>
+          )}
         </div>
       </div>
     </NeuCard>

@@ -14,11 +14,13 @@ import java.util.UUID;
 @NoArgsConstructor
 public class DossierSummaryDto {
     private UUID idDeal;
+    private UUID idProfile; // Fallback ID for folders without deals
     private String clientFullName;
     private ClientType clientType;
     private DealStage stage;
     private Integer aiLeadScore;
     private Boolean isUrgent;
+    private Boolean isNew;
     private LocalDateTime lastInteractionAt;
     private String aiRecommendedAction;
 }

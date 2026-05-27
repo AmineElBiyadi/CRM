@@ -1,34 +1,37 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchIdentities } from "@/api/clientsApi";
-import { createDossier, type CreateDossierRequest } from "@/api/dossiersApi";
+import { createDossier, fetchDossierDetail, fetchPropertyTypes, type CreateDossierRequest } from "@/api/dossiersApi";
+import { useConfirmDossier } from "@/hooks/useDossiers";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
 import { 
   ChevronLeft, ChevronRight, User, ShoppingCart, Home, 
-  MapPin, Layers, Maximize, CircleSlash, CheckCircle2, Sparkles
+  MapPin, Layers, Maximize, CircleSlash, CheckCircle2, Sparkles, ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
 
 type CreateDossierSearch = {
   clientId?: string;
+  confirmId?: string;
 };
 
 export const Route = createFileRoute("/agent/dossiers/create")({
   validateSearch: (search: Record<string, unknown>): CreateDossierSearch => {
     return {
       clientId: search.clientId as string | undefined,
+      confirmId: search.confirmId as string | undefined,
     };
   },
   component: CreateDossierPage,
 });
 
 function CreateDossierPage() {
-  const { clientId } = Route.useSearch();
+  const { clientId, confirmId } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState(clientId ? 2 : 1);
+  const [step, setStep] = useState((clientId || confirmId) ? 2 : 1);
   const [formData, setFormData] = useState<Partial<CreateDossierRequest>>({
     idClient: clientId,
     type: 'BUYER',
@@ -39,11 +42,48 @@ function CreateDossierPage() {
     surfaceM2: 0,
     floor: -1,
   });
+  
+  const [openPropertyType, setOpenPropertyType] = useState(false);
+  const [openFloor, setOpenFloor] = useState(false);
 
-  const { data: identities, isLoading } = useQuery({
+  const { data: identities, isLoading: isLoadingIdentities } = useQuery({
     queryKey: ["identities"],
     queryFn: fetchIdentities,
   });
+
+  const { data: propertyTypes } = useQuery({
+    queryKey: ["property-types"],
+    queryFn: fetchPropertyTypes,
+  });
+
+  const { data: dossierToConfirm } = useQuery({
+    queryKey: ["dossier-to-confirm", confirmId],
+    queryFn: () => fetchDossierDetail(confirmId!),
+    enabled: !!confirmId,
+  });
+
+  // Pre-fill form if confirming
+  useEffect(() => {
+    if (dossierToConfirm) {
+      setFormData({
+        idClient: dossierToConfirm.idClient,
+        type: dossierToConfirm.clientType,
+        budgetMin: dossierToConfirm.budgetMin,
+        budgetMax: dossierToConfirm.budgetMax,
+        propertySpecificType: dossierToConfirm.propertyType,
+        preferredArea: dossierToConfirm.preferredArea,
+        surfaceM2: dossierToConfirm.preferredSizeM2,
+        floor: dossierToConfirm.preferredFloor,
+      });
+    }
+  }, [dossierToConfirm]);
+
+  // Set default property type when list loads
+  useEffect(() => {
+    if (propertyTypes?.length && !formData.propertySpecificType) {
+      setFormData(prev => ({ ...prev, propertySpecificType: propertyTypes[0].specificType }));
+    }
+  }, [propertyTypes]);
 
   const mutation = useMutation({
     mutationFn: createDossier,
@@ -58,15 +98,34 @@ function CreateDossierPage() {
     },
   });
 
+  const confirmMutation = useConfirmDossier();
+
   const nextStep = () => setStep((s) => s + 1);
   const prevStep = () => setStep((s) => s - 1);
 
   const handleSubmit = () => {
-    if (!formData.idClient) {
+    const finalIdClient = formData.idClient || dossierToConfirm?.idClient;
+    
+    if (!finalIdClient) {
       toast.error("Veuillez sélectionner un client.");
       return;
     }
-    mutation.mutate(formData as CreateDossierRequest);
+    
+    if (confirmId) {
+      confirmMutation.mutate(
+        { id: confirmId, data: formData },
+        {
+          onSuccess: () => {
+            toast.success("Dossier confirmé avec succès !");
+            queryClient.invalidateQueries({ queryKey: ["dossiers"] });
+            navigate({ to: "/agent/dossiers" });
+          },
+          onError: () => toast.error("Erreur lors de la confirmation")
+        }
+      );
+    } else {
+      mutation.mutate(formData as CreateDossierRequest);
+    }
   };
 
   return (
@@ -85,18 +144,19 @@ function CreateDossierPage() {
       </div>
 
       {/* Progress Stepper */}
-      <div className="flex items-center gap-2 px-2">
+      {/* Stepper dynamic layout */}
+      <div className="flex items-center justify-center gap-2 px-4 py-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="flex-1 flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= i ? "bg-eerie text-ghost" : "neu-inset text-muted-foreground"}`}>
-              {step > i ? <CheckCircle2 size={16} /> : i}
+          <div key={i} className={`flex items-center ${i < 3 ? "flex-1" : ""}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm transition-all ${step >= i ? "bg-eerie text-ghost scale-110" : "neu-inset text-muted-foreground"}`}>
+              {step > i ? <CheckCircle2 size={20} /> : i}
             </div>
-            {i < 3 && <div className={`flex-1 h-px ${step > i ? "bg-eerie" : "bg-border"}`} />}
+            {i < 3 && <div className={`flex-1 h-0.5 mx-2 rounded-full ${step > i ? "bg-eerie" : "bg-border/60"}`} />}
           </div>
         ))}
       </div>
 
-      <NeuCard className="p-8">
+      <NeuCard className="p-10 shadow-xl border border-border/5">
         {step === 1 && (
           <div className="space-y-6">
             <div className="flex items-center gap-2 mb-4">
@@ -104,22 +164,24 @@ function CreateDossierPage() {
               <h2 className="text-xl font-bold">Sélection du client</h2>
             </div>
             
-            {isLoading ? (
+            {isLoadingIdentities ? (
               <div className="py-8 text-center">Chargement des clients...</div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2 soft-scroll">
+              <div className="grid grid-cols-1 gap-4 max-h-[400px] overflow-y-auto px-1.5 py-1.5 soft-scroll">
                 {identities?.map((id) => (
                   <button
                     key={id.idClient}
                     onClick={() => setFormData({ ...formData, idClient: id.idClient })}
-                    className={`flex items-center gap-4 p-4 rounded-xl transition-all text-left ${formData.idClient === id.idClient ? "neu-inset ring-2 ring-eerie/10" : "neu-sm hover:bg-alice/10"}`}
+                    className={`flex items-center gap-4 p-5 rounded-2xl transition-all text-left mx-1 ${formData.idClient === id.idClient ? "neu-inset ring-2 ring-eerie" : "neu-sm hover:translate-y-[-2px]"}`}
                   >
-                    <Avatar name={id.firstName} size={40} />
+                    <Avatar name={id.firstName} size={48} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-eerie text-sm">{id.firstName} {id.lastName}</div>
-                      <div className="text-xs text-muted-foreground truncate">{id.email}</div>
+                      <div className="font-bold text-eerie truncate">{id.firstName} {id.lastName}</div>
+                      <div className="text-sm text-muted-foreground truncate">{id.email}</div>
                     </div>
-                    {formData.idClient === id.idClient && <CheckCircle2 size={18} className="text-eerie" />}
+                    {formData.idClient === id.idClient && (
+                      <CheckCircle2 size={22} className="text-eerie shrink-0" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -210,16 +272,34 @@ function CreateDossierPage() {
             <div className="space-y-4">
               <label className="block">
                 <span className="text-sm font-semibold text-muted-foreground block mb-2">Type de bien</span>
-                <select
-                  value={formData.propertySpecificType}
-                  onChange={(e) => setFormData({ ...formData, propertySpecificType: e.target.value })}
-                  className="w-full px-4 py-3 neu-inset rounded-xl bg-ghost focus:outline-none text-sm font-medium appearance-none"
-                >
-                  <option>Appartement</option>
-                  <option>Maison / Villa</option>
-                  <option>Terrain</option>
-                  <option>Local Commercial</option>
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenPropertyType(!openPropertyType)}
+                    className="w-full px-4 py-3 neu-inset rounded-xl bg-ghost focus:outline-none text-sm font-medium flex items-center justify-between transition-all hover:bg-alice/20"
+                  >
+                    <span>{formData.propertySpecificType || "Sélectionner..."}</span>
+                    <ChevronDown size={16} className={`transition-transform duration-200 ${openPropertyType ? "rotate-180" : ""}`} />
+                  </button>
+                  
+                  {openPropertyType && (
+                    <div className="absolute z-50 w-full mt-2 py-2 neu-sm rounded-xl bg-ghost/95 backdrop-blur-sm shadow-2xl max-h-[300px] overflow-y-auto soft-scroll animate-in fade-in zoom-in-95 duration-100">
+                      {propertyTypes?.map((pt) => (
+                        <button
+                          key={pt.idPropertyType}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, propertySpecificType: pt.specificType });
+                            setOpenPropertyType(false);
+                          }}
+                          className={`w-full px-4 py-2.5 text-left text-sm font-medium hover:bg-eerie hover:text-ghost transition-colors ${formData.propertySpecificType === pt.specificType ? "bg-alice" : ""}`}
+                        >
+                          {pt.specificType}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </label>
 
               <label className="block">
@@ -253,18 +333,46 @@ function CreateDossierPage() {
                   <span className="text-sm font-semibold text-muted-foreground block mb-2">Étage préféré</span>
                   <div className="relative">
                     <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                    <select
-                      value={formData.floor}
-                      onChange={(e) => setFormData({ ...formData, floor: Number(e.target.value) })}
-                      className="w-full pl-10 pr-4 py-3 neu-inset rounded-xl bg-ghost focus:outline-none text-sm font-medium appearance-none"
+                    <button
+                      type="button"
+                      onClick={() => setOpenFloor(!openFloor)}
+                      className="w-full pl-11 pr-4 py-3 neu-inset rounded-xl bg-ghost focus:outline-none text-sm font-medium flex items-center justify-between transition-all hover:bg-alice/20"
                     >
-                      <option value="-1">Indifférent</option>
-                      <option value="0">Rez-de-chaussée</option>
-                      <option value="1">1er étage</option>
-                      <option value="2">2ème étage</option>
-                      <option value="3">3ème étage et +</option>
-                      <option value="-2">Dernier étage</option>
-                    </select>
+                      <span className="truncate">
+                        {formData.floor === -1 && "Indifférent"}
+                        {formData.floor === 0 && "Rez-de-chaussée"}
+                        {formData.floor === 1 && "1er étage"}
+                        {formData.floor === 2 && "2ème étage"}
+                        {formData.floor === 3 && "3ème étage et +"}
+                        {formData.floor === -2 && "Dernier étage"}
+                      </span>
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${openFloor ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {openFloor && (
+                      <div className="absolute z-50 w-full mt-2 py-2 neu-sm rounded-xl bg-ghost/95 backdrop-blur-sm shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+                        {[
+                          { value: -1, label: "Indifférent" },
+                          { value: 0, label: "Rez-de-chaussée" },
+                          { value: 1, label: "1er étage" },
+                          { value: 2, label: "2ème étage" },
+                          { value: 3, label: "3ème étage et +" },
+                          { value: -2, label: "Dernier étage" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, floor: opt.value });
+                              setOpenFloor(false);
+                            }}
+                            className={`w-full px-4 py-2 text-left text-sm font-medium hover:bg-eerie hover:text-ghost transition-colors ${formData.floor === opt.value ? "bg-alice" : ""}`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </label>
               </div>

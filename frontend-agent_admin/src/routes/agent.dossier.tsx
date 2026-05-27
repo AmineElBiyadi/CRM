@@ -78,7 +78,7 @@ function DossierPage() {
   const [newMeetingDate, setNewMeetingDate] = useState(new Date().toISOString().split('T')[0]);
   const [newMeetingTime, setNewMeetingTime] = useState("10:00");
   const [newMeetingNotes, setNewMeetingNotes] = useState("");
-  const [newMeetingPropertyId, setNewMeetingPropertyId] = useState("");
+  const [newMeetingAddress, setNewMeetingAddress] = useState("");
 
   const { data: dossier, isLoading: loadingDossier } = useQuery({
     queryKey: ["dossier", id],
@@ -127,7 +127,7 @@ function DossierPage() {
       queryClient.invalidateQueries({ queryKey: ["meetings", id] });
       setPlanningMeeting(false);
       setNewMeetingNotes("");
-      setNewMeetingPropertyId("");
+      setNewMeetingAddress("");
     },
     onError: () => {
       toast.error("Erreur lors de la planification");
@@ -244,7 +244,7 @@ function DossierPage() {
       scheduledAt: scheduledAt,
       notes: newMeetingNotes,
       propertyAddress: (newMeetingType === 'PROPERTY_VISIT' || newMeetingType === 'CONTRACT_SIGNING') 
-        ? newMeetingPropertyId 
+        ? newMeetingAddress 
         : undefined,
     };
     meetingMutation.mutate(request);
@@ -583,10 +583,10 @@ function DossierPage() {
 
                   {(newMeetingType === 'PROPERTY_VISIT' || newMeetingType === 'CONTRACT_SIGNING') && (
                     <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Propriété liée</label>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Adresse du bien</label>
                       <select 
-                        value={newMeetingPropertyId} 
-                        onChange={(e) => setNewMeetingPropertyId(e.target.value)}
+                        value={newMeetingAddress} 
+                        onChange={(e) => setNewMeetingAddress(e.target.value)}
                         className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
                       >
                         <option value="">Sélectionner un bien...</option>
@@ -648,7 +648,7 @@ function DossierPage() {
               )}
             </div>
             <Link to="/agent/agenda" className="w-full mt-2 py-2 text-xs text-muted-foreground hover:text-eerie transition-colors flex items-center justify-center gap-1.5">
-              Voir tout l'agenda <Eye size={12} />
+              Voir tout l'agenda
             </Link>
           </div>
         )}
