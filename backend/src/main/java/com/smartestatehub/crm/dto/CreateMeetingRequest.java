@@ -12,4 +12,5 @@ public class CreateMeetingRequest {
     private LocalDateTime scheduledAt;
     private String notes;
     private String propertyAddress; // Optional: only for PROPERTY_VISIT or CONTRACT_SIGNING
+    private com.smartestatehub.crm.model.MeetingStatus status;
 }

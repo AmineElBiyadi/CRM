@@ -50,13 +50,24 @@ public class MeetingController {
         return ResponseEntity.ok(meetingService.getMeetingsByDeal(idDeal));
     }
 
-    @PatchMapping("/{meetingId}/toggle")
-    public ResponseEntity<MeetingDto> toggleMeetingStatus(
+    @PatchMapping("/{meetingId}/status")
+    public ResponseEntity<MeetingDto> updateStatus(
+            @PathVariable UUID meetingId,
+            @RequestBody com.smartestatehub.crm.dto.UpdateMeetingStatusRequest request,
+            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
+            Principal principal) {
+        UUID agentId = resolveAgentId(devAgentId, principal);
+        return ResponseEntity.ok(meetingService.updateMeetingStatus(meetingId, request, agentId));
+    }
+
+    @DeleteMapping("/{meetingId}")
+    public ResponseEntity<Void> deleteMeeting(
             @PathVariable UUID meetingId,
             @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
             Principal principal) {
         UUID agentId = resolveAgentId(devAgentId, principal);
-        return ResponseEntity.ok(meetingService.toggleMeetingStatus(meetingId, agentId));
+        meetingService.deleteMeeting(meetingId, agentId);
+        return ResponseEntity.ok().build();
     }
 
     private UUID resolveAgentId(String devAgentId, Principal principal) {

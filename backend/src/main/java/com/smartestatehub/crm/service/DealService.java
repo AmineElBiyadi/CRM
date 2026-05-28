@@ -7,6 +7,7 @@ import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class DealService {
     private final UserRepository userRepository;
     private final ClientFolderRepository clientFolderRepository;
     private final PropertyTypeRepository propertyTypeRepository;
+
 
     @Transactional(readOnly = true)
     public List<DossierSummaryDto> getDossierListingForAgent(UUID agentId) {
@@ -74,10 +76,62 @@ public class DealService {
                     .build();
             folder.setBuyerFolder(buyerProfile);
         } else {
+            // Resolve property type for seller's property
+            PropertyType sellerPType = null;
+            if (request.getPropertySpecificType() != null) {
+                sellerPType = propertyTypeRepository.findAll().stream()
+                        .filter(pt -> pt.getSpecificType().equalsIgnoreCase(request.getPropertySpecificType()))
+                        .findFirst()
+                        .orElse(null);
+            }
+            
+            // Safety: if pType is still null (e.g. no match or null request), find first available or create dummy
+            if (sellerPType == null) {
+                sellerPType = propertyTypeRepository.findAll().stream().findFirst().orElseGet(() -> 
+                   propertyTypeRepository.save(PropertyType.builder()
+                        .generalType("IMMOBILIER")
+                        .specificType("NON_SPECIFIE")
+                        .description("Type par défaut")
+                        .build())
+                );
+            }
+
             SellerFolder sellerProfile = SellerFolder.builder()
                     .clientFolder(folder)
                     .build();
             folder.setSellerFolder(sellerProfile);
+
+            // Auto-create the Property linked to the SellerFolder if property details provided
+            if (request.getPropertyTitle() != null && !request.getPropertyTitle().isBlank()) {
+                Property property = Property.builder()
+                        .title(request.getPropertyTitle())
+                        .address(request.getAddress())
+                        .city(request.getCity())
+                        .price(request.getAskingPrice())
+                        .surfaceM2(request.getPropertySurfaceM2())
+                        .numRooms(request.getNumRooms())
+                        .floor(request.getPropertyFloor())
+                        .propertyType(sellerPType)
+                        .sellerFolder(sellerProfile)
+                        .isAvailable(true)
+                        .build();
+
+                // Attach images if provided
+                if (request.getPropertyImageUrls() != null && !request.getPropertyImageUrls().isEmpty()) {
+                    java.util.List<PropertyImage> images = new java.util.ArrayList<>();
+                    int order = 1;
+                    for (String url : request.getPropertyImageUrls()) {
+                        images.add(PropertyImage.builder()
+                                .imageUrl(url)
+                                .displayOrder(order++)
+                                .property(property)
+                                .build());
+                    }
+                    property.setImages(images);
+                }
+
+                sellerProfile.setProperties(new java.util.ArrayList<>(java.util.List.of(property)));
+            }
         }
 
         folder = clientFolderRepository.save(folder);
