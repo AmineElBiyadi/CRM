@@ -1,7 +1,6 @@
 package com.smartestatehub.crm.dto;
 
 import com.smartestatehub.crm.model.ClientType;
-import com.smartestatehub.crm.model.DealStage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,15 +10,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class DossierListItemDto {
-    private UUID idDeal;
-    private ClientType type;
-    private DealStage stage;
-    private Integer aiLeadScore;
-    private LocalDateTime lastInteractionAt;
-    private Boolean isUrgent;
+public class DossierAgentDto {
+    private UUID idProfile;
+    private String clientFullName;
+    private ClientType clientType;
+    private LocalDateTime createdAt;
     private Boolean newDossier;
 }

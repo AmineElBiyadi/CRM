@@ -7,11 +7,13 @@ import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,12 +27,14 @@ public class DealService {
     private final ClientFolderRepository clientFolderRepository;
     private final PropertyTypeRepository propertyTypeRepository;
 
+
     @Transactional(readOnly = true)
     public List<DossierSummaryDto> getDossierListingForAgent(UUID agentId) {
-        List<Deal> deals = dealRepository.findActiveDossiersByAgentId(agentId);
+        // Fetch all folders assigned to this agent
+        List<ClientFolder> folders = clientFolderRepository.findByAssignedAgent_IdUserAndDeletedAtIsNull(agentId);
         
-        return deals.stream()
-                .map(this::mapToSummaryDto)
+        return folders.stream()
+                .map(this::mapFolderToSummaryDto)
                 .collect(Collectors.toList());
     }
 
@@ -48,6 +52,7 @@ public class DealService {
                 .assignedAgent(agent)
                 .createdByAgent(agent)
                 .clientType(request.getType())
+                .status(FolderStatus.ACTIVE)
                 .build();
         
         // 2. Create specific profile (Buyer/Seller)
@@ -71,10 +76,62 @@ public class DealService {
                     .build();
             folder.setBuyerFolder(buyerProfile);
         } else {
+            // Resolve property type for seller's property
+            PropertyType sellerPType = null;
+            if (request.getPropertySpecificType() != null) {
+                sellerPType = propertyTypeRepository.findAll().stream()
+                        .filter(pt -> pt.getSpecificType().equalsIgnoreCase(request.getPropertySpecificType()))
+                        .findFirst()
+                        .orElse(null);
+            }
+            
+            // Safety: if pType is still null (e.g. no match or null request), find first available or create dummy
+            if (sellerPType == null) {
+                sellerPType = propertyTypeRepository.findAll().stream().findFirst().orElseGet(() -> 
+                   propertyTypeRepository.save(PropertyType.builder()
+                        .generalType("IMMOBILIER")
+                        .specificType("NON_SPECIFIE")
+                        .description("Type par défaut")
+                        .build())
+                );
+            }
+
             SellerFolder sellerProfile = SellerFolder.builder()
                     .clientFolder(folder)
                     .build();
             folder.setSellerFolder(sellerProfile);
+
+            // Auto-create the Property linked to the SellerFolder if property details provided
+            if (request.getPropertyTitle() != null && !request.getPropertyTitle().isBlank()) {
+                Property property = Property.builder()
+                        .title(request.getPropertyTitle())
+                        .address(request.getAddress())
+                        .city(request.getCity())
+                        .price(request.getAskingPrice())
+                        .surfaceM2(request.getPropertySurfaceM2())
+                        .numRooms(request.getNumRooms())
+                        .floor(request.getPropertyFloor())
+                        .propertyType(sellerPType)
+                        .sellerFolder(sellerProfile)
+                        .isAvailable(true)
+                        .build();
+
+                // Attach images if provided
+                if (request.getPropertyImageUrls() != null && !request.getPropertyImageUrls().isEmpty()) {
+                    java.util.List<PropertyImage> images = new java.util.ArrayList<>();
+                    int order = 1;
+                    for (String url : request.getPropertyImageUrls()) {
+                        images.add(PropertyImage.builder()
+                                .imageUrl(url)
+                                .displayOrder(order++)
+                                .property(property)
+                                .build());
+                    }
+                    property.setImages(images);
+                }
+
+                sellerProfile.setProperties(new java.util.ArrayList<>(java.util.List.of(property)));
+            }
         }
 
         folder = clientFolderRepository.save(folder);
@@ -95,32 +152,60 @@ public class DealService {
     }
 
     @Transactional(readOnly = true)
-    public DossierDetailDto getDossierDetail(UUID dealId) {
-        Deal deal = dealRepository.findById(dealId)
-                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+    public DossierDetailDto getDossierDetail(UUID id) {
+        System.out.println("Fetching dossier/folder detail for ID: " + id);
+        Optional<Deal> dealOpt = dealRepository.findById(id);
         
-        ClientFolder folder = deal.getClientFolder();
+        if (dealOpt.isPresent()) {
+            System.out.println("Found as Deal ID");
+            Deal deal = dealOpt.get();
+            ClientFolder folder = deal.getClientFolder();
+            return mapToDetailDto(deal, folder);
+        }
+
+        // Fallback: Check if it's a ClientFolder ID (for pending dossiers)
+        System.out.println("Not found as Deal. Trying ClientFolder...");
+        ClientFolder folder = clientFolderRepository.findById(id)
+                .orElseThrow(() -> {
+                    System.err.println("CRITICAL: ID " + id + " not found in either Deal or ClientFolder tables.");
+                    return new RuntimeException("Dossier/Folder not found: " + id);
+                });
+        
+        System.out.println("Found as ClientFolder ID");
+        return mapToDetailDto(null, folder);
+    }
+
+    private DossierDetailDto mapToDetailDto(Deal deal, ClientFolder folder) {
         Client client = folder.getClient();
         InternalUser agent = folder.getAssignedAgent();
-
         String agentName = (agent != null) ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné";
 
         DossierDetailDto.DossierDetailDtoBuilder builder = DossierDetailDto.builder()
-                .idDeal(deal.getIdDeal())
+                .idDeal(deal != null ? deal.getIdDeal() : null)
+                .idProfile(folder.getIdProfile())
                 .idClient(client.getIdClient())
                 .clientName(client.getFirstName() + " " + client.getLastName())
                 .clientEmail(client.getEmail())
                 .clientPhone(client.getPhone())
                 .clientSource(client.getSource())
                 .clientType(folder.getClientType())
-                .stage(deal.getStage())
-                .aiLeadScore(deal.getAiLeadScore())
-                .aiScoreExplanation(deal.getAiScoreExplanation())
-                .aiRecommendedAction(deal.getAiRecommendedAction())
-                .aiSummary(deal.getAiSummary())
-                .isUrgent(deal.getIsUrgent())
-                .assignedAgentName(agentName)
-                .lastInteractionAt(deal.getLastInteractionAt());
+                .assignedAgentName(agentName);
+
+        if (deal != null) {
+            builder.stage(deal.getStage())
+                    .aiLeadScore(deal.getAiLeadScore())
+                    .aiScoreExplanation(deal.getAiScoreExplanation())
+                    .aiRecommendedAction(deal.getAiRecommendedAction())
+                    .aiSummary(deal.getAiSummary())
+                    .isUrgent(deal.getIsUrgent())
+                    .lastInteractionAt(deal.getLastInteractionAt());
+        } else {
+            builder.stage(DealStage.COLD)
+                    .aiLeadScore(0)
+                    .aiRecommendedAction("Nouveau dossier à qualifier.")
+                    .isUrgent(false)
+                    .lastInteractionAt(folder.getCreatedAt());
+        }
 
         if (folder.getClientType() == ClientType.BUYER && folder.getBuyerFolder() != null) {
             BuyerFolder buyer = folder.getBuyerFolder();
@@ -130,6 +215,25 @@ public class DealService {
                     .preferredSizeM2(buyer.getPreferredSizeM2())
                     .preferredFloor(buyer.getPreferredFloor())
                     .propertyType(buyer.getPropertyType() != null ? buyer.getPropertyType().getSpecificType() : null);
+        } else if (folder.getClientType() == ClientType.SELLER && folder.getSellerFolder() != null) {
+            SellerFolder seller = folder.getSellerFolder();
+            if (seller.getProperties() != null && !seller.getProperties().isEmpty()) {
+                Property prop = seller.getProperties().get(0);
+                builder.propertyTitle(prop.getTitle())
+                        .address(prop.getAddress())
+                        .city(prop.getCity())
+                        .askingPrice(prop.getPrice())
+                        .propertySurfaceM2(prop.getSurfaceM2())
+                        .numRooms(prop.getNumRooms())
+                        .propertyFloor(prop.getFloor())
+                        .propertyType(prop.getPropertyType() != null ? prop.getPropertyType().getSpecificType() : null);
+                
+                if (prop.getImages() != null) {
+                    builder.propertyImageUrls(prop.getImages().stream()
+                            .map(PropertyImage::getImageUrl)
+                            .collect(java.util.stream.Collectors.toList()));
+                }
+            }
         }
 
         return builder.build();
@@ -147,25 +251,57 @@ public class DealService {
     }
 
     private DossierSummaryDto mapToSummaryDto(Deal deal) {
-        String clientName = "Inconnu";
-        ClientType type = ClientType.BUYER;
+        // Start with base folder info
+        DossierSummaryDto dto = mapFolderToBaseSummaryDto(deal.getClientFolder());
         
-        if (deal.getClientFolder() != null) {
-            type = deal.getClientFolder().getClientType();
-            if (deal.getClientFolder().getClient() != null) {
-                clientName = deal.getClientFolder().getClient().getFirstName() + " " + deal.getClientFolder().getClient().getLastName();
+        // Add deal-specific info
+        dto.setIdDeal(deal.getIdDeal());
+        dto.setStage(deal.getStage());
+        dto.setAiLeadScore(deal.getAiLeadScore());
+        dto.setIsUrgent(deal.getIsUrgent());
+        dto.setLastInteractionAt(deal.getLastInteractionAt());
+        dto.setAiRecommendedAction(deal.getAiRecommendedAction());
+        dto.setNewDossier(deal.getClientFolder().getStatus() == FolderStatus.PENDING);
+        
+        return dto;
+    }
+
+    private DossierSummaryDto mapFolderToSummaryDto(ClientFolder folder) {
+        // If folder has deals, map the primary deal
+        if (folder.getDeals() != null && !folder.getDeals().isEmpty()) {
+            Optional<Deal> activeDeal = folder.getDeals().stream()
+                    .filter(d -> d.getDeletedAt() == null)
+                    .findFirst();
+            if (activeDeal.isPresent()) {
+                return mapToSummaryDto(activeDeal.get());
             }
         }
 
+        // Otherwise return a "deal-less" summary
+        DossierSummaryDto dto = mapFolderToBaseSummaryDto(folder);
+        dto.setNewDossier(folder.getStatus() == FolderStatus.PENDING);
+        dto.setAiRecommendedAction("Nouveau dossier à qualifier.");
+        dto.setLastInteractionAt(folder.getCreatedAt());
+        return dto;
+    }
+
+    private DossierSummaryDto mapFolderToBaseSummaryDto(ClientFolder folder) {
+        String clientName = "Inconnu";
+        if (folder.getClient() != null) {
+            clientName = folder.getClient().getFirstName() + " " + folder.getClient().getLastName();
+        }
+
         return new DossierSummaryDto(
-                deal.getIdDeal(),
+                null,
+                folder.getIdProfile(),
                 clientName,
-                type,
-                deal.getStage(),
-                deal.getAiLeadScore(),
-                deal.getIsUrgent(),
-                deal.getLastInteractionAt(),
-                deal.getAiRecommendedAction()
+                folder.getClientType(),
+                DealStage.COLD,
+                null,
+                false,
+                false, // newDossier handled in caller
+                null,  // Time handled in caller
+                null   // Action handled in caller
         );
     }
 }

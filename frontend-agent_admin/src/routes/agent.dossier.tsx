@@ -8,11 +8,15 @@ import {
   fetchDealMeetings,
   createMeeting as apiCreateMeeting,
   updateDealStage as apiUpdateDealStage,
+  updateMeetingStatus as apiUpdateMeetingStatus,
+  deleteMeeting as apiDeleteMeeting,
   type InteractionType,
   type CreateInteractionRequest,
   type MeetingType,
   type CreateMeetingDto,
-  type DealStage
+  type DealStage,
+  type MeetingItem,
+  type UpdateMeetingStatusDto
 } from "@/api/dossiersApi";
 // @ts-ignore
 import { getPropertiesByDeal } from "@/api/propertyApi";
@@ -20,7 +24,7 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature,
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
@@ -78,7 +82,12 @@ function DossierPage() {
   const [newMeetingDate, setNewMeetingDate] = useState(new Date().toISOString().split('T')[0]);
   const [newMeetingTime, setNewMeetingTime] = useState("10:00");
   const [newMeetingNotes, setNewMeetingNotes] = useState("");
-  const [newMeetingPropertyId, setNewMeetingPropertyId] = useState("");
+  const [newMeetingAddress, setNewMeetingAddress] = useState("");
+
+  const [meetingTab, setMeetingTab] = useState<"ALL" | "DRAFT" | "PENDING" | "SCHEDULED" | "IN_PROGRESS" | "HISTORY">("ALL");
+  const [reschedulingMeetingId, setReschedulingMeetingId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
 
   const { data: dossier, isLoading: loadingDossier } = useQuery({
     queryKey: ["dossier", id],
@@ -123,14 +132,36 @@ function DossierPage() {
   const meetingMutation = useMutation({
     mutationFn: apiCreateMeeting,
     onSuccess: () => {
-      toast.success("Rendez-vous planifié avec succès");
+      toast.success("Rendez-vous enregistré avec succès");
       queryClient.invalidateQueries({ queryKey: ["meetings", id] });
       setPlanningMeeting(false);
       setNewMeetingNotes("");
-      setNewMeetingPropertyId("");
+      setNewMeetingAddress("");
     },
     onError: () => {
-      toast.error("Erreur lors de la planification");
+      toast.error("Erreur lors de l'enregistrement");
+    }
+  });
+
+  const meetingStatusMutation = useMutation({
+    mutationFn: ({ id, request }: { id: string, request: UpdateMeetingStatusDto }) => apiUpdateMeetingStatus(id, request),
+    onSuccess: () => {
+      toast.success("Statut du rendez-vous mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["meetings", id] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  });
+
+  const meetingDeleteMutation = useMutation({
+    mutationFn: apiDeleteMeeting,
+    onSuccess: () => {
+      toast.success("Rendez-vous supprimé");
+      queryClient.invalidateQueries({ queryKey: ["meetings", id] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression");
     }
   });
   
@@ -232,7 +263,7 @@ function DossierPage() {
     mutation.mutate(request);
   };
 
-  const handleCreateMeeting = () => {
+  const handleCreateMeeting = (status: MeetingItem['status'] = 'PENDING') => {
     if (!newMeetingDate || !newMeetingTime) {
       toast.error("Veuillez saisir une date et une heure");
       return;
@@ -243,8 +274,9 @@ function DossierPage() {
       type: newMeetingType,
       scheduledAt: scheduledAt,
       notes: newMeetingNotes,
+      status: status,
       propertyAddress: (newMeetingType === 'PROPERTY_VISIT' || newMeetingType === 'CONTRACT_SIGNING') 
-        ? newMeetingPropertyId 
+        ? newMeetingAddress 
         : undefined,
     };
     meetingMutation.mutate(request);
@@ -583,10 +615,10 @@ function DossierPage() {
 
                   {(newMeetingType === 'PROPERTY_VISIT' || newMeetingType === 'CONTRACT_SIGNING') && (
                     <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Propriété liée</label>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Adresse du bien</label>
                       <select 
-                        value={newMeetingPropertyId} 
-                        onChange={(e) => setNewMeetingPropertyId(e.target.value)}
+                        value={newMeetingAddress} 
+                        onChange={(e) => setNewMeetingAddress(e.target.value)}
                         className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
                       >
                         <option value="">Sélectionner un bien...</option>
@@ -607,48 +639,288 @@ function DossierPage() {
 
                   <div className="flex gap-2">
                     <button 
-                      onClick={handleCreateMeeting} 
+                      onClick={() => handleCreateMeeting('DRAFT')} 
+                      disabled={meetingMutation.isPending}
+                      className="px-4 py-2.5 rounded-lg neu-sm text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      Brouillon
+                    </button>
+                    <button 
+                      onClick={() => handleCreateMeeting('PENDING')} 
                       disabled={meetingMutation.isPending}
                       className="flex-1 py-2.5 rounded-lg bg-eerie text-ghost text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {meetingMutation.isPending && <Loader2 size={16} className="animate-spin" />}
                       Confirmer le RDV
                     </button>
-                    <button onClick={() => setPlanningMeeting(false)} className="px-5 py-2.5 rounded-lg neu-sm text-sm">Annuler</button>
+                    <button onClick={() => setPlanningMeeting(false)} className="px-4 py-2.5 rounded-lg neu-sm hover:text-warn text-sm">Annuler</button>
                   </div>
                 </div>
               )}
             </NeuCard>
 
+            {/* Status Navigation Bar */}
+            <div className="flex justify-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {[
+                { id: "ALL", label: "Tous" },
+                { id: "DRAFT", label: "Brouillons" },
+                { id: "PENDING", label: "En attente" },
+                { id: "SCHEDULED", label: "Planifiés" },
+                { id: "IN_PROGRESS", label: "En cours" },
+                { id: "HISTORY", label: "Historique" }
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setMeetingTab(m.id as any)}
+                  className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-tight transition-all whitespace-nowrap ${meetingTab === m.id ? "bg-eerie text-ghost" : "neu-sm text-muted-foreground"}`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-3">
               {loadingMeetings ? (
                 <div className="flex justify-center py-5"><Loader2 className="animate-spin text-muted-foreground" size={20} /></div>
               ) : meetings?.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm italic">Aucun rendez-vous planifié.</div>
+                <div className="text-center py-8 text-muted-foreground text-sm italic">Aucun rendez-vous.</div>
               ) : (
-                meetings?.map((r) => (
-                  <div key={r.idMeeting} className="flex items-center gap-4 p-3 rounded-lg neu-sm">
-                    <div className={`p-2 rounded-lg ${r.status === 'COMPLETED' ? 'bg-honeydew/20 text-honeydew' : 'bg-vanilla/20 text-vanilla'}`}>
-                      <CalendarDays size={18} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate flex items-center gap-2">
-                        {r.type}
-                        {r.propertyAddress && <span className="text-[10px] bg-alice/50 px-1.5 py-0.5 rounded text-muted-foreground truncate max-w-[150px]">{r.propertyAddress}</span>}
+                (() => {
+                  const filtered = meetings?.filter(m => {
+                    if (meetingTab === 'ALL') return true;
+                    if (meetingTab === 'DRAFT') return m.status === 'DRAFT';
+                    if (meetingTab === 'PENDING') return m.status === 'PENDING';
+                    if (meetingTab === 'SCHEDULED') return ['SCHEDULED', 'RESCHEDULED', 'POSTPONED'].includes(m.status);
+                    if (meetingTab === 'IN_PROGRESS') return m.status === 'IN_PROGRESS';
+                    if (meetingTab === 'HISTORY') return ['COMPLETED', 'CANCELED', 'MISSED'].includes(m.status);
+                    return true;
+                  });
+
+                  if (filtered?.length === 0) return <div className="text-center py-8 text-muted-foreground text-xs italic">Aucun rendez-vous dans cette catégorie.</div>;
+
+                  return filtered?.map((r) => (
+                    <div key={r.idMeeting} className="flex flex-col gap-3 p-3 rounded-lg neu-sm animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2 rounded-lg shrink-0 ${
+                          r.status === 'COMPLETED' ? 'bg-honeydew/20 text-honeydew' : 
+                          r.status === 'CANCELED' ? 'bg-warn/10 text-warn' :
+                          r.status === 'DRAFT' ? 'bg-alice/50 text-muted-foreground' :
+                          'bg-vanilla/20 text-vanilla'
+                        }`}>
+                          <CalendarDays size={18} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate flex items-center gap-2">
+                            {r.type}
+                            {r.propertyAddress && <span className="text-[10px] bg-alice/50 px-1.5 py-0.5 rounded text-muted-foreground truncate max-w-[150px]">{r.propertyAddress}</span>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(r.scheduledAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <SoftBadge tone={
+                            r.status === 'COMPLETED' ? 'success' : 
+                            r.status === 'SCHEDULED' || r.status === 'RESCHEDULED' ? 'info' :
+                            r.status === 'IN_PROGRESS' ? 'success' :
+                            r.status === 'PENDING' ? 'warn' :
+                            r.status === 'DRAFT' ? 'info' :
+                            'info'
+                          }>
+                            {r.status === 'SCHEDULED' ? 'Planifié' : 
+                             r.status === 'COMPLETED' ? 'Terminé' :
+                             r.status === 'PENDING' ? 'En attente' :
+                             r.status === 'DRAFT' ? 'Brouillon' :
+                             r.status === 'IN_PROGRESS' ? 'En cours' :
+                             r.status === 'RESCHEDULED' ? 'Reporté' :
+                             r.status === 'POSTPONED' ? 'À fixer' :
+                             r.status === 'CANCELED' ? 'Annulé' :
+                             r.status === 'MISSED' ? 'Manqué' : r.status}
+                          </SoftBadge>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(r.scheduledAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+
+                      {/* Action buttons based on status */}
+                      <div className="flex gap-2 flex-wrap pt-1 border-t border-border/10 justify-end">
+                        {r.status === 'DRAFT' && (
+                          <>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'PENDING' } })}
+                              className="px-3 py-1.5 rounded-lg bg-alice/50 text-eerie text-[11px] font-bold flex items-center gap-1 hover:bg-alice transition-colors"
+                            >
+                              <Check size={12} /> Confirmer
+                            </button>
+                            <button 
+                              onClick={() => meetingDeleteMutation.mutate(r.idMeeting)}
+                              className="px-3 py-1.5 rounded-lg text-warn/70 hover:text-warn text-[11px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <Trash2 size={12} /> Supprimer
+                            </button>
+                          </>
+                        )}
+
+                        {(r.status === 'SCHEDULED' || r.status === 'RESCHEDULED') && (
+                          <>
+                             <button 
+                              onClick={() => {
+                                if (new Date(r.scheduledAt) > new Date()) {
+                                  toast.error("La date et l’heure du rendez-vous ne sont pas encore atteintes");
+                                  return;
+                                }
+                                meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'IN_PROGRESS' } });
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                                new Date(r.scheduledAt) > new Date() 
+                                  ? "bg-alice/20 text-muted-foreground/50 cursor-not-allowed" 
+                                  : "bg-honeydew/20 text-honeydew hover:bg-honeydew/30"
+                              }`}
+                            >
+                              <CheckCircle2 size={12} /> Marquer en cours
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setReschedulingMeetingId(r.idMeeting);
+                                setRescheduleDate(r.scheduledAt.split('T')[0]);
+                                setRescheduleTime(r.scheduledAt.split('T')[1].substring(0,5));
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-alice/50 text-eerie text-[11px] font-bold flex items-center gap-1 hover:bg-alice transition-colors"
+                            >
+                              <CalendarRange size={12} /> Reporter
+                            </button>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'POSTPONED' } })}
+                              className="px-3 py-1.5 rounded-lg bg-vanilla/20 text-vanilla text-[11px] font-bold flex items-center gap-1 hover:bg-vanilla/30 transition-colors"
+                            >
+                              <Clock size={12} /> Reporter (sans date)
+                            </button>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'CANCELED' } })}
+                              className="px-3 py-1.5 rounded-lg text-warn/70 hover:text-warn text-[11px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <X size={12} /> Annuler
+                            </button>
+                          </>
+                        )}
+
+                        {r.status === 'PENDING' && (
+                          <>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'SCHEDULED' } })}
+                              className="px-3 py-1.5 rounded-lg bg-alice/50 text-eerie text-[11px] font-bold flex items-center gap-1 hover:bg-alice transition-colors"
+                            >
+                              <Check size={12} /> Confirmer (OK client)
+                            </button>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'CANCELED' } })}
+                              className="px-3 py-1.5 rounded-lg text-warn/70 hover:text-warn text-[11px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <X size={12} /> Annuler
+                            </button>
+                          </>
+                        )}
+
+                        {r.status === 'IN_PROGRESS' && (
+                          <>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'COMPLETED' } })}
+                              className="px-3 py-1.5 rounded-lg bg-honeydew text-eerie text-[11px] font-bold flex items-center gap-1 hover:opacity-90 transition-colors"
+                            >
+                              <CheckCircle2 size={12} /> Terminer
+                            </button>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'MISSED' } })}
+                              className="px-3 py-1.5 rounded-lg bg-warn/10 text-warn text-[11px] font-bold flex items-center gap-1 hover:bg-warn/20 transition-colors"
+                            >
+                              <AlertCircle size={12} /> Marquer manqué
+                            </button>
+                          </>
+                        )}
+
+                         {r.status === 'POSTPONED' && (
+                          <>
+                            <button 
+                              onClick={() => {
+                                setReschedulingMeetingId(r.idMeeting);
+                                setRescheduleDate(new Date().toISOString().split('T')[0]);
+                                setRescheduleTime("10:00");
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-alice/50 text-eerie text-[11px] font-bold flex items-center gap-1 hover:bg-alice transition-colors"
+                            >
+                              <CalendarRange size={12} /> Fixer une date
+                            </button>
+                            <button 
+                              onClick={() => meetingStatusMutation.mutate({ id: r.idMeeting, request: { newStatus: 'CANCELED' } })}
+                              className="px-3 py-1.5 rounded-lg text-warn/70 hover:text-warn text-[11px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <X size={12} /> Annuler
+                            </button>
+                          </>
+                        )}
+
+                        {r.status === 'MISSED' && (
+                          <button 
+                            onClick={() => {
+                              setReschedulingMeetingId(r.idMeeting);
+                              setRescheduleDate(new Date().toISOString().split('T')[0]);
+                              setRescheduleTime("10:00");
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-alice/50 text-eerie text-[11px] font-bold flex items-center gap-1 hover:bg-alice transition-colors"
+                          >
+                            <RotateCcw size={12} /> Replanifier
+                          </button>
+                        )}
                       </div>
+
+                      {/* Reschedule UI (Inline) */}
+                      {reschedulingMeetingId === r.idMeeting && (
+                        <div className="mt-2 p-3 bg-alice/30 rounded-lg space-y-3 animate-in zoom-in-95">
+                          <div className="text-[10px] font-bold uppercase tracking-widest px-1">Nouvelle date et heure</div>
+                          <div className="grid grid-cols-2 gap-2">
+                             <input 
+                                type="date" 
+                                value={rescheduleDate} 
+                                onChange={(e) => setRescheduleDate(e.target.value)}
+                                className="w-full px-2 py-2 neu-inset rounded-lg bg-transparent text-xs" 
+                              />
+                              <input 
+                                type="time" 
+                                value={rescheduleTime} 
+                                onChange={(e) => setRescheduleTime(e.target.value)}
+                                className="w-full px-2 py-2 neu-inset rounded-lg bg-transparent text-xs" 
+                              />
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => {
+                                meetingStatusMutation.mutate({ 
+                                  id: r.idMeeting, 
+                                  request: { 
+                                    newStatus: r.status === 'POSTPONED' || r.status === 'MISSED' ? 'SCHEDULED' : 'RESCHEDULED',
+                                    newScheduledAt: `${rescheduleDate}T${rescheduleTime}:00`
+                                  } 
+                                });
+                                setReschedulingMeetingId(null);
+                              }}
+                              className="flex-1 py-1.5 rounded-lg bg-eerie text-ghost text-[11px] font-bold"
+                            >
+                              Sauvegarder
+                            </button>
+                            <button 
+                              onClick={() => setReschedulingMeetingId(null)}
+                              className="px-3 py-1.5 rounded-lg neu-sm text-[11px]"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <SoftBadge tone={r.status === "COMPLETED" ? "success" : "warn"}>
-                      {r.status === "COMPLETED" ? "Effectué" : "À venir"}
-                    </SoftBadge>
-                  </div>
-                ))
+                  ));
+                })()
               )}
             </div>
             <Link to="/agent/agenda" className="w-full mt-2 py-2 text-xs text-muted-foreground hover:text-eerie transition-colors flex items-center justify-center gap-1.5">
-              Voir tout l'agenda <Eye size={12} />
+              Voir tout l'agenda
             </Link>
           </div>
         )}
