@@ -18,5 +18,5 @@ public class DossierAgentDto {
     private String clientFullName;
     private ClientType clientType;
     private LocalDateTime createdAt;
-    private Boolean isNew;
+    private Boolean newDossier;
 }

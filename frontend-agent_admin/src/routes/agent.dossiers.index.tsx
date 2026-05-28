@@ -53,19 +53,18 @@ function DossierRow({ dossier }: { dossier: DossierSummary }) {
   return (
     <NeuCard 
       size="sm" 
-      className={`relative group transition-all ${dossier.isNew ? 'border-amber-200 bg-amber-50/30 shadow-sm' : ''}`}
+      className={`relative group transition-all ${dossier.newDossier ? 'border-amber-200 bg-amber-50/30 shadow-sm' : ''}`}
     >
       <div className="flex flex-col md:flex-row items-center gap-6 p-1">
         {/* Score IA */}
         <div className="shrink-0">
           <LeadScore score={dossier.aiLeadScore ?? 0} size={70} />
         </div>
-
         {/* Info Client & Dossier */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-bold text-lg text-eerie truncate">{dossier.clientFullName}</h3>
-            {dossier.isNew && (
+            {dossier.newDossier && (
               <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter shadow-sm">
                 NEW
               </span>
@@ -98,10 +97,10 @@ function DossierRow({ dossier }: { dossier: DossierSummary }) {
 
         {/* Action Button */}
         <div className="shrink-0 w-full md:w-auto flex items-center gap-2">
-          {dossier.isNew ? (
+          {dossier.newDossier ? (
             <Link
               to="/agent/dossiers/create"
-              search={{ confirmId: dossier.idDeal || dossier.idProfile }}
+              search={{ confirmId: dossier.idProfile }}
               className="px-4 py-3 rounded-xl bg-amber-500 text-ghost text-sm font-bold hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
             >
               Confirmer

@@ -111,7 +111,7 @@ function ClientDossierDrawer({
                       <span className="text-xs text-muted-foreground">
                         {stageLabel[d.stage] ?? d.stage}
                       </span>
-                      {d.isNew && (
+                      {d.newDossier && (
                         <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
                           NEW
                         </span>
@@ -298,7 +298,7 @@ function ClientsPage() {
           {filtered.map((c) => (
             <NeuCard 
               key={c.idClient} 
-              className={`p-6 pl-8 group hover:translate-y-[-2px] transition-all cursor-pointer relative overflow-hidden ${c.isNew ? 'border-amber-200 bg-amber-50/30 ring-1 ring-amber-100' : ''}`}
+              className={`p-6 pl-8 group hover:translate-y-[-2px] transition-all cursor-pointer relative overflow-hidden ${c.newClient ? 'border-amber-200 bg-amber-50/30 ring-1 ring-amber-100' : ''}`}
               onClick={() => setSelectedClient(c)}
             >
               <div className="flex items-center gap-5 mb-4">
@@ -308,7 +308,7 @@ function ClientsPage() {
                     <div className="font-bold text-lg truncate group-hover:text-eerie transition-colors">
                       {c.firstName} {c.lastName}
                     </div>
-                    {c.isNew && (
+                    {c.newClient && (
                       <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
                         NEW
                       </span>
@@ -316,7 +316,7 @@ function ClientsPage() {
                   </div>
                   <div className="text-xs text-muted-foreground font-medium">{c.email}</div>
                 </div>
-                {c.isNew && (
+                {c.newClient && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -378,20 +378,20 @@ function ClientsPage() {
                 <tr 
                   key={c.idClient} 
                   onClick={() => setSelectedClient(c)}
-                  className={`border-b border-border/50 hover:bg-alice/5 transition-colors cursor-pointer group ${c.isNew ? 'bg-amber-50/20' : ''}`}
+                  className={`border-b border-border/50 hover:bg-alice/5 transition-colors cursor-pointer group ${c.newClient ? 'bg-amber-50/20' : ''}`}
                 >
                   <td className="p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <Avatar name={`${c.firstName} ${c.lastName}`} size={36} />
                         <span className="font-bold">{c.firstName} {c.lastName}</span>
-                        {c.isNew && (
+                        {c.newClient && (
                           <span className="bg-amber-500 text-ghost text-[8px] font-black px-1 py-0.5 rounded-sm uppercase">
                             NEW
                           </span>
                         )}
                       </div>
-                      {c.isNew && (
+                      {c.newClient && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

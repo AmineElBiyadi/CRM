@@ -55,7 +55,7 @@ export interface DossierSummary {
   isUrgent: boolean;
   lastInteractionAt: string | null;
   aiRecommendedAction: string;
-  isNew: boolean;
+  newDossier: boolean;
 }
 
 export interface CreateDossierRequest {
@@ -113,6 +113,15 @@ export interface DossierDetail {
   propertyType: string;
   assignedAgentName: string;
   lastInteractionAt: string;
+  // Seller Specifics
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
 }
 
 export interface InteractionItem {

@@ -148,7 +148,25 @@ function CreateDossierPage() {
         setFormData({
           idClient: dossierToConfirm.idClient,
           type: 'SELLER',
+          propertyTitle: dossierToConfirm.propertyTitle || '',
+          propertySpecificType: dossierToConfirm.propertyType || 'Appartement',
+          address: dossierToConfirm.address || '',
+          city: dossierToConfirm.city || '',
+          askingPrice: dossierToConfirm.askingPrice || 0,
+          propertySurfaceM2: dossierToConfirm.propertySurfaceM2 || 0,
+          numRooms: dossierToConfirm.numRooms || 0,
+          propertyFloor: dossierToConfirm.propertyFloor || 0,
+          propertyImageUrls: dossierToConfirm.propertyImageUrls || [],
         });
+        
+        // Also pre-fill image previews
+        if (dossierToConfirm.propertyImageUrls?.length) {
+          setPropertyImages(dossierToConfirm.propertyImageUrls.map(url => ({
+            id: Math.random().toString(36).substring(7),
+            preview: url,
+            uploading: false
+          })));
+        }
       }
     }
   }, [dossierToConfirm]);
