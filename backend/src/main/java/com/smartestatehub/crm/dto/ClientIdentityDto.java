@@ -13,5 +13,5 @@ public record ClientIdentityDto(
     String source,
     Integer dossierCount,
     LocalDateTime createdAt,
-    Boolean isNew
+    Boolean newClient
 ) {}

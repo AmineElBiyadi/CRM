@@ -20,7 +20,7 @@ public class DossierSummaryDto {
     private DealStage stage;
     private Integer aiLeadScore;
     private Boolean isUrgent;
-    private Boolean isNew;
+    private Boolean newDossier;
     private LocalDateTime lastInteractionAt;
     private String aiRecommendedAction;
 }

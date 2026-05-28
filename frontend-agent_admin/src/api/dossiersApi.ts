@@ -25,7 +25,7 @@ export interface MeetingItem {
   scheduledAt: string; // ISO-8601
   clientFullName: string;
   type: string; // French label
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  status: 'SCHEDULED' | 'PENDING' | 'IN_PROGRESS' | 'RESCHEDULED' | 'POSTPONED' | 'CANCELED' | 'COMPLETED' | 'MISSED' | 'DRAFT';
   notes: string | null;
   propertyAddress: string | null;
 }
@@ -36,6 +36,12 @@ export interface CreateMeetingDto {
   scheduledAt: string; // ISO-8601
   notes?: string;
   propertyAddress?: string;
+  status?: MeetingItem['status'];
+}
+
+export interface UpdateMeetingStatusDto {
+  newStatus?: MeetingItem['status'];
+  newScheduledAt?: string; // ISO-8601
 }
 
 export interface DossierSummary {
@@ -49,18 +55,28 @@ export interface DossierSummary {
   isUrgent: boolean;
   lastInteractionAt: string | null;
   aiRecommendedAction: string;
-  isNew: boolean;
+  newDossier: boolean;
 }
 
 export interface CreateDossierRequest {
   idClient: string;
   type: ClientType;
+  // ── BUYER ─────────────────────────────────────────────────────────────────
   budgetMin?: number;
   budgetMax?: number;
   propertySpecificType?: string;
   preferredArea?: string;
   surfaceM2?: number;
   floor?: number;
+  // ── SELLER ────────────────────────────────────────────────────────────────
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
 }
 
 export interface PropertyType {
@@ -97,6 +113,15 @@ export interface DossierDetail {
   propertyType: string;
   assignedAgentName: string;
   lastInteractionAt: string;
+  // Seller Specifics
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
 }
 
 export interface InteractionItem {
@@ -173,4 +198,13 @@ export const updateDealStage = async (idDeal: string, stage: DealStage): Promise
 
 export const confirmDossier = async (id: string, data: any): Promise<void> => {
   await api.patch(`/api/dossiers/${id}/confirm`, data);
+};
+
+export const updateMeetingStatus = async (meetingId: string, request: UpdateMeetingStatusDto): Promise<MeetingItem> => {
+  const response = await api.patch<MeetingItem>(`/api/agent/meetings/${meetingId}/status`, request);
+  return response.data;
+};
+
+export const deleteMeeting = async (meetingId: string): Promise<void> => {
+  await api.delete(`/api/agent/meetings/${meetingId}`);
 };

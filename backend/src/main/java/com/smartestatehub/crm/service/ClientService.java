@@ -34,7 +34,8 @@ public class ClientService {
         return clients.stream()
                 .map(c -> {
                     int folderCount = (int) c.getClientFolders().stream()
-                            .filter(f -> f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId))
+                            .filter(f -> (f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId)) || 
+                                         (f.getCreatedByAgent() != null && f.getCreatedByAgent().getIdUser().equals(agentId)))
                             .flatMap(f -> f.getDeals().stream())
                             .filter(d -> d.getDeletedAt() == null)
                             .count();
@@ -51,7 +52,7 @@ public class ClientService {
                             c.getSource() != null ? c.getSource() : "Inconnu",
                             folderCount,
                             c.getCreatedAt(),
-                            isNew
+                            isNew // this is the local boolean 'isNew' mapped to 'newClient' in record
                     );
                 })
                 .collect(Collectors.toList());
@@ -159,15 +160,16 @@ public class ClientService {
                 .filter(f -> f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId))
                 .flatMap(f -> f.getDeals().stream())
                 .filter(d -> d.getDeletedAt() == null)
-                .map(d -> new DossierListItemDto(
-                        d.getIdDeal(),
-                        d.getClientFolder().getClientType(),
-                        d.getStage(),
-                        d.getAiLeadScore(),
-                        d.getLastInteractionAt(),
-                        d.getIsUrgent()
-                ))
-                .collect(Collectors.toList());
+                    .map(d -> DossierListItemDto.builder()
+                            .idDeal(d.getIdDeal())
+                            .type(d.getClientFolder().getClientType())
+                            .stage(d.getStage())
+                            .aiLeadScore(d.getAiLeadScore())
+                            .lastInteractionAt(d.getLastInteractionAt())
+                            .isUrgent(d.getIsUrgent())
+                            .newDossier(d.getClientFolder().getStatus() == FolderStatus.PENDING)
+                            .build())
+                    .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -180,7 +182,7 @@ public class ClientService {
                         .clientFullName(f.getClient().getFirstName() + " " + f.getClient().getLastName())
                         .clientType(f.getClientType())
                         .createdAt(f.getCreatedAt())
-                        .isNew(f.getStatus() == FolderStatus.PENDING)
+                        .newDossier(f.getStatus() == FolderStatus.PENDING)
                         .build())
                 .collect(Collectors.toList());
     }

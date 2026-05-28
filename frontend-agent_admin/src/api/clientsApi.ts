@@ -25,7 +25,7 @@ export interface ClientIdentityDto {
   source: string;
   dossierCount: number;
   createdAt: string;
-  isNew: boolean;
+  newClient: boolean;
 }
 
 export interface CreateClientForm1Request {
@@ -65,7 +65,7 @@ export interface DossierListItem {
   aiLeadScore: number;
   lastInteractionAt: string | null;
   isUrgent: boolean;
-  isNew: boolean;
+  newDossier: boolean;
 }
 
 export const fetchClientDossiers = async (idClient: string): Promise<DossierListItem[]> => {

@@ -27,13 +27,23 @@ public class DossierDetailDto {
     private String aiSummary;
     private Boolean isUrgent;
     
-    // Specifics
+    // Buyer Specifics
     private Double budgetMin;
     private Double budgetMax;
     private String preferredArea;
     private Double preferredSizeM2;
     private Integer preferredFloor;
     private String propertyType;
+
+    // Seller Specifics (Mapping to Property fields)
+    private String propertyTitle;
+    private String address;
+    private String city;
+    private Double askingPrice;
+    private Double propertySurfaceM2;
+    private Integer numRooms;
+    private Integer propertyFloor;
+    private java.util.List<String> propertyImageUrls;
     
     private String assignedAgentName;
     private LocalDateTime lastInteractionAt;
