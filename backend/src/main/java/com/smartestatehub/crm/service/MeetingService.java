@@ -68,21 +68,35 @@ public class MeetingService {
                 .scheduledAt(request.getScheduledAt())
                 .notesLogged(request.getNotes())
                 .propertyAddress(request.getPropertyAddress())
-                .status(MeetingStatus.PENDING)
+                .status(request.getStatus() != null ? request.getStatus() : MeetingStatus.PENDING)
                 .build();
 
         return mapToDto(meetingRepository.save(meeting));
     }
 
     @Transactional
-    public MeetingDto toggleMeetingStatus(UUID meetingId, UUID agentId) {
+    public MeetingDto updateMeetingStatus(UUID meetingId, com.smartestatehub.crm.dto.UpdateMeetingStatusRequest request, UUID agentId) {
         Meeting meeting = meetingRepository.findById(meetingId)
-                .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable avec l'ID : " + meetingId));
+                .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + meetingId));
 
-        MeetingStatus currentStatus = meeting.getStatus();
-        meeting.setStatus(currentStatus == MeetingStatus.COMPLETED ? MeetingStatus.PENDING : MeetingStatus.COMPLETED);
+        if (request.getNewStatus() != null) {
+            meeting.setStatus(request.getNewStatus());
+        }
+
+        if (request.getNewScheduledAt() != null) {
+            meeting.setScheduledAt(request.getNewScheduledAt());
+        }
 
         return mapToDto(meetingRepository.save(meeting));
+    }
+
+    @Transactional
+    public void deleteMeeting(UUID meetingId, UUID agentId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + meetingId));
+        
+        // Optionnel: Vérifier que le meeting est bien lié à l'agent
+        meetingRepository.delete(meeting);
     }
 
     public MeetingDto mapToDto(Meeting meeting) {

@@ -100,9 +100,6 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
           </div>
         </div>
         <div className="flex gap-2 text-xs">
-          <Link to="/" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
-            Changer d'espace
-          </Link>
           <Link to="/design-system" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
             Design
           </Link>

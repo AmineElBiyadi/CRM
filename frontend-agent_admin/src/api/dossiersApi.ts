@@ -9,7 +9,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  const devAgentId = localStorage.getItem('dev_agent_id') || '8366d183-2fb7-44a1-8f16-2ec3ca78a320';
+  const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
   config.headers['X-Agent-Id'] = devAgentId;
   return config;
 });
@@ -25,7 +25,7 @@ export interface MeetingItem {
   scheduledAt: string; // ISO-8601
   clientFullName: string;
   type: string; // French label
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED';
+  status: 'SCHEDULED' | 'PENDING' | 'IN_PROGRESS' | 'RESCHEDULED' | 'POSTPONED' | 'CANCELED' | 'COMPLETED' | 'MISSED' | 'DRAFT';
   notes: string | null;
   propertyAddress: string | null;
 }
@@ -36,32 +36,63 @@ export interface CreateMeetingDto {
   scheduledAt: string; // ISO-8601
   notes?: string;
   propertyAddress?: string;
+  status?: MeetingItem['status'];
+}
+
+export interface UpdateMeetingStatusDto {
+  newStatus?: MeetingItem['status'];
+  newScheduledAt?: string; // ISO-8601
 }
 
 export interface DossierSummary {
-  idDeal: string;
+  idDeal: string | null;
+  idProfile: string;
+  idClient?: string;
   clientFullName: string;
   clientType: ClientType;
   stage: string;
-  aiLeadScore: number;
+  aiLeadScore: number | null;
   isUrgent: boolean;
   lastInteractionAt: string | null;
   aiRecommendedAction: string;
+  newDossier: boolean;
 }
 
 export interface CreateDossierRequest {
   idClient: string;
   type: ClientType;
+  // ── BUYER ─────────────────────────────────────────────────────────────────
   budgetMin?: number;
   budgetMax?: number;
   propertySpecificType?: string;
   preferredArea?: string;
   surfaceM2?: number;
   floor?: number;
+  // ── SELLER ────────────────────────────────────────────────────────────────
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
 }
 
+export interface PropertyType {
+  idPropertyType: string;
+  generalType: string;
+  specificType: string;
+}
+
+export const fetchPropertyTypes = async (): Promise<PropertyType[]> => {
+  const response = await api.get<PropertyType[]>('/api/property-types');
+  return response.data;
+};
+
 export interface DossierDetail {
-  idDeal: string;
+  idDeal: string | null;
+  idProfile: string;
   idClient: string;
   clientName: string;
   clientEmail: string;
@@ -82,6 +113,15 @@ export interface DossierDetail {
   propertyType: string;
   assignedAgentName: string;
   lastInteractionAt: string;
+  // Seller Specifics
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
 }
 
 export interface InteractionItem {
@@ -102,7 +142,12 @@ export interface CreateInteractionRequest {
 }
 
 export const fetchDossiers = async (): Promise<DossierSummary[]> => {
-  const response = await api.get('/api/agent/dossiers');
+  const response = await api.get<DossierSummary[]>('/api/agent/dossiers');
+  return response.data;
+};
+
+export const fetchAgentDossiers = async (agentId: string): Promise<DossierSummary[]> => {
+  const response = await api.get<DossierSummary[]>(`/api/agents/${agentId}/dossiers`);
   return response.data;
 };
 
@@ -149,4 +194,17 @@ export const createMeeting = async (request: CreateMeetingDto): Promise<MeetingI
 export const updateDealStage = async (idDeal: string, stage: DealStage): Promise<DossierDetail> => {
   const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/stage?stage=${stage}`);
   return response.data;
+};
+
+export const confirmDossier = async (id: string, data: any): Promise<void> => {
+  await api.patch(`/api/dossiers/${id}/confirm`, data);
+};
+
+export const updateMeetingStatus = async (meetingId: string, request: UpdateMeetingStatusDto): Promise<MeetingItem> => {
+  const response = await api.patch<MeetingItem>(`/api/agent/meetings/${meetingId}/status`, request);
+  return response.data;
+};
+
+export const deleteMeeting = async (meetingId: string): Promise<void> => {
+  await api.delete(`/api/agent/meetings/${meetingId}`);
 };

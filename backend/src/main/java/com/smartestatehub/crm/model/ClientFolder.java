@@ -43,6 +43,12 @@ public class ClientFolder {
     @Column(name = "client_type", nullable = false, columnDefinition = "client_type")
     private ClientType clientType;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Builder.Default
+    @Column(name = "status", nullable = false, columnDefinition = "folder_status")
+    private FolderStatus status = FolderStatus.PENDING;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

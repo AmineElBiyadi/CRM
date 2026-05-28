@@ -4,7 +4,7 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge, StageBadge } from "@/components/ui/design-bits";
 import { Search, LayoutGrid, List, Plus, X, Check, Users, FolderOpen, ChevronRight, ArrowRight, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { useClientIdentities, useCreateClientIdentity } from "@/hooks/useClients";
+import { useClientIdentities, useCreateClientIdentity, useConfirmClient } from "@/hooks/useClients";
 import { checkClientExistence, fetchClientDossiers, type ClientIdentityDto, type DossierListItem } from "@/api/clientsApi";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -111,6 +111,11 @@ function ClientDossierDrawer({
                       <span className="text-xs text-muted-foreground">
                         {stageLabel[d.stage] ?? d.stage}
                       </span>
+                      {d.newDossier && (
+                        <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
+                          NEW
+                        </span>
+                      )}
                       {d.isUrgent && (
                         <span className="flex items-center gap-1 text-[9px] uppercase tracking-wider font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-100">
                           <AlertCircle size={8} /> Urgent
@@ -184,15 +189,32 @@ function ClientsPage() {
 
   const { data: identities, isLoading } = useClientIdentities();
   const createIdentityMutation = useCreateClientIdentity();
+  const confirmClientMutation = useConfirmClient();
+
+  const [confirmingClient, setConfirmingClient] = useState<ClientIdentityDto | null>(null);
 
   const resetForm = () => {
     setCreating(false);
+    setConfirmingClient(null);
     setQuery("");
     setExistingClient(null);
     setForm({ firstName: "", lastName: "", email: "", phone: "", source: "Saisie manuelle" });
   };
 
   const handleCreate = async () => {
+    if (confirmingClient) {
+      confirmClientMutation.mutate(
+        { id: confirmingClient.idClient, data: form },
+        {
+          onSuccess: () => {
+            toast.success("Client confirmé avec succès !");
+            resetForm();
+          },
+          onError: () => toast.error("Erreur lors de la confirmation"),
+        }
+      );
+      return;
+    }
     try {
       const existing = await checkClientExistence({ email: form.email, phone: form.phone });
       if (existing) {
@@ -274,19 +296,45 @@ function ClientsPage() {
       ) : view === "grid" ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((c) => (
-            <NeuCard
-              key={c.idClient}
-              className="flex flex-col gap-4 cursor-pointer hover:shadow-lg transition-all group"
+            <NeuCard 
+              key={c.idClient} 
+              className={`p-6 pl-8 group hover:translate-y-[-2px] transition-all cursor-pointer relative overflow-hidden ${c.newClient ? 'border-amber-200 bg-amber-50/30 ring-1 ring-amber-100' : ''}`}
               onClick={() => setSelectedClient(c)}
             >
-              <div className="flex items-center gap-4">
-                <Avatar name={`${c.firstName} ${c.lastName}`} size={56} />
-                <div className="min-w-0">
-                  <div className="font-bold text-lg truncate group-hover:text-eerie transition-colors">
-                    {c.firstName} {c.lastName}
+              <div className="flex items-center gap-5 mb-4">
+                <Avatar name={`${c.firstName} ${c.lastName}`} size={56} className="ml-1" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="font-bold text-lg truncate group-hover:text-eerie transition-colors">
+                      {c.firstName} {c.lastName}
+                    </div>
+                    {c.newClient && (
+                      <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
+                        NEW
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground font-medium">{c.email}</div>
                 </div>
+                {c.newClient && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmingClient(c);
+                      setForm({
+                        firstName: c.firstName,
+                        lastName: c.lastName,
+                        email: c.email,
+                        phone: c.phone || "",
+                        source: c.source || "Saisie manuelle"
+                      });
+                      setCreating(true);
+                    }}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 text-ghost text-xs font-bold hover:bg-amber-600 transition-colors shadow-sm"
+                  >
+                    Confirmer
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3 py-2 border-y border-border/50">
                 <div>
@@ -327,15 +375,41 @@ function ClientsPage() {
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr
-                  key={c.idClient}
-                  className="border-b border-border last:border-0 hover:bg-alice/30 transition-colors cursor-pointer"
+                <tr 
+                  key={c.idClient} 
                   onClick={() => setSelectedClient(c)}
+                  className={`border-b border-border/50 hover:bg-alice/5 transition-colors cursor-pointer group ${c.newClient ? 'bg-amber-50/20' : ''}`}
                 >
                   <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={`${c.firstName} ${c.lastName}`} size={36} />
-                      <span className="font-bold">{c.firstName} {c.lastName}</span>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={`${c.firstName} ${c.lastName}`} size={36} />
+                        <span className="font-bold">{c.firstName} {c.lastName}</span>
+                        {c.newClient && (
+                          <span className="bg-amber-500 text-ghost text-[8px] font-black px-1 py-0.5 rounded-sm uppercase">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      {c.newClient && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmingClient(c);
+                            setForm({
+                              firstName: c.firstName,
+                              lastName: c.lastName,
+                              email: c.email,
+                              phone: c.phone || "",
+                              source: c.source || "Saisie manuelle"
+                            });
+                            setCreating(true);
+                          }}
+                          className="px-2 py-1 rounded bg-amber-500 text-ghost text-[10px] font-bold hover:bg-amber-600 transition-colors"
+                        >
+                          Confirmer
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td className="p-4">
@@ -425,7 +499,7 @@ function ClientsPage() {
                     className="mt-4 mx-auto block w-full py-3.5 rounded-2xl bg-eerie text-ghost text-sm font-bold text-center hover:opacity-90 transition-all"
                     onClick={resetForm}
                   >
-                    Créer un dossier →
+                    Créer un dossier
                   </Link>
                 </div>
               </div>

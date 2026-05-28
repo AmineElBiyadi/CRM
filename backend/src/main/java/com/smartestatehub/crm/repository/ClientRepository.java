@@ -14,6 +14,9 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
     Optional<Client> findByEmail(String email);
     Optional<Client> findByPhone(String phone);
 
-    @Query("SELECT DISTINCT c FROM Client c LEFT JOIN FETCH c.clientFolders f LEFT JOIN FETCH f.assignedAgent WHERE f.assignedAgent.idUser = :agentId AND c.deletedAt IS NULL")
+    @Query(value = "SELECT DISTINCT c.* FROM client c " +
+           "LEFT JOIN client_folder f ON c.id_client = f.id_client " +
+           "WHERE c.deleted_at IS NULL AND (c.id_agent_creator = :agentId OR f.id_agent = :agentId OR f.created_by_agent_id = :agentId)", 
+           nativeQuery = true)
     List<Client> findClientsByAgentId(@Param("agentId") UUID agentId);
 }
