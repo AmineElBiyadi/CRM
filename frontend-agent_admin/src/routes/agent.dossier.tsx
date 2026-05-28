@@ -26,7 +26,7 @@ import { toast } from "sonner";
 // @ts-ignore
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
 // @ts-ignore
-import { getContractsByDeal, updateContractStatus } from "@/api/contractApi";
+import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
 
 type DossierSearch = {
   id?: string;
@@ -210,6 +210,24 @@ function DossierPage() {
       await updateContractStatus(contractId, newStatus);
       setContracts((prev) => prev.map((c) => c.idContract === contractId ? { ...c, status: newStatus } : c));
       toast.success(`Statut → ${newStatus}`);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleMarkPaid = async (contractId: string, paymentId: string) => {
+    try {
+      await markPaymentPaid(contractId, paymentId);
+      setContracts((prev) => prev.map((c) => {
+        if (c.idContract === contractId) {
+          return {
+            ...c,
+            payments: c.payments.map((p: any) => p.idPayment === paymentId ? { ...p, isPaid: true } : p)
+          };
+        }
+        return c;
+      }));
+      toast.success("Versement marqué comme payé !");
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -685,6 +703,15 @@ function DossierPage() {
                         Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
                       </p>
                     </div>
+                    {c.pdfUrl && (
+                      <button
+                        onClick={() => window.open(c.pdfUrl, '_blank')}
+                        className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
+                        title="Aperçu du PDF"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Tracker statut */}
@@ -721,6 +748,15 @@ function DossierPage() {
                             <div className="text-sm font-bold shrink-0">
                               {(p.amount || 0).toLocaleString("fr-MA")} MAD
                             </div>
+                            {!p.isPaid && (
+                               <button 
+                                 onClick={() => handleMarkPaid(c.idContract, p.idPayment)}
+                                 className="text-[10px] uppercase font-bold px-2 py-1.5 bg-honeydew text-eerie rounded-md hover:bg-honeydew/80 ml-1 transition-all"
+                                 title="Marquer comme payé"
+                               >
+                                 Payer
+                               </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -778,7 +814,11 @@ function DossierPage() {
                 <button
                   onClick={() => {
                     if (f.filePath) {
-                      window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                      if (f.filePath.startsWith("http")) {
+                        window.open(f.filePath, '_blank');
+                      } else {
+                        window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                      }
                     } else {
                       toast.error("Le lien vers ce document n'est pas disponible.");
                     }
