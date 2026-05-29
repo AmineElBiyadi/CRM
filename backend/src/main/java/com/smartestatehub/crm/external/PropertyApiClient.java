@@ -99,6 +99,8 @@ public class PropertyApiClient {
                 apiType = "farm";
             } else if (typeStr.contains("mobile") || typeStr.contains("manufactured")) {
                 apiType = "mobile";
+            } else if (typeStr.contains("commercial") || typeStr.contains("retail") || typeStr.contains("office") || typeStr.contains("warehouse") || typeStr.contains("restaurant")) {
+                apiType = "commercial";
             } else {
                 apiType = "single_family"; // default or "house"
             }

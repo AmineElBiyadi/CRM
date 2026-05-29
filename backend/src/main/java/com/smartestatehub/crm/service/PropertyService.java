@@ -7,6 +7,7 @@ import com.smartestatehub.crm.model.Property;
 import com.smartestatehub.crm.model.PropertyImage;
 import com.smartestatehub.crm.model.PropertyType;
 import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.crm.repository.OfferRepository;
 import com.smartestatehub.crm.repository.PropertyImageRepository;
 import com.smartestatehub.crm.repository.PropertyRepository;
 import com.smartestatehub.crm.repository.PropertyTypeRepository;
@@ -31,13 +32,48 @@ public class PropertyService {
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
     private final DealRepository dealRepository;
+    private final OfferRepository offerRepository;
     private final PropertyApiClient propertyApiClient;
 
     /**
      * Effectue une recherche de biens immobiliers (externe RapidAPI ou mock Maroc de secours).
      */
-    public PropertyDto.SearchResponse search(String city, String propertyType, Double minPrice, Double maxPrice, Integer minRooms, Integer maxRooms, int page) {
-        return propertyApiClient.searchProperties(city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
+    public PropertyDto.SearchResponse search(UUID dealId, String city, String propertyType, Double minPrice, Double maxPrice, Integer minRooms, Integer maxRooms, int page) {
+        if (dealId != null) {
+            Optional<Deal> dealOpt = dealRepository.findById(dealId);
+            if (dealOpt.isPresent() && dealOpt.get().getClientFolder() != null && dealOpt.get().getClientFolder().getBuyerFolder() != null) {
+                var buyerFolder = dealOpt.get().getClientFolder().getBuyerFolder();
+                if (city == null && buyerFolder.getPreferredArea() != null && !buyerFolder.getPreferredArea().isBlank()) {
+                    city = buyerFolder.getPreferredArea();
+                }
+                if (propertyType == null && buyerFolder.getPropertyType() != null) {
+                    propertyType = buyerFolder.getPropertyType().getSpecificType();
+                }
+                if (minPrice == null && buyerFolder.getBudgetMin() != null) {
+                    minPrice = buyerFolder.getBudgetMin();
+                }
+                if (maxPrice == null && buyerFolder.getBudgetMax() != null) {
+                    maxPrice = buyerFolder.getBudgetMax();
+                }
+            }
+        }
+        PropertyDto.SearchResponse response = propertyApiClient.searchProperties(city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
+        
+        // Exclure les propriétés indisponibles (déjà en négociation chez nous)
+        if (response != null && response.getResults() != null) {
+            List<String> unavailableUrls = propertyRepository.findAll().stream()
+                    .filter(p -> !p.isAvailable() && p.getListingUrl() != null)
+                    .map(com.smartestatehub.crm.model.Property::getListingUrl)
+                    .collect(java.util.stream.Collectors.toList());
+
+            List<PropertyDto.ExternalResult> filtered = response.getResults().stream()
+                    .filter(ext -> ext.getListingUrl() == null || !unavailableUrls.contains(ext.getListingUrl()))
+                    .collect(java.util.stream.Collectors.toList());
+            response.setResults(filtered);
+            response.setTotal(filtered.size());
+        }
+        
+        return response;
     }
 
     /**
@@ -80,6 +116,10 @@ public class PropertyService {
         Property property;
         if (existingOpt.isPresent()) {
             property = existingOpt.get();
+            property.setAvailable(false);
+            property.setUnavailableAt(java.time.LocalDateTime.now());
+            property.setUnavailableReason("NEGOTIATION");
+            property = propertyRepository.save(property);
             log.info("La propriété existe déjà en base de données. ID: {}", property.getIdProperty());
         } else {
             // Création de la nouvelle propriété
@@ -93,7 +133,9 @@ public class PropertyService {
                     .floor(request.getFloor())
                     .listingUrl(request.getListingUrl())
                     .propertyType(propertyType)
-                    .isAvailable(true)
+                    .isAvailable(false)
+                    .unavailableAt(java.time.LocalDateTime.now())
+                    .unavailableReason("NEGOTIATION")
                     .build();
 
             property = propertyRepository.save(property);
@@ -116,7 +158,15 @@ public class PropertyService {
         }
 
         // Note: Ici, on peut également logguer une interaction automatique sur le deal ou créer une offre de visite
-        // pour formaliser la liaison de cette propriété au dossier client.
+        // Création de l'offre
+        com.smartestatehub.crm.model.Offer offer = com.smartestatehub.crm.model.Offer.builder()
+                .deal(deal)
+                .property(property)
+                .offerAmount(property.getPrice() != null ? property.getPrice() : 0.0)
+                .status(com.smartestatehub.crm.model.OfferStatus.PENDING)
+                .build();
+        offerRepository.save(offer);
+        log.info("Offre PENDING créée pour le deal {} et la propriété {}", dealId, property.getIdProperty());
 
         return mapToResponse(property);
     }

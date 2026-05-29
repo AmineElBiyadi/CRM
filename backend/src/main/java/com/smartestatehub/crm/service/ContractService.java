@@ -41,12 +41,30 @@ public class ContractService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
 
+        // Récupérer l'offre ACCEPTED pour ce deal (on ne peut générer de contrat formel qu'avec une propriété acceptée)
+        Double finalPrice = request.getAgreedPrice();
+        String summary = request.getNotes() != null ? request.getNotes() : "Nouveau mandat de recherche.";
+
+        if (deal.getOffers() != null) {
+            for (com.smartestatehub.crm.model.Offer offer : deal.getOffers()) {
+                if (offer.getStatus() == com.smartestatehub.crm.model.OfferStatus.ACCEPTED) {
+                    if (finalPrice == null || finalPrice == 0.0) {
+                        finalPrice = offer.getOfferAmount();
+                    }
+                    if (offer.getProperty() != null) {
+                        summary += " | Propriété: " + offer.getProperty().getTitle() + " - " + offer.getProperty().getAddress();
+                    }
+                    break;
+                }
+            }
+        }
+
         Contract contract = Contract.builder()
                 .deal(deal)
-                .agreedPrice(request.getAgreedPrice())
+                .agreedPrice(finalPrice)
                 .depositAmount(request.getDepositAmount())
                 .status(ContractStatus.DRAFT)
-                .aiRiskSummary(request.getNotes() != null ? request.getNotes() : "Nouveau mandat de recherche.")
+                .aiRiskSummary(summary)
                 .build();
 
         List<ContractPayment> payments = new ArrayList<>();
