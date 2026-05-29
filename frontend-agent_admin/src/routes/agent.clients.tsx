@@ -25,11 +25,27 @@ function ClientDossierDrawer({
   client: ClientIdentityDto;
   onClose: () => void;
 }) {
-  const { data: dossiers, isLoading } = useQuery({
+  const { data: rawDossiers, isLoading } = useQuery({
     queryKey: ["client-dossiers", client.idClient],
     queryFn: () => fetchClientDossiers(client.idClient),
     enabled: !!client.idClient,
   });
+
+  const dossiers = useMemo(() => {
+     if (!rawDossiers) return [];
+     return [...rawDossiers].sort((a, b) => {
+        // 1. New dossiers first
+        if (a.newDossier && !b.newDossier) return -1;
+        if (!a.newDossier && b.newDossier) return 1;
+        
+        // 2. Urgent dossiers next
+        if (a.isUrgent && !b.isUrgent) return -1;
+        if (!a.isUrgent && b.isUrgent) return 1;
+
+        // 3. Then sort by createdAt descending
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+   }, [rawDossiers]);
 
   const stageLabel: Record<string, string> = {
     COLD: "Froid",
@@ -234,7 +250,17 @@ function ClientsPage() {
   };
 
   const filtered = useMemo(() => {
-    const data = identities || [];
+    let data = [...(identities || [])];
+    
+    // Sort: New clients (PENDING) first, then by creation date descending
+     data.sort((a, b) => {
+       if (a.newClient && !b.newClient) return -1;
+       if (!a.newClient && b.newClient) return 1;
+       
+       // Both are either NEW or NOT NEW, sort by createdAt descending
+       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+     });
+
     if (!query) return data;
     const q = query.toLowerCase();
     return data.filter(

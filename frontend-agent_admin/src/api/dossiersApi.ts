@@ -56,6 +56,7 @@ export interface DossierSummary {
   lastInteractionAt: string | null;
   aiRecommendedAction: string;
   newDossier: boolean;
+  createdAt: string;
 }
 
 export interface CreateDossierRequest {
@@ -66,9 +67,29 @@ export interface CreateDossierRequest {
   budgetMax?: number;
   propertySpecificType?: string;
   preferredArea?: string;
-  surfaceM2?: number;
-  floor?: number;
+  preferredSizeM2?: number;
+  preferredFloor?: number;
   // ── SELLER ────────────────────────────────────────────────────────────────
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
+}
+
+export interface UpdateDossierRequest {
+  type: ClientType;
+  // BUYER
+  budgetMin?: number;
+  budgetMax?: number;
+  propertySpecificType?: string;
+  preferredArea?: string;
+  preferredSizeM2?: number;
+  preferredFloor?: number;
+  // SELLER
   propertyTitle?: string;
   address?: string;
   city?: string;
@@ -157,6 +178,11 @@ export const createDossier = async (request: CreateDossierRequest): Promise<void
 
 export const fetchDossierDetail = async (id: string): Promise<DossierDetail> => {
   const response = await api.get<DossierDetail>(`/api/agent/dossiers/${id}`);
+  return response.data;
+};
+
+export const updateDossier = async (id: string, request: UpdateDossierRequest): Promise<DossierDetail> => {
+  const response = await api.put<DossierDetail>(`/api/agent/dossiers/${id}`, request);
   return response.data;
 };
 

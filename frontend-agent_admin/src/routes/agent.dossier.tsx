@@ -7,11 +7,13 @@ import {
   logInteraction as apiLogInteraction,
   fetchDealMeetings,
   createMeeting as apiCreateMeeting,
+  updateDossier as apiUpdateDossier,
   updateDealStage as apiUpdateDealStage,
   updateMeetingStatus as apiUpdateMeetingStatus,
   deleteMeeting as apiDeleteMeeting,
   type InteractionType,
   type CreateInteractionRequest,
+  type UpdateDossierRequest,
   type MeetingType,
   type CreateMeetingDto,
   type DealStage,
@@ -24,7 +26,7 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw,
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
@@ -64,6 +66,24 @@ function DossierPage() {
   
   const [logging, setLogging] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
+  const [editingDossier, setEditingDossier] = useState(false);
+  const [editForm, setEditForm] = useState<UpdateDossierRequest>({
+    type: "BUYER",
+    budgetMin: 0,
+    budgetMax: 0,
+    preferredArea: "",
+    preferredSizeM2: 0,
+    preferredFloor: -1,
+    propertySpecificType: "",
+    propertyTitle: "",
+    address: "",
+    city: "",
+    askingPrice: 0,
+    propertySurfaceM2: 0,
+    numRooms: 0,
+    propertyFloor: 0,
+  });
+
   const [propDetail, setPropDetail] = useState<any | null>(null);
   const [contracts, setContracts] = useState<any[]>([]);
   const [linkedProperties, setLinkedProperties] = useState<any[]>([]);
@@ -93,6 +113,11 @@ function DossierPage() {
     queryKey: ["dossier", id],
     queryFn: () => fetchDossierDetail(id!),
     enabled: !!id,
+  });
+
+  const { data: propertyTypes } = useQuery({
+    queryKey: ["property-types"],
+    queryFn: () => fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/property-types`).then(res => res.json()),
   });
 
   const { data: interactions, isLoading: loadingInteractions } = useQuery({
@@ -173,6 +198,18 @@ function DossierPage() {
     },
     onError: () => {
       toast.error("Erreur lors de la mise à jour de l'étape");
+    }
+  });
+
+  const updateDossierMutation = useMutation({
+    mutationFn: (request: UpdateDossierRequest) => apiUpdateDossier(id!, request),
+    onSuccess: () => {
+      toast.success("Dossier mis à jour avec succès");
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+      setEditingDossier(false);
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour du dossier");
     }
   });
 
@@ -263,6 +300,31 @@ function DossierPage() {
     mutation.mutate(request);
   };
 
+  const handleOpenEdit = () => {
+    if (!dossier) return;
+    setEditForm({
+      type: dossier.clientType,
+      budgetMin: dossier.budgetMin,
+      budgetMax: dossier.budgetMax,
+      preferredArea: dossier.preferredArea,
+      preferredSizeM2: dossier.preferredSizeM2,
+      preferredFloor: dossier.preferredFloor ?? -1,
+      propertySpecificType: dossier.propertyType,
+      propertyTitle: dossier.propertyTitle || "",
+      address: dossier.address || "",
+      city: dossier.city || "",
+      askingPrice: dossier.askingPrice || 0,
+      propertySurfaceM2: dossier.propertySurfaceM2 || 0,
+      numRooms: dossier.numRooms || 0,
+      propertyFloor: dossier.propertyFloor ?? -1,
+    });
+    setEditingDossier(true);
+  };
+
+  const handleUpdateDossier = () => {
+    updateDossierMutation.mutate(editForm);
+  };
+
   const handleCreateMeeting = (status: MeetingItem['status'] = 'PENDING') => {
     if (!newMeetingDate || !newMeetingTime) {
       toast.error("Veuillez saisir une date et une heure");
@@ -289,6 +351,15 @@ function DossierPage() {
 
   const currentStageIdx = STAGES.findIndex(s => s.value === dossier.stage);
 
+  const floorOptions = [
+    { value: -1, label: "Indifférent" },
+    { value: 0, label: "Rez-de-chaussée" },
+    { value: 1, label: "1er étage" },
+    { value: 2, label: "2ème étage" },
+    { value: 3, label: "3ème étage et +" },
+    { value: -2, label: "Dernier étage" },
+  ];
+
   const iconMap: Record<string, any> = { 
     CALL: Phone, 
     VISIT: MapPin, 
@@ -299,10 +370,31 @@ function DossierPage() {
   };
 
   return (
-    <div className="grid grid-cols-12 gap-5 md:gap-6 max-w-[1500px]">
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link
+          to="/agent/dossiers"
+          className="w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors"
+        >
+          <ChevronLeft size={20} />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-eerie">Détail du Dossier</h1>
+          <p className="text-muted-foreground text-sm">Consultez et gérez les informations de ce dossier client.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-5 md:gap-6 max-w-[1500px]">
       {/* Left — profile */}
       <div className="col-span-12 lg:col-span-3 space-y-5">
-        <NeuCard className="text-center">
+        <NeuCard className="text-center relative group">
+          <button 
+            onClick={handleOpenEdit}
+            className="absolute top-4 right-4 p-2 rounded-xl neu-sm text-muted-foreground hover:text-eerie hover:bg-alice/50 transition-all opacity-0 group-hover:opacity-100"
+            title="Modifier le dossier"
+          >
+            <RotateCcw size={14} className="rotate-45" />
+          </button>
           <Avatar name={dossier.clientName} size={88} />
           <h2 className="font-bold text-lg mt-3">{dossier.clientName}</h2>
           <SoftBadge tone="info" className="mt-1">{dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}</SoftBadge>
@@ -332,6 +424,12 @@ function DossierPage() {
                 <span className="text-sm">{dossier.assignedAgentName}</span>
               </div>
             </div>
+            <button 
+              onClick={handleOpenEdit}
+              className="w-full mt-4 py-2.5 rounded-xl neu-sm text-xs font-bold text-muted-foreground hover:text-eerie hover:bg-alice/50 transition-all flex items-center justify-center gap-2"
+            >
+              <RotateCcw size={12} className="rotate-45" /> Modifier dossier
+            </button>
           </div>
         </NeuCard>
 
@@ -1116,8 +1214,9 @@ function DossierPage() {
           </button>
         </NeuCard>
       </div>
+    </div>
 
-      {/* Modale : Nouveau contrat (formulaire guidé) */}
+    {/* Modale : Nouveau contrat (formulaire guidé) */}
       {showContractForm && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -1156,6 +1255,178 @@ function DossierPage() {
                 <SoftBadge tone="info">{propDetail.numRooms} pièces</SoftBadge>
               </div>
               <button onClick={() => setPropDetail(null)} className="w-full py-2.5 rounded-xl bg-eerie text-ghost text-sm font-medium">Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dossier Modal */}
+      {editingDossier && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-eerie/40 backdrop-blur-md"
+          onClick={() => setEditingDossier(false)}
+        >
+          <div 
+            className="relative bg-ghost rounded-[2.5rem] max-w-2xl w-full p-8 md:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.4)] flex flex-col gap-8 max-h-[90vh] overflow-y-auto soft-scroll"
+            onClick={e => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setEditingDossier(false)}
+              className="absolute top-6 right-6 w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight">Modifier le Dossier</h2>
+              <p className="text-muted-foreground text-sm mt-2 font-medium">
+                Mettez à jour les critères et informations du dossier {dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              {dossier.clientType === 'BUYER' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum (MAD)</label>
+                    <input 
+                      type="number"
+                      value={editForm.budgetMin}
+                      onChange={e => setEditForm({...editForm, budgetMin: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum (MAD)</label>
+                    <input 
+                      type="number"
+                      value={editForm.budgetMax}
+                      onChange={e => setEditForm({...editForm, budgetMax: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Zone Préférée</label>
+                    <input 
+                      value={editForm.preferredArea}
+                      onChange={e => setEditForm({...editForm, preferredArea: e.target.value})}
+                      placeholder="Ex: Gauthier, Maarif..."
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface Préférée (m²)</label>
+                    <input 
+                      type="number"
+                      value={editForm.preferredSizeM2}
+                      onChange={e => setEditForm({...editForm, preferredSizeM2: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage Préféré</label>
+                    <select 
+                      value={editForm.preferredFloor}
+                      onChange={e => setEditForm({...editForm, preferredFloor: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
+                    >
+                      {floorOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Type de Bien</label>
+                    <select 
+                      value={editForm.propertySpecificType}
+                      onChange={e => setEditForm({...editForm, propertySpecificType: e.target.value})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
+                    >
+                      <option value="">Sélectionner un type</option>
+                      {propertyTypes?.map((pt: any) => (
+                        <option key={pt.idPropertyType} value={pt.specificType}>{pt.specificType}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="col-span-1 md:col-span-2 space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Titre de la Propriété</label>
+                    <input 
+                      value={editForm.propertyTitle}
+                      onChange={e => setEditForm({...editForm, propertyTitle: e.target.value})}
+                      placeholder="Ex: Bel appartement à Gauthier"
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Adresse</label>
+                    <input 
+                      value={editForm.address}
+                      onChange={e => setEditForm({...editForm, address: e.target.value})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Ville</label>
+                    <input 
+                      value={editForm.city}
+                      onChange={e => setEditForm({...editForm, city: e.target.value})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé (MAD)</label>
+                    <input 
+                      type="number"
+                      value={editForm.askingPrice}
+                      onChange={e => setEditForm({...editForm, askingPrice: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface (m²)</label>
+                    <input 
+                      type="number"
+                      value={editForm.propertySurfaceM2}
+                      onChange={e => setEditForm({...editForm, propertySurfaceM2: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nombre de Pièces</label>
+                    <input 
+                      type="number"
+                      value={editForm.numRooms}
+                      onChange={e => setEditForm({...editForm, numRooms: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
+                    <select 
+                      value={editForm.propertyFloor}
+                      onChange={e => setEditForm({...editForm, propertyFloor: Number(e.target.value)})}
+                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
+                    >
+                      {floorOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3 mt-4">
+              <button 
+                onClick={handleUpdateDossier}
+                disabled={updateDossierMutation.isPending}
+                className="w-full py-4 rounded-2xl bg-eerie text-ghost font-bold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                {updateDossierMutation.isPending ? "Mise à jour..." : "Enregistrer les modifications"}
+              </button>
             </div>
           </div>
         </div>
