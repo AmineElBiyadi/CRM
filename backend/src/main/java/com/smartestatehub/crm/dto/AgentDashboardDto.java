@@ -9,5 +9,6 @@ public record AgentDashboardDto(
     AgentKpiDto kpis,
     List<MeetingDto> todayMeetings,
     List<DealPriorityDto> priorities,
-    List<MeetingDto> todayTasks
+    List<MeetingDto> todayTasks,
+    List<ClientIdentityDto> pendingClients
 ) {}

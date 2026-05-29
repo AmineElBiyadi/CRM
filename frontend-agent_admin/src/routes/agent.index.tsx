@@ -1,9 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAgentDashboard, useToggleMeeting } from "@/hooks/useDashboard";
+import { useConfirmClient } from "@/hooks/useClients";
 import { NeuCard } from "@/components/ui/neu-card";
-import { Avatar, LeadScore, StageBadge } from "@/components/ui/design-bits";
-import { Phone, Calendar, FileText, MessageSquarePlus, CheckCircle2, Clock, Users, FolderCheck, Sparkles } from "lucide-react";
+import { Avatar, LeadScore, StageBadge, SoftBadge } from "@/components/ui/design-bits";
+import { 
+  Phone, Calendar, FileText, MessageSquarePlus, CheckCircle2, 
+  Clock, Users, FolderCheck, Sparkles, UserPlus, ArrowRight, X 
+} from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export const Route = createFileRoute("/agent/")({
   component: AgentDashboard,
@@ -13,6 +18,16 @@ function AgentDashboard() {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useAgentDashboard();
   const toggleMeetingMutation = useToggleMeeting();
+  const confirmClientMutation = useConfirmClient();
+
+  const [confirmingClient, setConfirmingClient] = useState<any>(null);
+  const [confirmForm, setConfirmForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    source: "Saisie manuelle",
+  });
 
   if (isLoading) {
     return (
@@ -75,6 +90,7 @@ function AgentDashboard() {
   const todayMeetings = data?.todayMeetings || [];
   const priorities = data?.priorities || [];
   const todayTasks = data?.todayTasks || [];
+  const pendingClients = data?.pendingClients || [];
 
   // Formatter la date du jour en français
   const formattedDate = new Date().toLocaleDateString("fr-FR", {
@@ -99,6 +115,19 @@ function AgentDashboard() {
     });
   };
 
+  const handleConfirm = () => {
+    confirmClientMutation.mutate(
+      { id: confirmingClient.idClient, data: confirmForm },
+      {
+        onSuccess: () => {
+          toast.success("Client confirmé avec succès !");
+          setConfirmingClient(null);
+        },
+        onError: () => toast.error("Erreur lors de la confirmation"),
+      }
+    );
+  };
+
   return (
     <div className="space-y-6 md:space-y-8 max-w-[1400px]">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -110,6 +139,52 @@ function AgentDashboard() {
           Score mensuel : <span className="font-bold">{data?.kpis?.monthlyScore ?? 0}</span>
         </div>
       </div>
+
+      {/* Nouveaux Clients à Confirmer */}
+      {pendingClients.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-top duration-500">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-ghost shadow-sm">
+              <UserPlus size={18} />
+            </div>
+            <h2 className="font-bold text-lg">Nouveaux clients à confirmer</h2>
+            <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-200 ml-1">
+              {pendingClients.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pendingClients.map((c: any) => (
+              <NeuCard 
+                key={c.idClient} 
+                className="group border-amber-100 bg-amber-50/30 ring-1 ring-amber-50"
+              >
+                <div className="flex items-center gap-4">
+                  <Avatar name={`${c.firstName} ${c.lastName}`} size={44} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm truncate">{c.firstName} {c.lastName}</div>
+                    <div className="text-[10px] text-muted-foreground font-medium truncate">{c.email}</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setConfirmingClient(c);
+                      setConfirmForm({
+                        firstName: c.firstName,
+                        lastName: c.lastName,
+                        email: c.email,
+                        phone: c.phone || "",
+                        source: c.source || "Saisie manuelle"
+                      });
+                    }}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 text-ghost text-xs font-bold hover:bg-amber-600 transition-colors shadow-sm"
+                  >
+                    Confirmer
+                  </button>
+                </div>
+              </NeuCard>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Planning du jour */}
       <div className="glass-dark rounded-3xl p-4 md:p-6">
@@ -143,6 +218,83 @@ function AgentDashboard() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmingClient && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-eerie/40 backdrop-blur-md"
+          onClick={() => setConfirmingClient(null)}
+        >
+          <div 
+            className="relative bg-ghost rounded-[2.5rem] max-w-lg w-full p-8 md:p-10 shadow-[0_20px_70px_rgba(0,0,0,0.4)] flex flex-col gap-8"
+            onClick={e => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setConfirmingClient(null)}
+              className="absolute top-6 right-6 w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight">Confirmer le Client</h2>
+              <p className="text-muted-foreground text-sm mt-2 font-medium">
+                Vérifiez et complétez les informations pour activer le compte portail.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prénom</label>
+                  <input 
+                    value={confirmForm.firstName}
+                    onChange={e => setConfirmForm({...confirmForm, firstName: e.target.value})}
+                    className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nom</label>
+                  <input 
+                    value={confirmForm.lastName}
+                    onChange={e => setConfirmForm({...confirmForm, lastName: e.target.value})}
+                    className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Email</label>
+                <input 
+                  value={confirmForm.email}
+                  onChange={e => setConfirmForm({...confirmForm, email: e.target.value})}
+                  className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Téléphone</label>
+                <input 
+                  value={confirmForm.phone}
+                  onChange={e => setConfirmForm({...confirmForm, phone: e.target.value})}
+                  placeholder="06..."
+                  className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 mt-2">
+              <button 
+                onClick={handleConfirm}
+                disabled={confirmClientMutation.isPending}
+                className="w-full py-4 rounded-2xl bg-eerie text-ghost font-bold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                {confirmClientMutation.isPending ? "Confirmation..." : <>Confirmer & Envoyer l'accès <ArrowRight size={18} /></>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">

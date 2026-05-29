@@ -5,6 +5,7 @@ import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.crm.dto.CreateDossierRequest;
 import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
+import com.smartestatehub.crm.dto.UpdateDossierRequest;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
 
@@ -240,6 +241,80 @@ public class DealService {
     }
 
     @Transactional
+    public DossierDetailDto updateDossier(UUID id, UpdateDossierRequest request) {
+        Optional<Deal> dealOpt = dealRepository.findById(id);
+        ClientFolder folder;
+        Deal deal = null;
+
+        if (dealOpt.isPresent()) {
+            deal = dealOpt.get();
+            folder = deal.getClientFolder();
+        } else {
+            folder = clientFolderRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Dossier/Folder not found: " + id));
+        }
+
+        // Update Folder Type if changed
+        if (request.getType() != null) {
+            folder.setClientType(request.getType());
+        }
+
+        if (folder.getClientType() == ClientType.BUYER) {
+            BuyerFolder buyer = folder.getBuyerFolder();
+            if (buyer == null) {
+                buyer = BuyerFolder.builder().clientFolder(folder).idProfile(folder.getIdProfile()).build();
+                folder.setBuyerFolder(buyer);
+            }
+            buyer.setBudgetMin(request.getBudgetMin());
+            buyer.setBudgetMax(request.getBudgetMax());
+            buyer.setPreferredSizeM2(request.getPreferredSizeM2());
+            buyer.setPreferredArea(request.getPreferredArea());
+            buyer.setPreferredFloor(request.getPreferredFloor() != null ? request.getPreferredFloor() : -1);
+
+            if (request.getPropertySpecificType() != null) {
+                PropertyType pType = propertyTypeRepository.findAll().stream()
+                        .filter(pt -> pt.getSpecificType().equalsIgnoreCase(request.getPropertySpecificType()))
+                        .findFirst()
+                        .orElse(null);
+                buyer.setPropertyType(pType);
+            }
+        } else {
+            SellerFolder seller = folder.getSellerFolder();
+            if (seller == null) {
+                seller = SellerFolder.builder().clientFolder(folder).idProfile(folder.getIdProfile()).build();
+                folder.setSellerFolder(seller);
+            }
+
+            Property property;
+            if (seller.getProperties() == null || seller.getProperties().isEmpty()) {
+                property = Property.builder().sellerFolder(seller).isAvailable(true).build();
+                seller.setProperties(new java.util.ArrayList<>(List.of(property)));
+            } else {
+                property = seller.getProperties().get(0);
+            }
+
+            property.setTitle(request.getPropertyTitle());
+            property.setAddress(request.getAddress());
+            property.setCity(request.getCity());
+            property.setPrice(request.getAskingPrice());
+            property.setSurfaceM2(request.getPropertySurfaceM2());
+            property.setNumRooms(request.getNumRooms());
+            property.setFloor(request.getPropertyFloor());
+
+            if (request.getPropertySpecificType() != null) {
+                PropertyType pType = propertyTypeRepository.findAll().stream()
+                        .filter(pt -> pt.getSpecificType().equalsIgnoreCase(request.getPropertySpecificType()))
+                        .findFirst()
+                        .orElse(null);
+                property.setPropertyType(pType);
+            }
+        }
+
+        clientFolderRepository.save(folder);
+        return getDossierDetail(id);
+    }
+
+    @Transactional
     public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage) {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
@@ -262,6 +337,7 @@ public class DealService {
         dto.setLastInteractionAt(deal.getLastInteractionAt());
         dto.setAiRecommendedAction(deal.getAiRecommendedAction());
         dto.setNewDossier(deal.getClientFolder().getStatus() == FolderStatus.PENDING);
+        dto.setCreatedAt(deal.getCreatedAt());
         
         return dto;
     }
@@ -282,6 +358,7 @@ public class DealService {
         dto.setNewDossier(folder.getStatus() == FolderStatus.PENDING);
         dto.setAiRecommendedAction("Nouveau dossier à qualifier.");
         dto.setLastInteractionAt(folder.getCreatedAt());
+        dto.setCreatedAt(folder.getCreatedAt());
         return dto;
     }
 
@@ -301,7 +378,8 @@ public class DealService {
                 false,
                 false, // newDossier handled in caller
                 null,  // Time handled in caller
-                null   // Action handled in caller
+                null,   // Action handled in caller
+                folder.getCreatedAt()
         );
     }
 }

@@ -16,6 +16,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+import { type ClientIdentityDto } from './clientsApi';
+
 export interface MeetingDto {
   idMeeting: string;
   scheduledAt: string;
@@ -52,6 +54,7 @@ export interface AgentDashboardDto {
   todayMeetings: MeetingDto[];
   priorities: DealPriorityDto[];
   todayTasks: MeetingDto[];
+  pendingClients: ClientIdentityDto[];
 }
 
 export const fetchAgentDashboard = async (): Promise<AgentDashboardDto> => {

@@ -4,6 +4,7 @@ import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.crm.dto.AgentDashboardDto;
 import com.smartestatehub.crm.dto.AgentKpiDto;
+import com.smartestatehub.crm.dto.ClientIdentityDto;
 import com.smartestatehub.crm.dto.DealPriorityDto;
 import com.smartestatehub.crm.dto.MeetingDto;
 import com.smartestatehub.crm.model.ContractStatus;
@@ -34,6 +35,7 @@ public class DashboardService {
     private final ContractRepository contractRepository;
     private final MeetingRepository meetingRepository;
     private final MeetingService meetingService;
+    private final ClientService clientService;
 
     @Transactional(readOnly = true)
     public AgentDashboardDto getAgentDashboard(UUID agentId) {
@@ -75,7 +77,12 @@ public class DashboardService {
                 .map(this::mapToPriorityDto)
                 .collect(Collectors.toList());
 
-        // 5. Assemblage du dashboard
+        // 5. Nouveaux clients PENDING
+        List<ClientIdentityDto> pendingClients = clientService.getClientIdentitiesForAgent(agentId).stream()
+                .filter(c -> c.newClient())
+                .collect(Collectors.toList());
+
+        // 6. Assemblage du dashboard
         return new AgentDashboardDto(
                 agentFirstName,
                 agentFullName,
@@ -83,7 +90,8 @@ public class DashboardService {
                 kpis,
                 todayMeetings, // Planning
                 priorities,    // Priorités
-                todayMeetings  // Tâches du jour (checklist)
+                todayMeetings, // Tâches du jour (checklist)
+                pendingClients // Nouveaux clients à confirmer
         );
     }
 

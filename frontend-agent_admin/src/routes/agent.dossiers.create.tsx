@@ -45,16 +45,16 @@ function CreateDossierPage() {
     budgetMax: 0,
     propertySpecificType: 'Appartement',
     preferredArea: '',
-    surfaceM2: 0,
-    floor: -1,
+    preferredSizeM2: 0,
+    preferredFloor: -1,
     // Seller defaults
     propertyTitle: '',
     address: '',
-    city: '',
+    city: 'Casablanca',
     askingPrice: 0,
     propertySurfaceM2: 0,
     numRooms: 0,
-    propertyFloor: 0,
+    propertyFloor: -1,
   });
 
   const [openPropertyType, setOpenPropertyType] = useState(false);
@@ -141,8 +141,8 @@ function CreateDossierPage() {
           budgetMax: dossierToConfirm.budgetMax,
           propertySpecificType: dossierToConfirm.propertyType,
           preferredArea: dossierToConfirm.preferredArea,
-          surfaceM2: dossierToConfirm.preferredSizeM2,
-          floor: dossierToConfirm.preferredFloor,
+          preferredSizeM2: dossierToConfirm.preferredSizeM2,
+          preferredFloor: dossierToConfirm.preferredFloor,
         });
       } else {
         setFormData({
@@ -418,8 +418,8 @@ function CreateDossierPage() {
                       <Maximize className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
                       <input
                         type="number"
-                        value={formData.surfaceM2}
-                        onChange={(e) => setFormData({ ...formData, surfaceM2: Number(e.target.value) })}
+                        value={formData.preferredSizeM2}
+                        onChange={(e) => setFormData({ ...formData, preferredSizeM2: Number(e.target.value) })}
                         className="w-full pl-10 pr-4 py-3 neu-inset rounded-xl bg-transparent focus:outline-none text-sm font-medium"
                       />
                     </div>
@@ -431,15 +431,15 @@ function CreateDossierPage() {
                       <button type="button" onClick={() => setOpenFloor(!openFloor)}
                         className="w-full pl-11 pr-4 py-3 neu-inset rounded-xl bg-ghost focus:outline-none text-sm font-medium flex items-center justify-between"
                       >
-                        <span>{floorOptions.find(o => o.value === formData.floor)?.label ?? "Indifférent"}</span>
+                        <span>{floorOptions.find(o => o.value === formData.preferredFloor)?.label ?? "Indifférent"}</span>
                         <ChevronDown size={14} className={`transition-transform duration-200 ${openFloor ? "rotate-180" : ""}`} />
                       </button>
                       {openFloor && (
                         <div className="absolute z-50 w-full mt-2 py-2 neu-sm rounded-xl bg-ghost/95 backdrop-blur-sm shadow-2xl animate-in fade-in zoom-in-95 duration-100">
                           {floorOptions.map((opt) => (
                             <button key={opt.value} type="button"
-                              onClick={() => { setFormData({ ...formData, floor: opt.value }); setOpenFloor(false); }}
-                              className={`w-full px-4 py-2 text-left text-sm font-medium hover:bg-eerie hover:text-ghost transition-colors ${formData.floor === opt.value ? "bg-alice" : ""}`}
+                              onClick={() => { setFormData({ ...formData, preferredFloor: opt.value }); setOpenFloor(false); }}
+                              className={`w-full px-4 py-2 text-left text-sm font-medium hover:bg-eerie hover:text-ghost transition-colors ${formData.preferredFloor === opt.value ? "bg-alice" : ""}`}
                             >{opt.label}</button>
                           ))}
                         </div>
@@ -565,12 +565,12 @@ function CreateDossierPage() {
                       <button type="button" onClick={() => setOpenFloor(!openFloor)}
                         className="w-full pl-11 pr-4 py-3 neu-inset rounded-xl bg-ghost focus:outline-none text-sm font-medium flex items-center justify-between"
                       >
-                        <span>{floorOptions.find(o => o.value === formData.propertyFloor)?.label ?? "Rez-de-chaussée"}</span>
+                        <span>{floorOptions.find(o => o.value === formData.propertyFloor)?.label ?? "Indifférent"}</span>
                         <ChevronDown size={14} className={`transition-transform duration-200 ${openFloor ? "rotate-180" : ""}`} />
                       </button>
                       {openFloor && (
                         <div className="absolute z-50 w-full mt-2 py-2 neu-sm rounded-xl bg-ghost/95 backdrop-blur-sm shadow-2xl animate-in fade-in zoom-in-95 duration-100">
-                          {floorOptions.filter(o => o.value !== -1).map((opt) => (
+                          {floorOptions.map((opt) => (
                             <button key={opt.value} type="button"
                               onClick={() => { setFormData({ ...formData, propertyFloor: opt.value }); setOpenFloor(false); }}
                               className={`w-full px-4 py-2 text-left text-sm font-medium hover:bg-eerie hover:text-ghost transition-colors ${formData.propertyFloor === opt.value ? "bg-alice" : ""}`}

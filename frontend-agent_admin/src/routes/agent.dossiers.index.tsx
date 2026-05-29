@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchDossiers, type DossierSummary } from "@/api/dossiersApi";
@@ -11,10 +12,26 @@ export const Route = createFileRoute("/agent/dossiers/")({
 });
 
 function DossiersListing() {
-  const { data: dossiers, isLoading, isError } = useQuery({
+  const { data: rawDossiers, isLoading, isError } = useQuery({
     queryKey: ["dossiers"],
     queryFn: fetchDossiers,
   });
+
+  const dossiers = useMemo(() => {
+     if (!rawDossiers) return [];
+     return [...rawDossiers].sort((a, b) => {
+        // 1. New dossiers first
+        if (a.newDossier && !b.newDossier) return -1;
+        if (!a.newDossier && b.newDossier) return 1;
+        
+        // 2. Urgent dossiers next
+        if (a.isUrgent && !b.isUrgent) return -1;
+        if (!a.isUrgent && b.isUrgent) return 1;
+
+        // 3. Then sort by createdAt descending
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+   }, [rawDossiers]);
 
   if (isLoading) return <div className="p-8 text-center">Chargement des dossiers...</div>;
   if (isError) return <div className="p-8 text-center text-red-500">Erreur lors du chargement des dossiers.</div>;
