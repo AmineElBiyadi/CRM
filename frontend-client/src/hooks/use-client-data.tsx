@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8081/api/public/client-portal";
@@ -101,5 +101,18 @@ export function useClientData() {
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: { firstName?: string; lastName?: string; email?: string; phone?: string }) => {
+      const response = await axios.put(`${API_BASE_URL}/${HARDCODED_CLIENT_ID}/profile`, dto);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", HARDCODED_CLIENT_ID] });
+    },
   });
 }

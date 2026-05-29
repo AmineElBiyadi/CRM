@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as ClientRendezVousRouteImport } from './routes/client.rendez-vous'
 import { Route as ClientProprietesRouteImport } from './routes/client.proprietes'
+import { Route as ClientProfilRouteImport } from './routes/client.profil'
 import { Route as ClientDocumentsRouteImport } from './routes/client.documents'
 import { Route as ClientContratsRouteImport } from './routes/client.contrats'
 import { Route as ClientChronologieRouteImport } from './routes/client.chronologie'
@@ -50,6 +51,11 @@ const ClientProprietesRoute = ClientProprietesRouteImport.update({
   path: '/proprietes',
   getParentRoute: () => ClientRoute,
 } as any)
+const ClientProfilRoute = ClientProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
+  getParentRoute: () => ClientRoute,
+} as any)
 const ClientDocumentsRoute = ClientDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
+  '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client/': typeof ClientIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
+  '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client': typeof ClientIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
+  '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client/': typeof ClientIndexRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
+    | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client/'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
+    | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
+    | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client/'
@@ -195,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientProprietesRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/client/profil': {
+      id: '/client/profil'
+      path: '/profil'
+      fullPath: '/client/profil'
+      preLoaderRoute: typeof ClientProfilRouteImport
+      parentRoute: typeof ClientRoute
+    }
     '/client/documents': {
       id: '/client/documents'
       path: '/documents'
@@ -231,6 +250,7 @@ interface ClientRouteChildren {
   ClientChronologieRoute: typeof ClientChronologieRoute
   ClientContratsRoute: typeof ClientContratsRoute
   ClientDocumentsRoute: typeof ClientDocumentsRoute
+  ClientProfilRoute: typeof ClientProfilRoute
   ClientProprietesRoute: typeof ClientProprietesRoute
   ClientRendezVousRoute: typeof ClientRendezVousRoute
   ClientIndexRoute: typeof ClientIndexRoute
@@ -241,6 +261,7 @@ const ClientRouteChildren: ClientRouteChildren = {
   ClientChronologieRoute: ClientChronologieRoute,
   ClientContratsRoute: ClientContratsRoute,
   ClientDocumentsRoute: ClientDocumentsRoute,
+  ClientProfilRoute: ClientProfilRoute,
   ClientProprietesRoute: ClientProprietesRoute,
   ClientRendezVousRoute: ClientRendezVousRoute,
   ClientIndexRoute: ClientIndexRoute,

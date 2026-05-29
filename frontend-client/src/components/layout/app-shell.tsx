@@ -93,13 +93,19 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="neu-sm p-3 flex items-center gap-3">
+        <Link 
+          to="/client/profil"
+          className={cn(
+            "p-3 flex items-center gap-3 rounded-2xl transition-all group",
+            location.pathname === "/client/profil" ? "neu-inset" : "neu-sm hover:neu-pressable"
+          )}
+        >
           <Avatar name={user.name} size={36} />
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{user.role}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold truncate group-hover:text-eerie transition-colors tracking-tight">{user.name}</div>
+            <div className="text-[10px] text-muted-foreground/70 uppercase font-bold tracking-widest">{user.role}</div>
           </div>
-        </div>
+        </Link>
         <div className="flex gap-2 text-xs">
           <Link to="/" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
             Changer d'espace

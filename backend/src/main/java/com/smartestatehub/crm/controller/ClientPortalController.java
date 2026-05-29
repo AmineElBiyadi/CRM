@@ -1,6 +1,6 @@
 package com.smartestatehub.crm.controller;
 
-import com.smartestatehub.crm.dto.ClientPortalDataDto;
+import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.service.ClientPortalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +23,16 @@ public class ClientPortalController {
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/{clientId}/profile")
+    public ResponseEntity<Void> updateProfile(@PathVariable UUID clientId, @RequestBody UpdateClientProfileDto dto) {
+        try {
+            clientPortalService.updateProfile(clientId, dto);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 }

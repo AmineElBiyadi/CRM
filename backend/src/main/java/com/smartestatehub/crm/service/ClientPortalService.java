@@ -249,4 +249,17 @@ public class ClientPortalService {
                 .sorted(Comparator.comparing(ClientPortalDataDto.TimelineEvent::getDate).reversed())
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public void updateProfile(UUID clientId, UpdateClientProfileDto dto) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé"));
+        
+        if (dto.getFirstName() != null) client.setFirstName(dto.getFirstName());
+        if (dto.getLastName() != null) client.setLastName(dto.getLastName());
+        if (dto.getEmail() != null) client.setEmail(dto.getEmail());
+        if (dto.getPhone() != null) client.setPhone(dto.getPhone());
+        
+        clientRepository.save(client);
+    }
 }
