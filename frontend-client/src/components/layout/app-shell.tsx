@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
 import { Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { NotificationCenter } from "./notification-center";
 
 export interface NavItem {
   to: string;
@@ -155,56 +156,21 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
             </div>
           </div>
           <div className="relative">
-            <button
-              onClick={() => setNotifOpen((v) => !v)}
-              className="relative w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:neu-pressable shrink-0"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-eerie text-ghost text-[10px] font-bold flex items-center justify-center ring-2 ring-ghost">
-                  {unread}
-                </span>
-              )}
-            </button>
-            {notifOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
-                <div className="absolute right-0 mt-2 w-[340px] sm:w-[380px] z-40 bg-ghost rounded-2xl shadow-2xl border border-border overflow-hidden">
-                  <div className="px-4 py-3 flex items-center justify-between border-b border-border">
-                    <div>
-                      <div className="font-semibold text-sm">Notifications</div>
-                      <div className="text-[11px] text-muted-foreground">{unread} non lue(s)</div>
-                    </div>
-                    <button
-                      onClick={() => { setNotifs((p) => p.map((n) => ({ ...n, read: true }))); toast.success("Tout marqué comme lu"); }}
-                      className="text-xs text-eerie hover:underline font-medium"
-                    >
-                      Tout lire
-                    </button>
-                  </div>
-                  <div className="max-h-[60vh] overflow-y-auto soft-scroll divide-y divide-border">
-                    {notifs.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => { setNotifs((p) => p.map((x) => x.id === n.id ? { ...x, read: true } : x)); toast(n.title); }}
-                        className={cn("w-full text-left px-4 py-3 hover:bg-alice/30 transition-colors flex gap-3", !n.read && "bg-alice/20")}
-                      >
-                        <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", n.read ? "bg-muted" : "bg-vanilla")} />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{n.title}</div>
-                          <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>
-                          <div className="text-[10px] text-muted-foreground mt-1">{n.time}</div>
-                        </div>
-                      </button>
-                    ))}
-                    {notifs.length === 0 && (
-                      <div className="text-center text-xs text-muted-foreground py-8">Aucune notification.</div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+          <NotificationCenter
+            notifications={notifs.map(n => ({
+              ...n,
+              type: n.id === "n2" ? "MEETING" : (n.id === "n3" ? "DOCUMENT" : "GENERAL") as any
+            }))}
+            onMarkRead={(id) => setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n))}
+            onMarkAllRead={() => {
+              setNotifs(p => p.map(n => ({ ...n, read: true })));
+              toast.success("Tout marqué comme lu");
+            }}
+            onClear={() => {
+              setNotifs([]);
+              toast.info("Notifications effacées");
+            }}
+          />
           </div>
           <div className={cn("hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold", accent, "text-eerie")}>
             {user.role}

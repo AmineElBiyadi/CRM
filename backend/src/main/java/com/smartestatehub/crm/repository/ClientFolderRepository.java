@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ClientFolderRepository extends JpaRepository<ClientFolder, UUID> {
     List<ClientFolder> findByAssignedAgent_IdUserAndDeletedAtIsNull(UUID agentId);
+    List<ClientFolder> findByClient_IdClient(UUID clientId);
 }
