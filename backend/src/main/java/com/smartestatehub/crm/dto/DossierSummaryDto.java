@@ -23,4 +23,5 @@ public class DossierSummaryDto {
     private Boolean newDossier;
     private LocalDateTime lastInteractionAt;
     private String aiRecommendedAction;
+    private LocalDateTime createdAt;
 }

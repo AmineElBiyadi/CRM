@@ -66,6 +66,7 @@ export interface DossierListItem {
   lastInteractionAt: string | null;
   isUrgent: boolean;
   newDossier: boolean;
+  createdAt: string;
 }
 
 export const fetchClientDossiers = async (idClient: string): Promise<DossierListItem[]> => {
