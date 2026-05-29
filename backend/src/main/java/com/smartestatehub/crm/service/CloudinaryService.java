@@ -39,12 +39,11 @@ public class CloudinaryService {
     public String upload(byte[] fileBytes, String publicId, String folder, String resourceType) throws IOException {
         log.info("Upload Cloudinary → folder: {}, publicId: {}, type: {}", folder, publicId, resourceType);
         Map<String, Object> options = ObjectUtils.asMap(
-                "upload_preset", uploadPreset,
                 "public_id", folder + "/" + publicId,
                 "resource_type", resourceType,
                 "overwrite", true
         );
-        Map<String, Object> result = cloudinary.uploader().upload(fileBytes, options);
+        Map<String, Object> result = cloudinary.uploader().unsignedUpload(fileBytes, uploadPreset, options);
         String url = (String) result.get("secure_url");
         log.info("Upload Cloudinary réussi. URL: {}", url);
         return url;
