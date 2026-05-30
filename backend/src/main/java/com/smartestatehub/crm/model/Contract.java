@@ -51,6 +51,9 @@ public class Contract {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "pdf_url", length = 1000)
+    private String pdfUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_deal", nullable = false)
     private Deal deal;

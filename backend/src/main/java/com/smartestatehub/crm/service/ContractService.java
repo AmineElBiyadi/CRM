@@ -26,6 +26,8 @@ public class ContractService {
 
     private final ContractRepository contractRepository;
     private final DealRepository dealRepository;
+    private final ContractPdfService contractPdfService;
+    private final EmailService emailService;
 
     /**
      * Crée un nouveau contrat pour un dossier (deal) avec son calendrier de
@@ -39,12 +41,30 @@ public class ContractService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
 
+        // Récupérer l'offre ACCEPTED pour ce deal (on ne peut générer de contrat formel qu'avec une propriété acceptée)
+        Double finalPrice = request.getAgreedPrice();
+        String summary = request.getNotes() != null ? request.getNotes() : "Nouveau mandat de recherche.";
+
+        if (deal.getOffers() != null) {
+            for (com.smartestatehub.crm.model.Offer offer : deal.getOffers()) {
+                if (offer.getStatus() == com.smartestatehub.crm.model.OfferStatus.ACCEPTED) {
+                    if (finalPrice == null || finalPrice == 0.0) {
+                        finalPrice = offer.getOfferAmount();
+                    }
+                    if (offer.getProperty() != null) {
+                        summary += " | Propriété: " + offer.getProperty().getTitle() + " - " + offer.getProperty().getAddress();
+                    }
+                    break;
+                }
+            }
+        }
+
         Contract contract = Contract.builder()
                 .deal(deal)
-                .agreedPrice(request.getAgreedPrice())
+                .agreedPrice(finalPrice)
                 .depositAmount(request.getDepositAmount())
                 .status(ContractStatus.DRAFT)
-                .aiRiskSummary(request.getNotes() != null ? request.getNotes() : "Nouveau mandat de recherche.")
+                .aiRiskSummary(summary)
                 .build();
 
         List<ContractPayment> payments = new ArrayList<>();
@@ -63,6 +83,17 @@ public class ContractService {
 
         Contract savedContract = contractRepository.save(contract);
         log.info("Contrat créé avec succès. ID: {}", savedContract.getIdContract());
+
+        // Génération et upload du PDF Cloudinary
+        try {
+            String pdfUrl = contractPdfService.generateAndUpload(savedContract);
+            if (pdfUrl != null) {
+                savedContract.setPdfUrl(pdfUrl);
+                savedContract = contractRepository.save(savedContract);
+            }
+        } catch (Exception e) {
+            log.warn("PDF non généré pour contrat {}: {}", savedContract.getIdContract(), e.getMessage());
+        }
 
         return mapToResponse(savedContract);
     }
@@ -99,6 +130,21 @@ public class ContractService {
         contract.setStatus(newStatus);
         if (newStatus == ContractStatus.SENT) {
             contract.setSentAt(LocalDateTime.now());
+            // Envoi email au client
+            if (contract.getDeal() != null && contract.getDeal().getClientFolder() != null && contract.getDeal().getClientFolder().getClient() != null) {
+                String clientEmail = contract.getDeal().getClientFolder().getClient().getEmail();
+                String clientName = contract.getDeal().getClientFolder().getClient().getFirstName() + " "
+                        + contract.getDeal().getClientFolder().getClient().getLastName();
+                String pdfUrl = contract.getPdfUrl() != null ? contract.getPdfUrl() : "#";
+                if (clientEmail != null && !clientEmail.isBlank()) {
+                    try {
+                        emailService.sendContractReadyEmail(clientEmail, clientName, pdfUrl);
+                        log.info("Email contrat envoyé à {}", clientEmail);
+                    } catch (Exception e) {
+                        log.warn("Email non envoyé pour contrat {}: {}", contractId, e.getMessage());
+                    }
+                }
+            }
         } else if (newStatus == ContractStatus.RECEIVED_SIGNED) {
             contract.setSignedAt(LocalDateTime.now());
         }
@@ -158,6 +204,7 @@ public class ContractService {
                 .signedAt(contract.getSignedAt())
                 .aiRiskSummary(contract.getAiRiskSummary())
                 .createdAt(contract.getCreatedAt())
+                .pdfUrl(contract.getPdfUrl())
                 .payments(paymentResponses)
                 .build();
     }
