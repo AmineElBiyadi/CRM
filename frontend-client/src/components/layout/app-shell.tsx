@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
-import { Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
+import { LogOut, Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationCenter } from "./notification-center";
 
@@ -52,6 +52,11 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState(() => initialNotifs(space));
   const unread = notifs.filter((n) => !n.read).length;
+
+  const handleLogout = () => {
+    localStorage.removeItem("client_id"); // Supprimer l'ID client du localStorage
+    window.location.href = "/"; // Rediriger vers la page d'accueil
+  };
 
   useEffect(() => {
     setNotifOpen(false);
@@ -106,14 +111,12 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
             <div className="text-[10px] text-muted-foreground/70 uppercase font-bold tracking-widest">{user.role}</div>
           </div>
         </Link>
-        <div className="flex gap-2 text-xs">
-          <Link to="/" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
-            Changer d'espace
-          </Link>
-          <Link to="/" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
-            Home
-          </Link>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable transition-all text-xs font-bold text-destructive"
+        >
+          <LogOut size={16} /> Déconnexion
+        </button>
       </div>
     </>
   );
@@ -178,7 +181,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
             }}
           />
           </div>
-          <div className={cn("hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold", accent, "text-eerie")}>
+          <div className={cn("hidden sm:block px-3 py-1.5 rounded-full text-[10px] uppercase font-black tracking-widest", accent, "text-eerie")}>
             {user.role}
           </div>
         </header>

@@ -23,7 +23,7 @@ function ClientLayout() {
 
   const user = {
     name: data?.profile ? `${data.profile.firstName} ${data.profile.lastName}` : "Chargement...",
-    role: "Client Premium",
+    role: "Client",
   };
 
   return (

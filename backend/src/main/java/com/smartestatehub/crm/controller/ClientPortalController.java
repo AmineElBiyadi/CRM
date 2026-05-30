@@ -63,10 +63,12 @@ public class ClientPortalController {
     }
 
     @PutMapping("/{clientId}/password")
-    public ResponseEntity<Void> updatePassword(@PathVariable UUID clientId, @RequestBody ChangePasswordDto dto) {
+    public ResponseEntity<?> updatePassword(@PathVariable UUID clientId, @RequestBody ChangePasswordDto dto) {
         try {
             clientPortalService.updatePassword(clientId, dto);
             return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

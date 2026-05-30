@@ -482,8 +482,11 @@ public class ClientPortalService {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
 
-        // If the client had a previous password (not PORTAL_PENDING), we could check it
-        // but for now we allow direct reset if they are in the portal
+        // Vérifier le mot de passe actuel
+        if (!passwordEncoder.matches(dto.getOldPassword(), client.getPassword())) {
+            throw new RuntimeException("Le mot de passe actuel est incorrect");
+        }
+
         client.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         clientRepository.save(client);
     }
