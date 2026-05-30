@@ -35,4 +35,40 @@ public class ClientPortalController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PostMapping("/{clientId}/message")
+    public ResponseEntity<Void> sendMessage(@PathVariable UUID clientId, @RequestBody java.util.Map<String, String> body) {
+        try {
+            clientPortalService.sendMessage(clientId, body.get("content"));
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/{clientId}/meetings/request")
+    public ResponseEntity<Void> requestMeeting(@PathVariable UUID clientId, @RequestBody java.util.Map<String, String> body) {
+        try {
+            clientPortalService.requestMeeting(
+                    clientId,
+                    body.get("type"),
+                    body.get("preferredDate"),
+                    body.get("preferredTime"),
+                    body.get("message")
+            );
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{clientId}/password")
+    public ResponseEntity<Void> updatePassword(@PathVariable UUID clientId, @RequestBody ChangePasswordDto dto) {
+        try {
+            clientPortalService.updatePassword(clientId, dto);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

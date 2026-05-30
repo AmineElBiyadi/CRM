@@ -1,14 +1,20 @@
 package com.smartestatehub.crm.dto;
 
+import lombok.*;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
-public record MeetingDto(
-    UUID idMeeting,
-    UUID idDeal,
-    String scheduledAt,      // ISO-8601 full datetime
-    String clientFullName,
-    String type,             // Libellé en français
-    String status,           // PENDING | COMPLETED | CANCELLED
-    String notes,
-    String propertyAddress
-) {}
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class MeetingDto {
+    private UUID idMeeting;
+    private UUID idDeal;
+    private String scheduledAt;
+    private String clientFullName;
+    private String type;
+    private String status;
+    private String notesLogged;
+    private String propertyAddress;
+}

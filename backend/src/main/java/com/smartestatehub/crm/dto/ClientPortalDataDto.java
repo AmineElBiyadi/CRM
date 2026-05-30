@@ -3,6 +3,8 @@ package com.smartestatehub.crm.dto;
 import lombok.*;
 import java.util.List;
 import java.util.UUID;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -30,6 +32,8 @@ public class ClientPortalDataDto {
         private String status;
         private String source;
         private String assignedAgentName;
+        private java.time.LocalDateTime createdAt;
+        private java.time.LocalDateTime updatedAt;
     }
 
     @Data

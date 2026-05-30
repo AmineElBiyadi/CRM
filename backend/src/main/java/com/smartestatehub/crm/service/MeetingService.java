@@ -2,6 +2,7 @@ package com.smartestatehub.crm.service;
 
 import com.smartestatehub.crm.dto.CreateMeetingRequest;
 import com.smartestatehub.crm.dto.MeetingDto;
+import com.smartestatehub.crm.dto.UpdateMeetingStatusRequest;
 import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.Meeting;
 import com.smartestatehub.crm.model.MeetingStatus;

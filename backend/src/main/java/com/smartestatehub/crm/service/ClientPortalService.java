@@ -5,6 +5,7 @@ import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
 import com.smartestatehub.auth.model.InternalUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class ClientPortalService {
     private final MeetingRepository meetingRepository;
     private final DocumentRepository documentRepository;
     private final ContractRepository contractRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public ClientPortalDataDto getFullClientPortalData(UUID clientId) {
@@ -69,6 +71,8 @@ public class ClientPortalService {
                 .source(client.getSource())
                 .assignedAgentName(folders.isEmpty() || folders.get(0).getAssignedAgent() == null ? "Non assigné" : 
                     folders.get(0).getAssignedAgent().getFirstName() + " " + folders.get(0).getAssignedAgent().getLastName())
+                .createdAt(client.getCreatedAt())
+                .updatedAt(client.getUpdatedAt())
                 .build();
 
         List<DossierDetailDto> dossierDtos = deals.stream()
@@ -103,6 +107,57 @@ public class ClientPortalService {
                 .contracts(contractDtos)
                 .timeline(timeline)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DossierDetailDto> getClientDossiers(UUID clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client not found: " + clientId));
+
+        List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
+        List<Deal> deals = folders.stream()
+                .flatMap(f -> f.getDeals().stream())
+                .filter(d -> d.getDeletedAt() == null)
+                .collect(Collectors.toList());
+
+        return deals.stream()
+                .map(this::mapToDossierDetail)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClientPortalDataDto.TimelineEvent> getDossierActivity(UUID clientId, UUID idFolder) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client not found: " + clientId));
+
+        ClientFolder folder = clientFolderRepository.findByIdProfileAndClient_IdClient(idFolder, clientId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found for client: " + idFolder));
+
+        List<Deal> deals = folder.getDeals().stream()
+                .filter(d -> d.getDeletedAt() == null)
+                .collect(Collectors.toList());
+
+        List<UUID> dealIds = deals.stream().map(Deal::getIdDeal).collect(Collectors.toList());
+
+        List<Interaction> interactions = dealIds.stream()
+                .flatMap(id -> interactionRepository.findByDeal_IdDeal(id).stream())
+                .collect(Collectors.toList());
+
+        List<Meeting> meetings = dealIds.stream()
+                .flatMap(id -> meetingRepository.findByDeal_IdDeal(id).stream())
+                .collect(Collectors.toList());
+
+        List<Document> documents = dealIds.stream()
+                .flatMap(id -> documentRepository.findByDeal_IdDeal(id).stream())
+                .collect(Collectors.toList());
+
+        List<Contract> contracts = dealIds.stream()
+                .flatMap(id -> contractRepository.findByDealIdActive(id).stream())
+                .collect(Collectors.toList());
+
+        return buildTimeline(interactions, meetings, documents, contracts, deals).stream()
+                .limit(5) // Get only the last 5 events
+                .collect(Collectors.toList());
     }
 
     private DossierDetailDto mapToDossierDetail(Deal deal) {
@@ -157,6 +212,40 @@ public class ClientPortalService {
                 }
             }
         }
+
+        // Compute visit status from meetings
+        List<Meeting> dealMeetings = deal.getMeetings() != null ? deal.getMeetings() : List.of();
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        boolean hasFutureVisit = dealMeetings.stream()
+                .anyMatch(m -> "PROPERTY_VISIT".equals(m.getType() != null ? m.getType().name() : "") && m.getScheduledAt() != null && m.getScheduledAt().isAfter(now));
+        boolean hasPastVisit = dealMeetings.stream()
+                .anyMatch(m -> "PROPERTY_VISIT".equals(m.getType() != null ? m.getType().name() : "") && m.getScheduledAt() != null && m.getScheduledAt().isBefore(now));
+
+        if (hasPastVisit) {
+            dto.setVisitStatus("VISITED");
+        } else if (hasFutureVisit) {
+            dto.setVisitStatus("VISIT_PLANNED");
+        } else {
+            dto.setVisitStatus("PROPOSED");
+        }
+
+        // Map aiRecommendedAction to client-friendly language
+        String action = deal.getAiRecommendedAction();
+        if (action != null) {
+            String lower = action.toLowerCase();
+            if (lower.contains("contract")) {
+                dto.setClientFriendlyAction("Votre agent prépare les documents contractuels.");
+            } else if (lower.contains("visit") || lower.contains("visite")) {
+                dto.setClientFriendlyAction("Une visite est en cours de planification.");
+            } else if (lower.contains("analys") || lower.contains("qualify") || lower.contains("qualifier")) {
+                dto.setClientFriendlyAction("Votre agent analyse votre projet.");
+            } else if (lower.contains("email")) {
+                dto.setClientFriendlyAction("Votre agent va vous contacter prochainement.");
+            } else {
+                dto.setClientFriendlyAction(action);
+            }
+        }
+
         return dto;
     }
 
@@ -174,7 +263,7 @@ public class ClientPortalService {
     private MeetingDto mapToMeetingDto(Meeting m) {
         return MeetingDto.builder()
                 .idMeeting(m.getIdMeeting())
-                .scheduledAt(m.getScheduledAt())
+                .scheduledAt(m.getScheduledAt() != null ? m.getScheduledAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null)
                 .notesLogged(m.getNotesLogged())
                 .status(m.getStatus().name())
                 .type(m.getType().name())
@@ -260,6 +349,64 @@ public class ClientPortalService {
         if (dto.getEmail() != null) client.setEmail(dto.getEmail());
         if (dto.getPhone() != null) client.setPhone(dto.getPhone());
         
+        clientRepository.save(client);
+    }
+
+    @Transactional
+    public void sendMessage(UUID clientId, String content) {
+        // Find the active deal for this client
+        List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
+        if (folders.isEmpty()) throw new RuntimeException("No folder found for client");
+
+        ClientFolder folder = folders.get(0);
+        if (folder.getDeals() == null || folder.getDeals().isEmpty()) throw new RuntimeException("No deal found");
+
+        Deal deal = folder.getDeals().get(0);
+        InternalUser agent = folder.getAssignedAgent();
+        if (agent == null) throw new RuntimeException("No agent assigned");
+
+        Interaction interaction = Interaction.builder()
+                .type(InteractionType.NOTE)
+                .description("[Message client] " + content)
+                .deal(deal)
+                .user(agent)
+                .build();
+
+        interactionRepository.save(interaction);
+    }
+
+    @Transactional
+    public void requestMeeting(UUID clientId, String type, String preferredDate, String preferredTime, String message) {
+        List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
+        if (folders.isEmpty()) throw new RuntimeException("No folder found for client");
+
+        ClientFolder folder = folders.get(0);
+        Deal deal = folder.getDeals().isEmpty() ? null : folder.getDeals().get(0);
+        if (deal == null) throw new RuntimeException("No deal found");
+        InternalUser agent = folder.getAssignedAgent();
+        if (agent == null) throw new RuntimeException("No agent assigned");
+
+        String desc = String.format("[Demande RDV] Type: %s | Date préf: %s %s | Message: %s",
+                type, preferredDate, preferredTime, message != null ? message : "");
+
+        Interaction interaction = Interaction.builder()
+                .type(InteractionType.NOTE)
+                .description(desc)
+                .deal(deal)
+                .user(agent)
+                .build();
+
+        interactionRepository.save(interaction);
+    }
+
+    @Transactional
+    public void updatePassword(UUID clientId, ChangePasswordDto dto) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé"));
+
+        // If the client had a previous password (not PORTAL_PENDING), we could check it
+        // but for now we allow direct reset if they are in the portal
+        client.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         clientRepository.save(client);
     }
 }

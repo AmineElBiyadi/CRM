@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8081/api/public/client-portal";
-export const HARDCODED_CLIENT_ID = "d755eba6-106f-4f81-af56-4e4d60f16840";
+
+const getClientId = () => localStorage.getItem("client_id") || "d755eba6-106f-4f81-af56-4e4d60f16840";
 
 export interface ClientProfile {
   idClient: string;
@@ -13,6 +14,8 @@ export interface ClientProfile {
   status: string;
   source: string;
   assignedAgentName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DossierDetail {
@@ -37,6 +40,8 @@ export interface DossierDetail {
   assignedAgentName: string;
   propertyImageUrls?: string[];
   lastInteractionAt: string;
+  visitStatus?: "VISITED" | "VISIT_PLANNED" | "PROPOSED";
+  clientFriendlyAction?: string;
 }
 
 export interface Interaction {
@@ -94,10 +99,11 @@ export interface ClientPortalData {
 }
 
 export function useClientData() {
+  const clientId = getClientId();
   return useQuery<ClientPortalData>({
-    queryKey: ["clientPortalData", HARDCODED_CLIENT_ID],
+    queryKey: ["clientPortalData", clientId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_BASE_URL}/${HARDCODED_CLIENT_ID}/full-data`);
+      const { data } = await axios.get(`${API_BASE_URL}/${clientId}/full-data`);
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -106,13 +112,24 @@ export function useClientData() {
 
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
+  const clientId = getClientId();
   return useMutation({
     mutationFn: async (dto: { firstName?: string; lastName?: string; email?: string; phone?: string }) => {
-      const response = await axios.put(`${API_BASE_URL}/${HARDCODED_CLIENT_ID}/profile`, dto);
+      const response = await axios.put(`${API_BASE_URL}/${clientId}/profile`, dto);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", HARDCODED_CLIENT_ID] });
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+}
+
+export function useUpdatePassword() {
+  const clientId = getClientId();
+  return useMutation({
+    mutationFn: async (dto: { oldPassword?: string; newPassword: string }) => {
+      const response = await axios.put(`${API_BASE_URL}/${clientId}/password`, dto);
+      return response.data;
     },
   });
 }

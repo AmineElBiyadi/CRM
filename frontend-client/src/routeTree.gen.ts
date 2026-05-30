@@ -16,10 +16,12 @@ import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as ClientRendezVousRouteImport } from './routes/client.rendez-vous'
 import { Route as ClientProprietesRouteImport } from './routes/client.proprietes'
 import { Route as ClientProfilRouteImport } from './routes/client.profil'
+import { Route as ClientDossiersRouteImport } from './routes/client.dossiers'
 import { Route as ClientDocumentsRouteImport } from './routes/client.documents'
 import { Route as ClientContratsRouteImport } from './routes/client.contrats'
 import { Route as ClientChronologieRouteImport } from './routes/client.chronologie'
 import { Route as ClientAssistantRouteImport } from './routes/client.assistant'
+import { Route as ClientDossiersIdRouteImport } from './routes/client.dossiers.$id'
 
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
@@ -56,6 +58,11 @@ const ClientProfilRoute = ClientProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => ClientRoute,
 } as any)
+const ClientDossiersRoute = ClientDossiersRouteImport.update({
+  id: '/dossiers',
+  path: '/dossiers',
+  getParentRoute: () => ClientRoute,
+} as any)
 const ClientDocumentsRoute = ClientDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -76,6 +83,11 @@ const ClientAssistantRoute = ClientAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => ClientRoute,
 } as any)
+const ClientDossiersIdRoute = ClientDossiersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ClientDossiersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -85,10 +97,12 @@ export interface FileRoutesByFullPath {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
+  '/client/dossiers': typeof ClientDossiersRouteWithChildren
   '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client/': typeof ClientIndexRoute
+  '/client/dossiers/$id': typeof ClientDossiersIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -97,10 +111,12 @@ export interface FileRoutesByTo {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
+  '/client/dossiers': typeof ClientDossiersRouteWithChildren
   '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client': typeof ClientIndexRoute
+  '/client/dossiers/$id': typeof ClientDossiersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -111,10 +127,12 @@ export interface FileRoutesById {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
+  '/client/dossiers': typeof ClientDossiersRouteWithChildren
   '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client/': typeof ClientIndexRoute
+  '/client/dossiers/$id': typeof ClientDossiersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -126,10 +144,12 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
+    | '/client/dossiers'
     | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client/'
+    | '/client/dossiers/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -138,10 +158,12 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
+    | '/client/dossiers'
     | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client'
+    | '/client/dossiers/$id'
   id:
     | '__root__'
     | '/'
@@ -151,10 +173,12 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
+    | '/client/dossiers'
     | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client/'
+    | '/client/dossiers/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -214,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientProfilRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/client/dossiers': {
+      id: '/client/dossiers'
+      path: '/dossiers'
+      fullPath: '/client/dossiers'
+      preLoaderRoute: typeof ClientDossiersRouteImport
+      parentRoute: typeof ClientRoute
+    }
     '/client/documents': {
       id: '/client/documents'
       path: '/documents'
@@ -242,14 +273,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientAssistantRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/client/dossiers/$id': {
+      id: '/client/dossiers/$id'
+      path: '/$id'
+      fullPath: '/client/dossiers/$id'
+      preLoaderRoute: typeof ClientDossiersIdRouteImport
+      parentRoute: typeof ClientDossiersRoute
+    }
   }
 }
+
+interface ClientDossiersRouteChildren {
+  ClientDossiersIdRoute: typeof ClientDossiersIdRoute
+}
+
+const ClientDossiersRouteChildren: ClientDossiersRouteChildren = {
+  ClientDossiersIdRoute: ClientDossiersIdRoute,
+}
+
+const ClientDossiersRouteWithChildren = ClientDossiersRoute._addFileChildren(
+  ClientDossiersRouteChildren,
+)
 
 interface ClientRouteChildren {
   ClientAssistantRoute: typeof ClientAssistantRoute
   ClientChronologieRoute: typeof ClientChronologieRoute
   ClientContratsRoute: typeof ClientContratsRoute
   ClientDocumentsRoute: typeof ClientDocumentsRoute
+  ClientDossiersRoute: typeof ClientDossiersRouteWithChildren
   ClientProfilRoute: typeof ClientProfilRoute
   ClientProprietesRoute: typeof ClientProprietesRoute
   ClientRendezVousRoute: typeof ClientRendezVousRoute
@@ -261,6 +312,7 @@ const ClientRouteChildren: ClientRouteChildren = {
   ClientChronologieRoute: ClientChronologieRoute,
   ClientContratsRoute: ClientContratsRoute,
   ClientDocumentsRoute: ClientDocumentsRoute,
+  ClientDossiersRoute: ClientDossiersRouteWithChildren,
   ClientProfilRoute: ClientProfilRoute,
   ClientProprietesRoute: ClientProprietesRoute,
   ClientRendezVousRoute: ClientRendezVousRoute,

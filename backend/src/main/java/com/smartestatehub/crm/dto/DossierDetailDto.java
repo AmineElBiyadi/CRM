@@ -47,4 +47,8 @@ public class DossierDetailDto {
     
     private String assignedAgentName;
     private LocalDateTime lastInteractionAt;
+
+    // Computed fields for client portal
+    private String visitStatus; // "VISITED" | "VISIT_PLANNED" | "PROPOSED"
+    private String clientFriendlyAction; // Mapped from aiRecommendedAction
 }

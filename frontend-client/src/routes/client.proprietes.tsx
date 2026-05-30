@@ -59,9 +59,12 @@ function ClientProperties() {
                     <MapPin size={12} /> {p.city} · {p.address}
                   </div>
                 </div>
-                <SoftBadge tone={p.stage === "CLOSED" ? "success" : p.stage === "NEGOTIATION" ? "warn" : "info"}>
-                  {p.stage}
-                </SoftBadge>
+                {p.visitStatus === "VISITED" && (
+                  <SoftBadge tone="success">Visitée</SoftBadge>
+                )}
+                {p.visitStatus === "VISIT_PLANNED" && (
+                  <SoftBadge tone="info">Visite planifiée</SoftBadge>
+                )}
               </div>
               <div className="grid grid-cols-3 gap-3 mt-5">
                 <div className="neu-inset rounded-lg p-3 text-center">
