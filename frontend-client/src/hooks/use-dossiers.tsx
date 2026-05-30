@@ -9,11 +9,22 @@ export function useDossiers() {
   });
 }
 
-export function useDossierActivity(idFolder: string) {
+export function useDossier(id: string) {
+  const { data: dossiers, ...rest } = useDossiers();
+  
+  const dossier = dossiers?.find((d: any) => d.idProfile === id);
+  
+  return {
+    data: dossier,
+    ...rest
+  };
+}
+
+export function useDossierActivity(id: string) {
   return useQuery({
-    queryKey: ["dossierActivity", idFolder],
-    queryFn: () => dossierApi.getDossierActivity(idFolder),
-    enabled: !!idFolder,
+    queryKey: ["dossierActivity", id],
+    queryFn: () => dossierApi.getDossierActivity(id),
+    enabled: !!id,
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }

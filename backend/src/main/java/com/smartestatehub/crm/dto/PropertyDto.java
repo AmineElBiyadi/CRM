@@ -49,6 +49,7 @@ public class PropertyDto {
         private String listingUrl;
         private boolean isAvailable;
         private List<String> imageUrls;
+        private String visitStatus; // "VISITED" | "VISIT_PLANNED" | "PROPOSED"
     }
 
     /**

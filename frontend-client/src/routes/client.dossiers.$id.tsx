@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
-import { useDossiers, useDossierActivity } from "@/hooks/use-dossiers";
+import { useDossiers, useDossier, useDossierActivity } from "@/hooks/use-dossiers";
 import { NeuCard } from "@/components/ui/neu-card";
 import { SoftBadge, Avatar } from "@/components/ui/design-bits";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,13 +53,11 @@ function Skeleton({ className }: { className?: string }) {
 
 function DossierDetailPage() {
   const { id } = useParams({ from: "/client/dossiers/$id" });
-  const { data: dossiers, isLoading: loadingDossiers } = useDossiers();
+  const { data: dossier, isLoading: loadingDossier } = useDossier(id);
   const { data: activity, isLoading: loadingActivity } = useDossierActivity(id);
   const [mapUrl, setMapUrl] = useState<string | null>(null);
 
-  const dossier = dossiers?.find((d: any) => d.idFolder === id);
-
-  if (loadingDossiers) {
+  if (loadingDossier) {
     return (
       <div className="space-y-6 max-w-[1200px]">
         <Skeleton className="h-12 w-3/4" />
@@ -316,7 +314,7 @@ function DossierDetailPage() {
                         <Maximize2 size={14} className="text-muted-foreground" /> {prop.surfaceM2} m²
                       </div>
                       <div className="flex items-center gap-2 text-xs font-semibold">
-                        <Layers size={14} className="text-muted-foreground" /> {prop.rooms} pièces
+                        <Layers size={14} className="text-muted-foreground" /> {prop.numRooms} pièces
                       </div>
                       <div className="flex items-center gap-2 text-xs font-semibold">
                         <Building2 size={14} className="text-muted-foreground" /> {prop.floor === 0 ? "RDC" : `Étage ${prop.floor}`}

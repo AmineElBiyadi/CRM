@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -215,7 +216,7 @@ public class ClientPortalService {
 
         // Compute visit status from meetings
         List<Meeting> dealMeetings = deal.getMeetings() != null ? deal.getMeetings() : List.of();
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
         boolean hasFutureVisit = dealMeetings.stream()
                 .anyMatch(m -> "PROPERTY_VISIT".equals(m.getType() != null ? m.getType().name() : "") && m.getScheduledAt() != null && m.getScheduledAt().isAfter(now));
         boolean hasPastVisit = dealMeetings.stream()
@@ -228,6 +229,33 @@ public class ClientPortalService {
         } else {
             dto.setVisitStatus("PROPOSED");
         }
+
+        // Map collections
+        dto.setContracts(deal.getContracts() != null ? deal.getContracts().stream()
+                .filter(c -> c.getDeletedAt() == null)
+                .map(this::mapToContractDto)
+                .collect(Collectors.toList()) : List.of());
+
+        dto.setOffers(deal.getOffers() != null ? deal.getOffers().stream()
+                .map(this::mapToOfferDetailDto)
+                .collect(Collectors.toList()) : List.of());
+
+        // For properties, we can show those linked to offers or those visited
+        Set<Property> dealProperties = new HashSet<>();
+        if (deal.getOffers() != null) {
+            deal.getOffers().forEach(o -> dealProperties.add(o.getProperty()));
+        }
+        // Also add properties from meetings if they were visits
+        if (deal.getMeetings() != null) {
+            deal.getMeetings().stream()
+                .filter(m -> "PROPERTY_VISIT".equals(m.getType() != null ? m.getType().name() : "") 
+                        && m.getOffer() != null && m.getOffer().getProperty() != null)
+                .forEach(m -> dealProperties.add(m.getOffer().getProperty()));
+        }
+
+        dto.setProperties(dealProperties.stream()
+                .map(p -> mapToPropertyResponse(p, deal))
+                .collect(Collectors.toList()));
 
         // Map aiRecommendedAction to client-friendly language
         String action = deal.getAiRecommendedAction();
@@ -289,6 +317,56 @@ public class ClientPortalService {
                 .status(c.getStatus())
                 .aiRiskSummary(c.getAiRiskSummary())
                 .createdAt(c.getCreatedAt())
+                .build();
+    }
+
+    private OfferDetailDto mapToOfferDetailDto(Offer o) {
+        Property p = o.getProperty();
+        return OfferDetailDto.builder()
+                .idOffer(o.getIdOffer())
+                .offerAmount(o.getOfferAmount())
+                .status(o.getStatus().name())
+                .createdAt(o.getCreatedAt())
+                .idProperty(p.getIdProperty())
+                .propertyTitle(p.getTitle())
+                .propertyPrice(p.getPrice())
+                .propertyImage(p.getImages() != null && !p.getImages().isEmpty() ? p.getImages().get(0).getImageUrl() : null)
+                .build();
+    }
+
+    private PropertyDto.Response mapToPropertyResponse(Property p, Deal deal) {
+        String visitStatus = "PROPOSED";
+        if (deal.getMeetings() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            boolean hasPastVisit = deal.getMeetings().stream()
+                .anyMatch(m -> "PROPERTY_VISIT".equals(m.getType() != null ? m.getType().name() : "") 
+                    && m.getOffer() != null && m.getOffer().getProperty() != null && m.getOffer().getProperty().getIdProperty().equals(p.getIdProperty())
+                    && m.getScheduledAt() != null && m.getScheduledAt().isBefore(now));
+            
+            boolean hasFutureVisit = deal.getMeetings().stream()
+                .anyMatch(m -> "PROPERTY_VISIT".equals(m.getType() != null ? m.getType().name() : "") 
+                    && m.getOffer() != null && m.getOffer().getProperty() != null && m.getOffer().getProperty().getIdProperty().equals(p.getIdProperty())
+                    && m.getScheduledAt() != null && m.getScheduledAt().isAfter(now));
+            
+            if (hasPastVisit) visitStatus = "VISITED";
+            else if (hasFutureVisit) visitStatus = "VISIT_PLANNED";
+        }
+
+        return PropertyDto.Response.builder()
+                .idProperty(p.getIdProperty())
+                .title(p.getTitle())
+                .address(p.getAddress())
+                .city(p.getCity())
+                .price(p.getPrice())
+                .surfaceM2(p.getSurfaceM2())
+                .numRooms(p.getNumRooms())
+                .floor(p.getFloor())
+                .listingUrl(p.getListingUrl())
+                .isAvailable(p.isAvailable())
+                .visitStatus(visitStatus)
+                .imageUrls(p.getImages() != null ? p.getImages().stream()
+                        .map(PropertyImage::getImageUrl)
+                        .collect(Collectors.toList()) : List.of())
                 .build();
     }
 

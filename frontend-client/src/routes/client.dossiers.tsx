@@ -36,13 +36,23 @@ const STAGE_CONFIG: Record<string, { label: string; color: string; text: string 
   LOST: { label: "Perdu", color: "bg-red-100", text: "text-red-600" },
 };
 
+const PROPERTY_TYPES: Record<string, string> = {
+  APARTMENT: "Appartement",
+  VILLA: "Villa",
+  OFFICE: "Bureau",
+  LAND: "Terrain",
+};
+
 function DossiersListPage() {
   const { data: dossiers, isLoading, isError, refetch } = useDossiers();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (dossiers && dossiers.length === 1) {
-      navigate({ to: `/client/dossiers/${dossiers[0].idFolder}` });
+      navigate({ 
+        to: "/client/dossiers/$id", 
+        params: { id: dossiers[0].idProfile } 
+      });
     }
   }, [dossiers, navigate]);
 
@@ -119,14 +129,16 @@ function DossiersListPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {dossiers.map((dossier: any) => {
           const stage = STAGE_CONFIG[dossier.stage] || { label: dossier.stage, color: "bg-gray-100", text: "text-gray-600" };
+          const propertyType = PROPERTY_TYPES[dossier.propertyType] || dossier.propertyType;
           const title = dossier.clientType === "BUYER" 
-            ? `Dossier Acheteur — ${dossier.propertyType === 'APARTMENT' ? 'Appartement' : dossier.propertyType === 'VILLA' ? 'Villa' : dossier.propertyType === 'OFFICE' ? 'Bureau' : 'Terrain'}`
-            : `Dossier Vendeur — ${dossier.propertyType === 'APARTMENT' ? 'Appartement' : dossier.propertyType === 'VILLA' ? 'Villa' : dossier.propertyType === 'OFFICE' ? 'Bureau' : 'Terrain'}`;
+            ? `Dossier Acheteur — ${propertyType}`
+            : `Dossier Vendeur — ${propertyType}`;
 
           return (
             <Link 
-              key={dossier.idFolder} 
-              to={`/client/dossiers/${dossier.idFolder}`}
+              key={dossier.idProfile} 
+              to="/client/dossiers/$id"
+              params={{ id: dossier.idProfile }}
               className="group"
             >
               <NeuCard className="h-full flex flex-col hover:neu-pressable transition-all border-transparent hover:border-vanilla/50">
