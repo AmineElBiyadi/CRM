@@ -168,6 +168,7 @@ public class ClientService {
                             .lastInteractionAt(d.getLastInteractionAt())
                             .isUrgent(d.getIsUrgent())
                             .newDossier(d.getClientFolder().getStatus() == FolderStatus.PENDING)
+                            .createdAt(d.getCreatedAt())
                             .build())
                     .collect(Collectors.toList());
     }

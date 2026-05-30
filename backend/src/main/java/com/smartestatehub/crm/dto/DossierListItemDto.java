@@ -22,4 +22,5 @@ public class DossierListItemDto {
     private LocalDateTime lastInteractionAt;
     private Boolean isUrgent;
     private Boolean newDossier;
+    private LocalDateTime createdAt;
 }

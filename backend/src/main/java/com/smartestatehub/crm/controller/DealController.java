@@ -3,6 +3,7 @@ package com.smartestatehub.crm.controller;
 import com.smartestatehub.crm.dto.CreateDossierRequest;
 import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
+import com.smartestatehub.crm.dto.UpdateDossierRequest;
 import com.smartestatehub.crm.model.DealStage;
 import com.smartestatehub.crm.service.DealService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,11 @@ public class DealController {
     @GetMapping("/{id}")
     public DossierDetailDto getDossierDetail(@PathVariable("id") UUID dealId) {
         return dealService.getDossierDetail(dealId);
+    }
+
+    @PutMapping("/{id}")
+    public DossierDetailDto updateDossier(@PathVariable("id") UUID id, @RequestBody UpdateDossierRequest request) {
+        return dealService.updateDossier(id, request);
     }
 
     @PatchMapping("/{id}/stage")
