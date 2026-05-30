@@ -4,6 +4,7 @@ import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.Offer;
 import com.smartestatehub.crm.model.OfferStatus;
 import com.smartestatehub.crm.model.Property;
+import com.smartestatehub.crm.model.PropertyUnavailableReason;
 import com.smartestatehub.crm.repository.OfferRepository;
 import com.smartestatehub.crm.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +42,7 @@ public class OfferService {
         acceptedOffer.setStatus(OfferStatus.ACCEPTED);
         Property acceptedProp = acceptedOffer.getProperty();
         acceptedProp.setAvailable(false);
-        acceptedProp.setUnavailableReason("SOLD");
+        acceptedProp.setUnavailableReason(PropertyUnavailableReason.SOLD);
         acceptedProp.setUnavailableAt(LocalDateTime.now());
         
         propertyRepository.save(acceptedProp);

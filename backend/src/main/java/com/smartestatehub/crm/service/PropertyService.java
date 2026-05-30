@@ -6,6 +6,7 @@ import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.Property;
 import com.smartestatehub.crm.model.PropertyImage;
 import com.smartestatehub.crm.model.PropertyType;
+import com.smartestatehub.crm.model.PropertyUnavailableReason;
 import com.smartestatehub.crm.repository.DealRepository;
 import com.smartestatehub.crm.repository.OfferRepository;
 import com.smartestatehub.crm.repository.PropertyImageRepository;
@@ -118,7 +119,7 @@ public class PropertyService {
             property = existingOpt.get();
             property.setAvailable(false);
             property.setUnavailableAt(java.time.LocalDateTime.now());
-            property.setUnavailableReason("NEGOTIATION");
+            property.setUnavailableReason(PropertyUnavailableReason.NEGOTIATION);
             property = propertyRepository.save(property);
             log.info("La propriété existe déjà en base de données. ID: {}", property.getIdProperty());
         } else {
@@ -135,7 +136,7 @@ public class PropertyService {
                     .propertyType(propertyType)
                     .isAvailable(false)
                     .unavailableAt(java.time.LocalDateTime.now())
-                    .unavailableReason("NEGOTIATION")
+                    .unavailableReason(PropertyUnavailableReason.NEGOTIATION)
                     .build();
 
             property = propertyRepository.save(property);
@@ -172,14 +173,20 @@ public class PropertyService {
     }
 
     /**
-     * Récupère les propriétés déjà enregistrées en base locale.
-     * En mode démo/simple, on retourne toutes les propriétés de la ville préférée du deal.
+     * Récupère les propriétés déjà enregistrées en base locale liées à un deal spécifique via ses offres.
      */
     public List<PropertyDto.Response> getPropertiesByDeal(UUID dealId) {
         log.info("Récupération des propriétés liées au deal ID: {}", dealId);
-        // On récupère toutes les propriétés de notre base locale pour la démo
-        return propertyRepository.findAll().stream()
-                .map(this::mapToResponse)
+        
+        List<com.smartestatehub.crm.model.Offer> offers = offerRepository.findByDealIdDeal(dealId);
+        return offers.stream()
+                .map(offer -> {
+                    Property p = offer.getProperty();
+                    PropertyDto.Response resp = mapToResponse(p);
+                    resp.setIdOffer(offer.getIdOffer());
+                    resp.setOfferStatus(offer.getStatus().name());
+                    return resp;
+                })
                 .collect(Collectors.toList());
     }
 

@@ -51,8 +51,9 @@ public class Property {
     @Column(name = "unavailable_at")
     private LocalDateTime unavailableAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "unavailable_reason")
-    private String unavailableReason;
+    private PropertyUnavailableReason unavailableReason;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
