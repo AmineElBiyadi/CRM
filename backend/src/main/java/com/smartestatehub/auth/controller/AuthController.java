@@ -4,6 +4,7 @@ import com.smartestatehub.auth.dto.LoginRequest;
 import com.smartestatehub.auth.dto.UserInfoResponse;
 import com.smartestatehub.auth.service.AuthService;
 import com.smartestatehub.auth.support.AuthCookies;
+import com.smartestatehub.shared.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -12,8 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -31,7 +30,7 @@ public class AuthController {
             UserInfoResponse user = authService.login(request, response);
             return ResponseEntity.ok(user);
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+            return ResponseEntity.status(401).body(authError(e.getMessage()));
         }
     }
 
@@ -42,7 +41,7 @@ public class AuthController {
             return ResponseEntity.ok(user);
         } catch (BadCredentialsException e) {
             authCookies.clearAuthCookies(response);
-            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+            return ResponseEntity.status(401).body(authError(e.getMessage()));
         }
     }
 
@@ -55,12 +54,20 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal String email) {
         if (email == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Non authentifié."));
+            return ResponseEntity.status(401).body(ApiErrorResponse.of(
+                    "UNAUTHORIZED",
+                    "Non authentifié.",
+                    "Connectez-vous pour accéder à votre espace."
+            ));
         }
         try {
             return ResponseEntity.ok(authService.me(email));
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
+            return ResponseEntity.status(401).body(authError(e.getMessage()));
         }
+    }
+
+    private static ApiErrorResponse authError(String message) {
+        return ApiErrorResponse.of("UNAUTHORIZED", message, null);
     }
 }

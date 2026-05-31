@@ -185,6 +185,19 @@
   .input-neu::placeholder { color: var(--muted-foreground); opacity: 0.7; }
   .input-neu:focus { box-shadow: var(--shadow-neu-inset), 0 0 0 2px #C2CEDF; }
 
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(110deg, rgba(33, 33, 33, 0.06) 8%, rgba(255, 255, 255, 0.72) 18%, rgba(33, 33, 33, 0.06) 33%);
+    background-size: 220% 100%;
+    animation: skeleton-shimmer 1.35s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { background-position: 120% 0; }
+    100% { background-position: -120% 0; }
+  }
+
   /* Brand colour utilities (used in JSX classNames) */
   .bg-alice   { background-color: var(--alice) !important; }
   .bg-honeydew { background-color: var(--honeydew) !important; }

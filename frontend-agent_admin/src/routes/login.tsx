@@ -3,11 +3,12 @@ import { useState, type FormEvent } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { apiLogin, ensureAuthenticated } from "@/lib/auth";
+import { ApiError } from "@/lib/api-error";
+import { apiLogin, tryRestoreSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
-    const user = await ensureAuthenticated();
+    const user = await tryRestoreSession();
 
     if (!user) return;
     throw redirect({ to: user.role === "ADMIN" ? "/admin" : "/agent" });
@@ -46,7 +47,12 @@ function LoginPage() {
         navigate({ to: "/agent" });
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Identifiants incorrects.");
+      if (err instanceof ApiError) {
+        const detail = err.details ? ` ${err.details}` : "";
+        toast.error(`${err.message}${detail}`);
+      } else {
+        toast.error(err instanceof Error ? err.message : "Identifiants incorrects.");
+      }
     } finally {
       setLoading(false);
     }

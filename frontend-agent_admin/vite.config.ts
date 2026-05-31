@@ -21,6 +21,18 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8081',
         changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            const cookies = proxyRes.headers['set-cookie']
+            if (!cookies) return
+            proxyRes.headers['set-cookie'] = cookies.map((cookie) =>
+              cookie
+                .replace(/;\s*Domain=[^;]+/gi, '')
+                .replace(/;\s*Secure/gi, ''),
+            )
+          })
+        },
       },
     },
   },

@@ -1,34 +1,57 @@
 import { apiRefresh } from "@/lib/auth";
+import { ApiError, parseApiErrorResponse } from "@/lib/api-error";
 import { csrfHeadersForMethod } from "@/lib/csrf";
-
-const API_BASE = "http://localhost:8081";
+import { getApiBase } from "@/lib/api-base";
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const method = (options.method ?? "GET").toUpperCase();
+  const apiBase = getApiBase();
+
+  const buildHeaders = (): HeadersInit => {
+    const headers: Record<string, string> = {
+      ...csrfHeadersForMethod(method),
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    if (method !== "GET" && method !== "HEAD") {
+      headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
+    }
+    return headers;
+  };
 
   const doFetch = () =>
-    fetch(`${API_BASE}${path}`, {
+    fetch(`${apiBase}${path}`, {
       ...options,
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        ...csrfHeadersForMethod(method),
-        ...options.headers,
-      },
+      headers: buildHeaders(),
     });
 
-  let res = await doFetch();
+  let res: Response;
+  try {
+    res = await doFetch();
+  } catch {
+    throw ApiError.client(
+      "NETWORK_ERROR",
+      "Impossible de joindre le serveur.",
+      "Vérifiez que le backend est démarré et accessible.",
+    );
+  }
 
   if (res.status === 401) {
     const refreshed = await apiRefresh();
     if (refreshed) {
-      res = await doFetch();
+      try {
+        res = await doFetch();
+      } catch {
+        throw ApiError.client(
+          "NETWORK_ERROR",
+          "Impossible de joindre le serveur après renouvellement de session.",
+        );
+      }
     }
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { message?: string }).message ?? "Erreur serveur.");
+    throw await parseApiErrorResponse(res);
   }
 
   if (res.status === 204) return null;

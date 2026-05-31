@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { getAxiosBaseURL } from '@/lib/api-base';
 import { csrfHeadersForMethod } from '@/lib/csrf';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081',
+  baseURL: getAxiosBaseURL(),
   withCredentials: true,
 });
 

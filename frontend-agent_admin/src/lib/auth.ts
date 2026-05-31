@@ -1,6 +1,8 @@
 /** Auth — HttpOnly cookies on the server; user profile cached client-side only */
 
+import { parseApiErrorResponse } from "@/lib/api-error";
 import { csrfHeadersForMethod } from "@/lib/csrf";
+import { getApiBase } from "@/lib/api-base";
 
 const USER_KEY = "crm_user";
 const REMEMBER_KEY = "crm_remember";
@@ -12,8 +14,6 @@ export interface AuthUser {
   email: string;
   role: "ADMIN" | "AGENT" | "CLIENT";
 }
-
-const API_BASE = "http://localhost:8081";
 
 const fetchOpts: RequestInit = { credentials: "include" };
 
@@ -71,15 +71,24 @@ function mapUser(data: {
 
 function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const method = (init.method ?? "GET").toUpperCase();
-  return fetch(`${API_BASE}${path}`, {
+  const headers: Record<string, string> = {
+    ...csrfHeadersForMethod(method),
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  if (method !== "GET" && method !== "HEAD") {
+    headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
+  }
+  return fetch(`${getApiBase()}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...csrfHeadersForMethod(method),
-      ...init.headers,
-    },
+    headers,
   });
+}
+
+/** True when the backend likely issued a session (csrf cookie is readable). */
+export function hasAuthCookies(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.includes("csrf_token=");
 }
 
 export async function apiLogin(
@@ -93,8 +102,7 @@ export async function apiLogin(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { message?: string }).message ?? "Identifiants incorrects.");
+    throw await parseApiErrorResponse(res);
   }
 
   const data = await res.json();
@@ -152,4 +160,21 @@ export async function ensureAuthenticated(): Promise<AuthUser | null> {
 
   clearUser();
   return null;
+}
+
+/**
+ * For the login page only: skip API calls when there is no session cookie,
+ * and clear stale cookies after a failed restore.
+ */
+export async function tryRestoreSession(): Promise<AuthUser | null> {
+  if (!hasAuthCookies()) {
+    clearUser();
+    return null;
+  }
+
+  const user = await ensureAuthenticated();
+  if (!user) {
+    await apiLogout().catch(() => {});
+  }
+  return user;
 }

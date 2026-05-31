@@ -1,5 +1,7 @@
 package com.smartestatehub.auth.filter;
 
+import com.smartestatehub.auth.model.InternalUser;
+import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.auth.support.AuthCookies;
 import com.smartestatehub.shared.util.JwtUtil;
 import jakarta.servlet.FilterChain;
@@ -22,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final AuthCookies authCookies;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -31,19 +34,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null && jwtUtil.isTokenValid(token)) {
             String email = jwtUtil.extractEmail(token);
-            String role = jwtUtil.extractRole(token);
 
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                var auth = new UsernamePasswordAuthenticationToken(
-                        email,
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                userRepository.findByEmail(email)
+                        .filter(user -> user.getDeletedAt() == null)
+                        .ifPresent(user -> setAuthentication(email, user));
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void setAuthentication(String email, InternalUser user) {
+        String role = user.getRole().name();
+        String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        var auth = new UsernamePasswordAuthenticationToken(
+                email,
+                null,
+                List.of(new SimpleGrantedAuthority(authority))
+        );
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     private String resolveToken(HttpServletRequest request) {
