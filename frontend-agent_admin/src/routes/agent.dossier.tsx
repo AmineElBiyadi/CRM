@@ -22,6 +22,8 @@ import {
 } from "@/api/dossiersApi";
 // @ts-ignore
 import { getPropertiesByDeal } from "@/api/propertyApi";
+// @ts-ignore
+import { acceptOffer as apiAcceptOffer } from "@/api/offerApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
@@ -32,7 +34,7 @@ import { toast } from "sonner";
 // @ts-ignore
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
 // @ts-ignore
-import { getContractsByDeal, updateContractStatus } from "@/api/contractApi";
+import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
 
 type DossierSearch = {
   id?: string;
@@ -201,15 +203,16 @@ function DossierPage() {
     }
   });
 
-  const updateDossierMutation = useMutation({
-    mutationFn: (request: UpdateDossierRequest) => apiUpdateDossier(id!, request),
+  const acceptOfferMutation = useMutation({
+    mutationFn: apiAcceptOffer,
     onSuccess: () => {
-      toast.success("Dossier mis à jour avec succès");
+      toast.success("Offre acceptée !");
+      queryClient.invalidateQueries({ queryKey: ["deal-properties", id] });
       queryClient.invalidateQueries({ queryKey: ["dossier", id] });
-      setEditingDossier(false);
+      fetchDossierData();
     },
-    onError: () => {
-      toast.error("Erreur lors de la mise à jour du dossier");
+    onError: (e: any) => {
+      toast.error("Erreur : " + e.message);
     }
   });
 
@@ -283,6 +286,24 @@ function DossierPage() {
     }
   };
 
+  const handleMarkPaid = async (contractId: string, paymentId: string) => {
+    try {
+      await markPaymentPaid(contractId, paymentId);
+      setContracts((prev) => prev.map((c) => {
+        if (c.idContract === contractId) {
+          return {
+            ...c,
+            payments: c.payments.map((p: any) => p.idPayment === paymentId ? { ...p, isPaid: true } : p)
+          };
+        }
+        return c;
+      }));
+      toast.success("Versement marqué comme payé !");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   const handleLogInteraction = () => {
     if (!newDesc.trim()) {
       toast.error("Veuillez saisir une description");
@@ -350,15 +371,7 @@ function DossierPage() {
   if (!dossier) return <div className="p-10 text-center">Dossier introuvable.</div>;
 
   const currentStageIdx = STAGES.findIndex(s => s.value === dossier.stage);
-
-  const floorOptions = [
-    { value: -1, label: "Indifférent" },
-    { value: 0, label: "Rez-de-chaussée" },
-    { value: 1, label: "1er étage" },
-    { value: 2, label: "2ème étage" },
-    { value: 3, label: "3ème étage et +" },
-    { value: -2, label: "Dernier étage" },
-  ];
+  const acceptedProperty = linkedProperties.find(p => p.offerStatus === 'ACCEPTED');
 
   const iconMap: Record<string, any> = { 
     CALL: Phone, 
@@ -634,7 +647,17 @@ function DossierPage() {
         {tab === "Propriétés" && (
           <>
             <div className="flex gap-3 flex-wrap">
-              <Link to="/agent/recherche" search={{ dealId: id }} className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium">
+              <Link 
+                to="/agent/recherche" 
+                search={{ 
+                  dealId: id,
+                  city: dossier.preferredArea || dossier.city || "",
+                  maxPrice: dossier.budgetMax || dossier.askingPrice || undefined,
+                  propertyType: dossier.propertyType || "",
+                  minRooms: dossier.numRooms || undefined
+                }} 
+                className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium"
+              >
                 <Building2 size={16} /> Rechercher biens
               </Link>
               <button
@@ -647,13 +670,36 @@ function DossierPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               {linkedProperties.map((p) => (
                 <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                  <div className="relative">
+                    <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                    {p.offerStatus === 'ACCEPTED' && (
+                      <div className="absolute top-2 right-2 bg-honeydew text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                        <Check size={10} /> ACCEPTEE
+                      </div>
+                    )}
+                  </div>
                   <div className="font-medium text-sm">{p.address}</div>
                   <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
-                    <SoftBadge tone={p.isAvailable ? "success" : "info"}>{p.isAvailable ? "Disponible" : "Vendu"}</SoftBadge>
+                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'info')}>
+                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Négociation")}
+                    </SoftBadge>
                   </div>
+                  
+                  {p.offerStatus === 'PENDING' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        acceptOfferMutation.mutate(p.idOffer);
+                      }}
+                      disabled={acceptOfferMutation.isPending}
+                      className="w-full mt-3 py-2 rounded-lg bg-honeydew text-eerie text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                    >
+                      {acceptOfferMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                      Accepter l'offre
+                    </button>
+                  )}
                 </NeuCard>
               ))}
               {linkedProperties.length === 0 && !loadingContext && (
@@ -1026,10 +1072,22 @@ function DossierPage() {
         {tab === "Contrats" && (
           <div className="space-y-4">
             <button
-              onClick={() => setShowContractForm(true)}
-              className="w-full py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90 flex items-center justify-center gap-2"
+              onClick={() => {
+                if (!acceptedProperty) {
+                  toast.warning("Veuillez d'abord accepter une offre de propriété pour ce dossier.");
+                  setTab("Propriétés");
+                  return;
+                }
+                setPropDetail(acceptedProperty);
+                setShowContractForm(true);
+              }}
+              className={`w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                acceptedProperty 
+                ? "bg-eerie text-ghost hover:opacity-90 shadow-lg" 
+                : "bg-alice text-muted-foreground/60 cursor-not-allowed"
+              }`}
             >
-              <Plus size={16} /> Nouveau contrat
+              <Plus size={16} /> Nouveau contrat {!acceptedProperty && "(Sélectionnez un bien d'abord)"}
             </button>
 
             {/* Historique des contrats depuis l'API */}
@@ -1055,6 +1113,15 @@ function DossierPage() {
                         Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
                       </p>
                     </div>
+                    {c.pdfUrl && (
+                      <button
+                        onClick={() => window.open(c.pdfUrl, '_blank')}
+                        className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
+                        title="Aperçu du PDF"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    )}
                   </div>
 
                   {/* Tracker statut */}
@@ -1091,6 +1158,15 @@ function DossierPage() {
                             <div className="text-sm font-bold shrink-0">
                               {(p.amount || 0).toLocaleString("fr-MA")} MAD
                             </div>
+                            {!p.isPaid && (
+                               <button 
+                                 onClick={() => handleMarkPaid(c.idContract, p.idPayment)}
+                                 className="text-[10px] uppercase font-bold px-2 py-1.5 bg-honeydew text-eerie rounded-md hover:bg-honeydew/80 ml-1 transition-all"
+                                 title="Marquer comme payé"
+                               >
+                                 Payer
+                               </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1148,7 +1224,11 @@ function DossierPage() {
                 <button
                   onClick={() => {
                     if (f.filePath) {
-                      window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                      if (f.filePath.startsWith("http")) {
+                        window.open(f.filePath, '_blank');
+                      } else {
+                        window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                      }
                     } else {
                       toast.error("Le lien vers ce document n'est pas disponible.");
                     }

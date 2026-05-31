@@ -13,9 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,8 +25,8 @@ public class DocumentService {
 
     private final DocumentRepository documentRepository;
     private final DealRepository dealRepository;
+    private final CloudinaryService cloudinaryService;
 
-    private final String uploadDir = "uploads/documents/";
 
     private DocumentDto toDto(Document doc) {
         return DocumentDto.builder()
@@ -49,21 +46,17 @@ public class DocumentService {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier (Deal) non trouvé avec l'ID: " + dealId));
 
-        // Créer le dossier si inexistant
-        Path root = Paths.get(uploadDir);
-        if (!Files.exists(root)) {
-            Files.createDirectories(root);
-        }
+        // Nom unique
+        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+        String publicId = java.util.UUID.randomUUID() + "_" + originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
-        // Nom de fichier unique
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path targetPath = root.resolve(fileName);
-        Files.copy(file.getInputStream(), targetPath);
+        // Upload sur Cloudinary
+        String cloudinaryUrl = cloudinaryService.upload(file.getBytes(), publicId, "documents", "raw");
 
         Document doc = Document.builder()
                 .deal(deal)
                 .documentType(type)
-                .filePath(targetPath.toString().replace("\\", "/"))
+                .filePath(cloudinaryUrl)   // URL Cloudinary publique
                 .confirmedReceived(true)
                 .isEmbedded(false)
                 .build();

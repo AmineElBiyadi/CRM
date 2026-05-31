@@ -34,6 +34,7 @@ public class PropertyController {
      */
     @GetMapping("/search")
     public ResponseEntity<PropertyDto.SearchResponse> searchProperties(
+            @RequestParam(value = "dealId", required = false) UUID dealId,
             @RequestParam(value = "city", required = false) String city,
             @RequestParam(value = "propertyType", required = false) String propertyType,
             @RequestParam(value = "minPrice", required = false) Double minPrice,
@@ -43,7 +44,7 @@ public class PropertyController {
             @RequestParam(value = "page", defaultValue = "1") int page) {
         
         PropertyDto.SearchResponse response = propertyService.search(
-                city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
+                dealId, city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
         return ResponseEntity.ok(response);
     }
 

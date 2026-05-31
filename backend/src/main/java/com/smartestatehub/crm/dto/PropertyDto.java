@@ -39,6 +39,8 @@ public class PropertyDto {
     @AllArgsConstructor
     public static class Response {
         private UUID idProperty;
+        private UUID idOffer;                 // ID de l'offre associée au deal
+        private String offerStatus;           // Statut de l'offre (PENDING, ACCEPTED, REJECTED)
         private String title;
         private String address;
         private String city;

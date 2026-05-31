@@ -34,9 +34,15 @@ function RecherchePage() {
   const routeSearch = useSearch({ strict: false }) as any;
   const dealId = routeSearch?.dealId as string | undefined;
 
+  // Initial state from URL params
+  const initialCity = routeSearch?.city || "New York";
+  const initialBudget = routeSearch?.maxPrice ? (routeSearch.maxPrice / 1_000_000) : 3;
+  const initialRooms = routeSearch?.minRooms || 2;
+  const initialPropertyType = routeSearch?.propertyType || "";
+
   // City autocomplete
-  const [city, setCity] = useState("New York");
-  const [cityInput, setCityInput] = useState("New York");
+  const [city, setCity] = useState(initialCity);
+  const [cityInput, setCityInput] = useState(initialCity);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [filteredCities, setFilteredCities] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -45,11 +51,11 @@ function RecherchePage() {
   const [groupedTypes, setGroupedTypes] = useState<GroupedTypes>({});
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [selectedGeneral, setSelectedGeneral] = useState<string>("");
-  const [selectedSpecific, setSelectedSpecific] = useState<string>("");
+  const [selectedSpecific, setSelectedSpecific] = useState<string>(initialPropertyType);
 
   // Search
-  const [budget, setBudget] = useState(3);
-  const [rooms, setRooms] = useState(2);
+  const [budget, setBudget] = useState(initialBudget);
+  const [rooms, setRooms] = useState(initialRooms);
   const [results, setResults] = useState<any[]>([]);
   const [totalResults, setTotalResults] = useState(0);
   const [detail, setDetail] = useState<any | null>(null);
@@ -66,6 +72,17 @@ function RecherchePage() {
         if (!res.ok) throw new Error("Erreur chargement types");
         const data: GroupedTypes = await res.json();
         setGroupedTypes(data);
+
+        // Find general type for the specific type if provided
+        if (initialPropertyType) {
+          const foundGeneral = Object.keys(data).find(gen => data[gen].includes(initialPropertyType));
+          if (foundGeneral) {
+            setSelectedGeneral(foundGeneral);
+            setSelectedSpecific(initialPropertyType);
+            return;
+          }
+        }
+
         // Sélectionner le premier groupe/type par défaut
         const firstGeneral = Object.keys(data)[0];
         if (firstGeneral) {
@@ -287,13 +304,13 @@ function RecherchePage() {
               <label className="text-xs font-medium text-muted-foreground">Chambres min</label>
               <div className="mt-1 flex items-center gap-2 neu-inset rounded-lg p-1">
                 <button
-                  onClick={() => setRooms((r) => Math.max(1, r - 1))}
+                  onClick={() => setRooms((r: number) => Math.max(1, r - 1))}
                   aria-label="Moins"
                   className="w-8 h-8 rounded-md neu-sm hover:neu-pressable active:scale-95 transition-transform font-bold"
                 >−</button>
                 <span className="flex-1 text-center font-semibold text-sm">{rooms}</span>
                 <button
-                  onClick={() => setRooms((r) => Math.min(10, r + 1))}
+                  onClick={() => setRooms((r: number) => Math.min(10, r + 1))}
                   aria-label="Plus"
                   className="w-8 h-8 rounded-md neu-sm hover:neu-pressable active:scale-95 transition-transform font-bold"
                 >+</button>
