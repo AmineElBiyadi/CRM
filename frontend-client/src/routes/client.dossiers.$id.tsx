@@ -78,6 +78,15 @@ const MEETING_TYPE_MAP: Record<string, { label: string; icon: any; color: string
   CONTRACT_SIGNING: { label: "Signature", icon: FileSignature, color: "text-emerald-600 bg-emerald-50" },
 };
 
+const MEETING_STATUS_CONFIG: Record<string, { label: string; tone: "success" | "info" | "warn" | "danger" | "neutral" }> = {
+  SCHEDULED:   { label: "Confirmé",    tone: "success" },
+  PENDING:     { label: "En attente",  tone: "info" },
+  RESCHEDULED: { label: "Reprogrammé", tone: "warn" },
+  POSTPONED:   { label: "Reporté",     tone: "warn" },
+  CANCELED:    { label: "Annulé",      tone: "danger" },
+  COMPLETED:   { label: "Terminé",     tone: "success" },
+};
+
 function Skeleton({ className }: { className?: string }) {
   return (
     <div className={cn("rounded-xl bg-gradient-to-r from-muted via-alice to-muted animate-pulse", className)} />
@@ -188,12 +197,12 @@ function DossierDetailPage() {
               {dossier.isUrgent && (
                 <SoftBadge tone="danger" className="animate-pulse font-black tracking-widest text-[9px]">URGENT</SoftBadge>
               )}
-              <SoftBadge tone={STAGE_CONFIG[dossier.stage]?.tone as any} className="font-black tracking-widest text-[9px]">
-                {STAGE_CONFIG[dossier.stage]?.label}
+              <SoftBadge tone={STAGE_CONFIG[dossier.stage || "NEW"]?.tone as any} className="font-black tracking-widest text-[9px]">
+                {STAGE_CONFIG[dossier.stage || "NEW"]?.label}
               </SoftBadge>
             </div>
             <h1 className="text-3xl font-black tracking-tight text-eerie leading-tight">
-              {dossier.propertyTitle || (dossier.clientType === "BUYER" ? `Achat — ${PROPERTY_TYPES[dossier.propertyType] || dossier.propertyType}` : `Vente — ${PROPERTY_TYPES[dossier.propertyType] || dossier.propertyType}`)}
+              {dossier.propertyTitle || (dossier.clientType === "BUYER" ? `Achat — ${PROPERTY_TYPES[dossier.propertyType || "APARTMENT"] || dossier.propertyType}` : `Vente — ${PROPERTY_TYPES[dossier.propertyType || "APARTMENT"] || dossier.propertyType}`)}
             </h1>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-2xl border border-border/40 shadow-sm">
@@ -247,7 +256,7 @@ function DossierDetailPage() {
                 "absolute top-1/2 -translate-y-1/2 left-6 h-1.5 transition-all duration-1000 ease-out rounded-full z-10",
                 isLost ? "bg-danger/40 w-[calc(100%-48px)]" : "bg-vanilla shadow-[0_0_10px_rgba(232,232,87,0.5)]"
               )}
-              style={{ width: isLost ? "calc(100% - 48px)" : `calc(${(currentStepIdx / (STEPS.length - 1)) * 100}% )` }}
+              style={{ width: isLost ? "calc(100% - 48px)" : `calc(${(currentStepIdx / (STEPS.length - 1)) * 100}%)` }}
             />
 
             <div className="relative flex justify-between items-center z-20">
@@ -316,7 +325,7 @@ function DossierDetailPage() {
                   <div className="p-2 bg-alice rounded-xl text-eerie shadow-sm">
                     <Layers size={14} />
                   </div>
-                  <p className="text-sm font-black text-eerie">{PROPERTY_TYPES[dossier.propertyType] || dossier.propertyType || "Non défini"}</p>
+                  <p className="text-sm font-black text-eerie">{PROPERTY_TYPES[dossier.propertyType || "APARTMENT"] || dossier.propertyType || "Non défini"}</p>
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -494,8 +503,8 @@ function DossierDetailPage() {
                       borderColor
                     )}>
                       <div className="absolute top-3 right-3">
-                        <SoftBadge tone={m.status === 'SCHEDULED' ? 'success' : 'info'} className="text-[7px] px-1.5 py-0 font-black uppercase">
-                          {m.status}
+                        <SoftBadge tone={MEETING_STATUS_CONFIG[m.status]?.tone || "info"} className="text-[7px] px-1.5 py-0 font-black uppercase">
+                          {MEETING_STATUS_CONFIG[m.status]?.label || m.status}
                         </SoftBadge>
                       </div>
                       <div className="mb-3">

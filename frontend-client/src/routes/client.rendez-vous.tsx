@@ -1,11 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useMemo, ReactNode } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
-import { SoftBadge } from "@/components/ui/design-bits";
+import { SoftBadge, Avatar } from "@/components/ui/design-bits";
 import { 
-  Calendar, Clock, MapPin, Phone, Building, PenLine, Video, 
-  Loader2, Filter, ArrowUpDown, ChevronRight, AlertCircle,
-  CheckCircle2, XCircle, Clock4, History
+  Calendar, Clock, MapPin, Phone, 
+  Building2, 
+  PenLine, 
+  Video, 
+  Loader2, 
+  Filter, 
+  ArrowUpDown, 
+  ChevronRight, 
+  AlertCircle, 
+  CheckCircle2, 
+  XCircle,
+  Clock4,
+  History,
+  FileSignature
 } from "lucide-react";
 import { useClientData, useMeetingActions } from "@/hooks/use-client-data";
 import { format, isAfter, isBefore, startOfToday } from "date-fns";
@@ -26,11 +37,11 @@ export const Route = createFileRoute("/client/rendez-vous")({
   component: ClientMeetings,
 });
 
-const MEETING_TYPE_MAP: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  PROPERTY_VISIT:      { label: "Visite de propriété",       icon: <MapPin size={16} />,     color: "text-blue-600 bg-blue-50" },
-  PHONE_CALL:          { label: "Appel téléphonique",         icon: <Phone size={16} />,      color: "text-purple-600 bg-purple-50" },
-  OFFICE_APPOINTMENT:  { label: "Rendez-vous en agence",      icon: <Building size={16} />,   color: "text-amber-600 bg-amber-50" },
-  CONTRACT_SIGNING:    { label: "Signature de contrat",       icon: <PenLine size={16} />,    color: "text-emerald-600 bg-emerald-50" },
+const MEETING_TYPE_MAP: Record<string, { label: string; icon: ReactNode; color: string }> = {
+  PROPERTY_VISIT: { label: "Visite", icon: <MapPin size={16} />, color: "text-blue-600 bg-blue-50" },
+  PHONE_CALL: { label: "Appel", icon: <Phone size={16} />, color: "text-purple-600 bg-purple-50" },
+  OFFICE_APPOINTMENT: { label: "RDV Agence", icon: <Building2 size={16} />, color: "text-amber-600 bg-amber-50" },
+  CONTRACT_SIGNING: { label: "Signature", icon: <FileSignature size={16} />, color: "text-emerald-600 bg-emerald-50" },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; tone: "success" | "info" | "warn" | "danger" | "neutral"; icon: any }> = {
@@ -71,7 +82,6 @@ function ClientMeetings() {
   const deals = data?.dossiers || [];
 
   const reminderMeetings = useMemo(() => {
-    // ... (keep existing reminderMeetings logic)
     const now = new Date();
     return meetings.filter(m => {
       const scheduledDate = new Date(m.scheduledAt);
@@ -234,7 +244,7 @@ function ClientMeetings() {
       {/* Barre de Filtres */}
       <div className="flex flex-wrap items-center gap-4 p-4 neu-inset rounded-2xl">
         <div className="flex items-center gap-2 px-3 py-2 bg-ghost rounded-xl border border-border/40 min-w-[200px]">
-          <Building size={14} className="text-muted-foreground" />
+          <Building2 size={14} className="text-muted-foreground" />
           <select 
             className="bg-transparent text-xs font-bold focus:outline-none w-full"
             value={dealFilter}
@@ -384,8 +394,8 @@ function ClientMeetings() {
                   <Calendar size={120} />
                 </div>
                 <div className="flex items-center gap-3 mb-4">
-                  <SoftBadge tone="info" className="bg-white/10 text-white border-white/20 px-3 font-black tracking-widest text-[10px]">
-                    {selectedMeeting.status}
+                  <SoftBadge tone={STATUS_CONFIG[selectedMeeting.status]?.tone || "info"} className="bg-white/10 text-white border-white/20 px-3 font-black tracking-widest text-[10px]">
+                    {STATUS_CONFIG[selectedMeeting.status]?.label || selectedMeeting.status}
                   </SoftBadge>
                 </div>
                 <h2 className="text-3xl font-black mb-2">{typeLabel(selectedMeeting.type)}</h2>
@@ -467,7 +477,7 @@ function ClientMeetings() {
                           <p className="text-xs text-muted-foreground leading-relaxed font-medium">
                             Pour toute reprogrammation ou annulation, contactez directement votre agent 
                             <span className="text-eerie font-bold mx-1 bg-vanilla/10 px-1.5 py-0.5 rounded">
-                              {data?.profile.assignedAgentName}
+                              {data?.profile.assignedAgentName || "votre agent"}
                             </span> 
                             {data?.profile.assignedAgentPhone && (
                               <span className="text-eerie font-bold">

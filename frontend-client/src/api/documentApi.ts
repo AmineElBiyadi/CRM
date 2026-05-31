@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8081/api/documents";
+const API_BASE_URL = "/api/documents";
 
 const getClientId = () => localStorage.getItem("client_id") || "d755eba6-106f-4f81-af56-4e4d60f16840";
 
@@ -18,11 +18,11 @@ apiClient.interceptors.request.use((config) => {
 });
 
 export const documentApi = {
-  getDocumentsByDeal: async (idDeal) => {
+  getDocumentsByDeal: async (idDeal: string) => {
     const { data } = await apiClient.get(`/deal/${idDeal}`);
     return data;
   },
-  uploadDocument: async (idDeal, type, file) => {
+  uploadDocument: async (idDeal: string, type: string, file: File) => {
     const formData = new FormData();
     formData.append("dealId", idDeal);
     formData.append("type", type);
