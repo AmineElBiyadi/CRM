@@ -35,13 +35,13 @@ public class PropertySyncScheduler {
 
     /**
      * Trigger a sync on startup to ensure the DB has data immediately.
+     * On peut le commenter ou le supprimer si la base est déjà bien remplie.
      */
-    @PostConstruct
-    public void init() {
-        log.info("Initialisation : Lancement de la première synchronisation des propriétés...");
-        // On lance dans un nouveau thread pour ne pas bloquer le démarrage de l'application
-        new Thread(this::syncPropertiesFromExternalApi).start();
-    }
+    // @PostConstruct
+    // public void init() {
+    //     log.info("Initialisation : Lancement de la première synchronisation des propriétés...");
+    //     new Thread(this::syncPropertiesFromExternalApi).start();
+    // }
 
     /**
      * Executes every 12 hours (0 0 0/12 * * ?) to keep the DB updated with latest properties

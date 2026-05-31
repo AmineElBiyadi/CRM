@@ -269,25 +269,46 @@ function DossierPage() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0 || !id) return;
+    if (files.length === 0 || !id || !newDocType) return;
     
     setUploading(true);
-    const formData = new FormData();
-    formData.append("dealId", id);
-    formData.append("file", files[0]);
-    formData.append("type", newDocType);
-
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/upload`, {
+      // 1. Direct Upload to Cloudinary (Frontend)
+      const formData = new FormData();
+      formData.append("file", files[0]);
+      formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "Rawabet");
+      formData.append("folder", "documents");
+      
+      // Optionnel : Générer le nom comme avant
+      const clientName = (dossier?.clientName || "Document").replace(/\s+/g, '_');
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+      const publicId = `${newDocType}_${clientName}_${Date.now()}.${extension}`;
+      formData.append("public_id", publicId);
+
+      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd";
+      // On utilise resource_type "auto" ou "image" pour les PDF pour faciliter la prévisualisation
+      const resourceType = extension === 'pdf' ? 'image' : 'auto';
+      const resCloud = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
         method: "POST",
-        body: formData,
+        body: formData
+      });
+      
+      if (!resCloud.ok) throw new Error("Erreur lors de l'upload Cloudinary");
+      const cloudData = await resCloud.json();
+      const uploadedUrl = cloudData.secure_url;
+
+      // 2. Save only the URL in our Backend
+      const resBackend = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/save-info?dealId=${id}&type=${newDocType}&url=${encodeURIComponent(uploadedUrl)}`, {
+        method: "POST",
         credentials: "include"
       });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success("Document uploadé");
+
+      if (!resBackend.ok) throw new Error(await resBackend.text());
+      
+      toast.success("Document versionné avec succès");
       fetchDossierData();
     } catch (e: any) {
-      toast.error("Upload échoué : " + e.message);
+      toast.error("Échec de l'opération : " + e.message);
     } finally {
       setUploading(false);
     }
@@ -415,8 +436,35 @@ function DossierPage() {
 
 
   if (!id) return <div className="p-10 text-center">Aucun dossier sélectionné.</div>;
-  if (loadingDossier) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin" /></div>;
-  if (!dossier) return <div className="p-10 text-center">Dossier introuvable.</div>;
+  
+  if (loadingDossier) {
+    return (
+      <div className="min-h-screen bg-ghost flex flex-col items-center justify-center p-6 text-center gap-4">
+        <Loader2 className="animate-spin text-alice" size={48} />
+        <div className="animate-pulse">
+          <h2 className="text-xl font-bold text-eerie">Chargement du dossier...</h2>
+          <p className="text-sm text-muted-foreground mt-1">Nous préparons les informations de votre client.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dossier) {
+    return (
+      <div className="min-h-screen bg-ghost flex flex-col items-center justify-center p-6 text-center gap-4">
+        <div className="p-10 text-center neu-sm rounded-3xl bg-white/50">
+          <h2 className="text-xl font-bold text-warn">Dossier introuvable</h2>
+          <p className="text-sm text-muted-foreground mt-2">Ce dossier n'existe pas ou a été supprimé.</p>
+          <button 
+            onClick={() => window.history.back()}
+            className="mt-6 px-6 py-2 rounded-xl bg-eerie text-ghost text-sm font-medium"
+          >
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const currentStageIdx = STAGES.findIndex(s => s.value === dossier.stage);
   const acceptedProperty = linkedProperties.find(p => p.offerStatus === 'ACCEPTED');

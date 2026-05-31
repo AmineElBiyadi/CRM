@@ -34,8 +34,9 @@ public class ContractPdfService {
             renderer.createPDF(out);
             byte[] pdfBytes = out.toByteArray();
 
-            String publicId = "contract-" + contract.getIdContract().toString();
-            String url = cloudinaryService.upload(pdfBytes, publicId, "contracts", "raw");
+            String publicId = "contract-" + contract.getIdContract().toString() + ".pdf";
+            // On utilise "image" au lieu de "raw" pour que Cloudinary génère une preview du PDF
+            String url = cloudinaryService.upload(pdfBytes, publicId, "contracts", "image");
             log.info("PDF contrat uploadé sur Cloudinary: {}", url);
             return url;
 

@@ -6,7 +6,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
  * 
  * @param {string} offerId - ID de l'offre
  */
-export async function acceptOffer(offerId) {
+export async function acceptOffer(offerId: string) {
   const res = await fetch(`${BASE}/api/offers/${offerId}/accept`, {
     method: "POST",
     credentials: "include",

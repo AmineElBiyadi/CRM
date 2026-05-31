@@ -20,9 +20,9 @@ const FORM_STEPS = [
 ];
 
 /* ─── helpers ─── */
-function fmtMAD(n) {
+function fmtUSD(n) {
   if (!n) return "—";
-  return Number(n).toLocaleString("fr-MA") + " MAD";
+  return Number(n).toLocaleString("en-US") + " $";
 }
 
 /* ─────────────────────────────────────────────
@@ -77,14 +77,62 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
     (parseFloat(form.depositAmount) || 0) -
     paymentsTotal;
 
+  const validateStep = (s) => {
+    if (s === 1) {
+      if (!form.agreedPrice || parseFloat(form.agreedPrice) <= 0) {
+        toast.error("Veuillez saisir un prix valide");
+        return false;
+      }
+    }
+    if (s === 2) {
+      const price = parseFloat(form.agreedPrice) || 0;
+      const deposit = parseFloat(form.depositAmount) || 0;
+      if (deposit > price) {
+        toast.error("Le dépôt ne peut pas dépasser le prix total");
+        return false;
+      }
+      if (!form.depositDate) {
+        toast.error("Veuillez saisir une date de dépôt");
+        return false;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      if (form.depositDate < today) {
+        toast.error("La date de dépôt ne peut pas être antérieure à aujourd'hui");
+        return false;
+      }
+    }
+    if (s === 3) {
+      if (remainingAfterPayments !== 0) {
+        toast.error(`Le calendrier de paiement n'est pas équilibré. Reste : ${fmtUSD(remainingAfterPayments)}`);
+        return false;
+      }
+      
+      // Validation de la date de remise des clés par rapport aux versements
+      if (form.keyDate) {
+        const lastPaymentDate = payments.reduce((max, p) => {
+          return (!max || p.dueDate > max) ? p.dueDate : max;
+        }, "");
+        
+        if (lastPaymentDate && form.keyDate < lastPaymentDate) {
+          toast.error("La remise des clés doit avoir lieu après le dernier versement.");
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
   /* ── soumission ── */
   const handleSubmit = async () => {
+    if (!validateStep(3)) return;
     setSaving(true);
     try {
       const body = {
         agreedPrice: parseFloat(form.agreedPrice),
         depositAmount: parseFloat(form.depositAmount),
-        notes: form.notes,
+        depositDate: form.depositDate ? `${form.depositDate}T12:00:00` : null,
+        keyHandoverDate: form.keyDate ? `${form.keyDate}T12:00:00` : null,
+        internalNotes: form.notes,
         payments: payments.map((p, i) => ({
           amount: parseFloat(p.amount),
           dueDate: p.dueDate,
@@ -184,11 +232,11 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
               onChange={(e) => set("propertyAddress", e.target.value)}
             />
           </Field>
-          <Field label="Prix convenu (MAD)">
+          <Field label="Prix convenu ($)">
             <input
               type="number"
               className="input-neu"
-              placeholder="2 400 000"
+              placeholder="240,000"
               value={form.agreedPrice}
               onChange={(e) => set("agreedPrice", e.target.value)}
             />
@@ -199,11 +247,11 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
       {/* ── Step 2 : Dépôt & Dates ── */}
       {step === 2 && (
         <div className="space-y-4">
-          <Field label="Dépôt de garantie (MAD)">
+          <Field label="Dépôt de garantie ($)">
             <input
               type="number"
               className="input-neu"
-              placeholder="100 000"
+              placeholder="10,000"
               value={form.depositAmount}
               onChange={(e) => set("depositAmount", e.target.value)}
             />
@@ -249,15 +297,15 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <div className="p-4 rounded-xl bg-alice/40 text-sm space-y-1">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Prix total</span>
-              <span className="font-semibold">{fmtMAD(form.agreedPrice)}</span>
+              <span className="font-semibold">{fmtUSD(form.agreedPrice)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Dépôt</span>
-              <span>− {fmtMAD(form.depositAmount)}</span>
+              <span>− {fmtUSD(form.depositAmount)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total versements</span>
-              <span>− {fmtMAD(paymentsTotal)}</span>
+              <span>− {fmtUSD(paymentsTotal)}</span>
             </div>
             <div
               className={`flex justify-between border-t border-border pt-2 font-bold ${
@@ -265,7 +313,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
               }`}
             >
               <span>Restant</span>
-              <span>{fmtMAD(remainingAfterPayments)}</span>
+              <span>{fmtUSD(remainingAfterPayments)}</span>
             </div>
           </div>
 
@@ -286,11 +334,11 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] text-muted-foreground">Montant (MAD)</label>
+                      <label className="text-[10px] text-muted-foreground">Montant ($)</label>
                       <input
                         type="number"
                         className="input-neu mt-1"
-                        placeholder="500 000"
+                        placeholder="50,000"
                         value={p.amount}
                         onChange={(e) => setPayment(p.id, "amount", e.target.value)}
                       />
@@ -334,8 +382,8 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
           <div className="p-4 rounded-xl bg-honeydew/40 text-sm space-y-2">
             <RecapRow label="Bien" value={form.propertyTitle || "—"} />
             <RecapRow label="Adresse" value={form.propertyAddress || "—"} />
-            <RecapRow label="Prix convenu" value={fmtMAD(form.agreedPrice)} />
-            <RecapRow label="Dépôt" value={fmtMAD(form.depositAmount)} />
+            <RecapRow label="Prix convenu" value={fmtUSD(form.agreedPrice)} />
+            <RecapRow label="Dépôt" value={fmtUSD(form.depositAmount)} />
             <RecapRow label="Date dépôt" value={form.depositDate || "—"} />
             <RecapRow label="Remise des clés" value={form.keyDate || "—"} />
           </div>
@@ -350,7 +398,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
                   <div key={p.id} className="flex justify-between items-center p-2.5 rounded-lg neu-sm text-sm">
                     <span>{p.label || `Versement ${i + 1}`}</span>
                     <div className="text-right">
-                      <div className="font-semibold">{fmtMAD(p.amount)}</div>
+                      <div className="font-semibold">{fmtUSD(p.amount)}</div>
                       <div className="text-[10px] text-muted-foreground">{p.dueDate || "date ?"}</div>
                     </div>
                   </div>
@@ -380,7 +428,9 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
         )}
         {step < 4 ? (
           <button
-            onClick={() => setStep((s) => s + 1)}
+            onClick={() => {
+              if (validateStep(step)) setStep((s) => s + 1);
+            }}
             className="flex-1 py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90 flex items-center justify-center gap-2"
           >
             Suivant <ChevronRight size={16} />
