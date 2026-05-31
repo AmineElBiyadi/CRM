@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-// @ts-ignore
 import { dossierApi } from "@/api/dossierApi";
 
 export interface Dossier {

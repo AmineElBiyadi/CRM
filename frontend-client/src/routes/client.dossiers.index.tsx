@@ -41,6 +41,13 @@ const PROPERTY_TYPES: Record<string, string> = {
   VILLA: "Villa",
   OFFICE: "Bureau",
   LAND: "Terrain",
+  STUDIO: "Studio",
+  DUPLEX: "Duplex",
+  PENTHOUSE: "Penthouse",
+  HOUSE: "Maison",
+  MANSION: "Manoir",
+  COTTAGE: "Cottage",
+  FARMHOUSE: "Ferme",
 };
 
 function Skeleton({ className }: { className?: string }) {
@@ -90,7 +97,7 @@ export function DossiersListPage() {
         params: { id: dossiers[0].idProfile } 
       });
     }
-  }, [dossiers, navigate]);
+  }, [dossiers, navigate, filterType, filterAgent, filterStage]);
 
   if (isLoading) {
     return (
@@ -278,19 +285,19 @@ export function DossiersListPage() {
                         <div className="w-9 h-9 rounded-xl neu-inset flex items-center justify-center text-eerie group-hover:text-vanilla transition-colors">
                           <Building2 size={16} />
                         </div>
-                        <span className="text-[10px] font-black text-muted-foreground">{dossier.propertyCount || 0}</span>
+                        <span className="text-[10px] font-black text-muted-foreground">{dossier.propertyCount || dossier.properties?.length || 0}</span>
                       </div>
                       <div className="flex flex-col items-center gap-1.5" title="Documents">
                         <div className="w-9 h-9 rounded-xl neu-inset flex items-center justify-center text-eerie group-hover:text-vanilla transition-colors">
                           <FileText size={16} />
                         </div>
-                        <span className="text-[10px] font-black text-muted-foreground">{dossier.documentCount || 0}</span>
+                        <span className="text-[10px] font-black text-muted-foreground">{dossier.documentCount || dossier.documents?.length || 0}</span>
                       </div>
                       <div className="flex flex-col items-center gap-1.5" title="Rendez-vous">
                         <div className="w-9 h-9 rounded-xl neu-inset flex items-center justify-center text-eerie group-hover:text-vanilla transition-colors">
                           <Calendar size={16} />
                         </div>
-                        <span className="text-[10px] font-black text-muted-foreground">{dossier.meetingCount || 0}</span>
+                        <span className="text-[10px] font-black text-muted-foreground">{dossier.meetingCount || dossier.meetings?.length || 0}</span>
                       </div>
                     </div>
 
