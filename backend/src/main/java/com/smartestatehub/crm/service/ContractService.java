@@ -63,6 +63,9 @@ public class ContractService {
                 .deal(deal)
                 .agreedPrice(finalPrice)
                 .depositAmount(request.getDepositAmount())
+                .depositDate(request.getDepositDate())
+                .keyHandoverDate(request.getKeyHandoverDate())
+                .internalNotes(request.getInternalNotes())
                 .status(ContractStatus.DRAFT)
                 .aiRiskSummary(summary)
                 .build();
@@ -181,6 +184,19 @@ public class ContractService {
         return mapToResponse(saved);
     }
 
+    @Transactional
+    public void deleteContract(UUID contractId) {
+        log.info("Suppression du contrat ID: {}", contractId);
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new IllegalArgumentException("Contrat non trouvé avec l'ID: " + contractId));
+
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new IllegalStateException("Seuls les contrats au statut DRAFT peuvent être supprimés.");
+        }
+
+        contractRepository.delete(contract);
+    }
+
     private ContractDto.Response mapToResponse(Contract contract) {
         List<ContractDto.PaymentResponse> paymentResponses = new ArrayList<>();
         if (contract.getPayments() != null) {
@@ -199,6 +215,9 @@ public class ContractService {
                 .idContract(contract.getIdContract())
                 .agreedPrice(contract.getAgreedPrice())
                 .depositAmount(contract.getDepositAmount())
+                .depositDate(contract.getDepositDate())
+                .keyHandoverDate(contract.getKeyHandoverDate())
+                .internalNotes(contract.getInternalNotes())
                 .status(contract.getStatus())
                 .sentAt(contract.getSentAt())
                 .signedAt(contract.getSignedAt())

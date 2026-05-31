@@ -34,7 +34,15 @@ public class ContractPdfService {
             renderer.createPDF(out);
             byte[] pdfBytes = out.toByteArray();
 
-            String publicId = "contract-" + contract.getIdContract().toString() + ".pdf";
+            String clientName = "Client";
+            if (contract.getDeal() != null && contract.getDeal().getClientFolder() != null && contract.getDeal().getClientFolder().getClient() != null) {
+                clientName = contract.getDeal().getClientFolder().getClient().getFirstName() + "_"
+                        + contract.getDeal().getClientFolder().getClient().getLastName();
+            }
+            // Nettoyage du nom pour éviter les caractères spéciaux
+            String cleanClientName = clientName.replaceAll("[^a-zA-Z0-9_-]", "_");
+            String publicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + ".pdf";
+            
             // On utilise "image" au lieu de "raw" pour que Cloudinary génère une preview du PDF
             String url = cloudinaryService.upload(pdfBytes, publicId, "contracts", "image");
             log.info("PDF contrat uploadé sur Cloudinary: {}", url);

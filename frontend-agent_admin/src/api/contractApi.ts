@@ -57,6 +57,16 @@ export async function updateContractStatus(contractId: string, status: string) {
   return res.json();
 }
 
+/** Supprimer un contrat (uniquement si DRAFT) */
+export async function deleteContract(contractId: string) {
+  const res = await fetch(`${BASE}/api/contracts/${contractId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return true;
+}
+
 /** Marquer un paiement comme payé */
 export async function markPaymentPaid(contractId: string, paymentId: string) {
   const res = await fetch(

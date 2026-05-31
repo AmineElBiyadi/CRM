@@ -74,4 +74,14 @@ public class ContractController {
         ContractDto.Response response = contractService.markPaymentAsPaid(contractId, paymentId);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * DELETE /api/contracts/{contractId}
+     * Supprime un contrat (uniquement s'il est au statut DRAFT).
+     */
+    @DeleteMapping("/{contractId}")
+    public ResponseEntity<Void> deleteContract(@PathVariable("contractId") UUID contractId) {
+        contractService.deleteContract(contractId);
+        return ResponseEntity.noContent().build();
+    }
 }

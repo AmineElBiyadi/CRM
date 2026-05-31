@@ -24,6 +24,8 @@ import {
 import { getPropertiesByDeal } from "@/api/propertyApi";
 // @ts-ignore
 import { acceptOffer as apiAcceptOffer } from "@/api/offerApi";
+// @ts-ignore
+import { deleteContract as apiDeleteContract } from "@/api/contractApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
@@ -281,7 +283,7 @@ function DossierPage() {
       
       // Optionnel : Générer le nom comme avant
       const clientName = (dossier?.clientName || "Document").replace(/\s+/g, '_');
-      const extension = file.name.split('.').pop()?.toLowerCase() || 'pdf';
+      const extension = files[0].name.split('.').pop()?.toLowerCase() || 'pdf';
       const publicId = `${newDocType}_${clientName}_${Date.now()}.${extension}`;
       formData.append("public_id", publicId);
 
@@ -370,6 +372,17 @@ function DossierPage() {
       toast.success("Versement marqué comme payé !");
     } catch (e: any) {
       toast.error(e.message);
+    }
+  };
+
+  const handleDeleteContract = async (contractId: string) => {
+    if (!confirm("Voulez-vous vraiment supprimer ce brouillon de contrat ?")) return;
+    try {
+      await apiDeleteContract(contractId);
+      setContracts((prev) => prev.filter((c) => c.idContract !== contractId));
+      toast.success("Contrat supprimé");
+    } catch (e: any) {
+      toast.error("Erreur : " + e.message);
     }
   };
 
@@ -1224,18 +1237,29 @@ function DossierPage() {
                         <FileSignature size={16} /> {index === 0 ? "Contrat en cours" : "Contrat archivé"}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
+                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M $
                       </p>
                     </div>
-                    {c.pdfUrl && (
-                      <button
-                        onClick={() => window.open(c.pdfUrl, '_blank')}
-                        className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
-                        title="Aperçu du PDF"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {c.status === 'DRAFT' && (
+                        <button
+                          onClick={() => handleDeleteContract(c.idContract)}
+                          className="p-2 rounded-lg neu-sm hover:bg-warn/10 text-warn/70 hover:text-warn transition-all flex items-center justify-center shrink-0"
+                          title="Supprimer le brouillon"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      {c.pdfUrl && (
+                        <button
+                          onClick={() => window.open(c.pdfUrl, '_blank')}
+                          className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
+                          title="Aperçu du PDF"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Tracker statut */}
@@ -1270,15 +1294,15 @@ function DossierPage() {
                               <div className="text-xs text-muted-foreground">{p.dueDate}</div>
                             </div>
                             <div className="text-sm font-bold shrink-0">
-                              {(p.amount || 0).toLocaleString("fr-MA")} MAD
+                              {(p.amount || 0).toLocaleString("en-US")} $
                             </div>
                             {!p.isPaid && (
                                <button 
                                  onClick={() => handleMarkPaid(c.idContract, p.idPayment)}
-                                 className="text-[10px] uppercase font-bold px-2 py-1.5 bg-honeydew text-eerie rounded-md hover:bg-honeydew/80 ml-1 transition-all"
+                                 className="text-[10px] uppercase font-bold px-3 py-2 bg-honeydew text-eerie rounded-lg hover:opacity-90 ml-1 shadow-sm transition-all flex items-center gap-1.5"
                                  title="Marquer comme payé"
                                >
-                                 Payer
+                                 <Check size={10} /> Payer
                                </button>
                             )}
                           </div>
