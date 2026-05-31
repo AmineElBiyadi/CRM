@@ -23,7 +23,7 @@ public class PropertyController {
      * Recherche immobilière sur l'API externe (RapidAPI ou Mock Maroc de secours).
      */
     @GetMapping("/search")
-    public ResponseEntity<PropertyDto.SearchResponse> searchProperties(
+    public ResponseEntity<PropertyDto.SearchResponse> search(
             @RequestParam(value = "dealId", required = false) UUID dealId,
             @RequestParam(value = "city", required = false) String city,
             @RequestParam(value = "propertyType", required = false) String propertyType,
@@ -31,11 +31,10 @@ public class PropertyController {
             @RequestParam(value = "maxPrice", required = false) Double maxPrice,
             @RequestParam(value = "minRooms", required = false) Integer minRooms,
             @RequestParam(value = "maxRooms", required = false) Integer maxRooms,
+            @RequestParam(value = "floor", required = false) Integer floor,
             @RequestParam(value = "page", defaultValue = "1") int page) {
-        
-        PropertyDto.SearchResponse response = propertyService.search(
-                dealId, city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
-        return ResponseEntity.ok(response);
+
+        return ResponseEntity.ok(propertyService.search(dealId, city, propertyType, minPrice, maxPrice, minRooms, maxRooms, floor, page));
     }
 
     /**

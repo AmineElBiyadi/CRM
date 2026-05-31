@@ -2,6 +2,8 @@ import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { SoftBadge } from "@/components/ui/design-bits";
+import { PropertyMap } from "@/components/PropertyMap";
+import { useQueryClient } from "@tanstack/react-query";
 // @ts-ignore
 import { searchProperties, linkPropertyToDeal } from "@/api/propertyApi";
 import { Search, MapPin, Link2, Loader2, X, Building2, ChevronDown } from "lucide-react";
@@ -56,12 +58,20 @@ function RecherchePage() {
   // Search
   const [budget, setBudget] = useState(initialBudget);
   const [rooms, setRooms] = useState(initialRooms);
+  const [floor, setFloor] = useState<number | undefined>(undefined);
   const [results, setResults] = useState<any[]>([]);
   const [totalResults, setTotalResults] = useState(0);
-  const [detail, setDetail] = useState<any | null>(null);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [detail, setDetail] = useState<any | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Map state
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
+  const [mapSelectedProperty, setMapSelectedProperty] = useState<any | null>(null);
+
+  const queryClient = useQueryClient();
 
   // Load property types from backend
   useEffect(() => {
@@ -124,41 +134,60 @@ function RecherchePage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Interactive search with debounce
-  const doSearch = useCallback(async (
-    searchCity: string, specificType: string, bgt: number, rms: number
-  ) => {
-    if (!specificType) return;
+  const fetchResults = useCallback(async () => {
+    if (!selectedSpecific) return;
     setSearching(true);
     setHasSearched(true);
     try {
-      const data = await searchProperties({
-        city: searchCity,
-        propertyType: specificType,
-        maxPrice: bgt * 1_000_000,
-        minRooms: rms,
-        page: 1,
+      const params = new URLSearchParams({
+        city,
+        propertyType: selectedSpecific,
+        maxPrice: String(budget * 1_000_000),
+        minRooms: String(rooms),
+        page: "1"
       });
+      if (dealId) params.append("dealId", dealId);
+      if (floor !== undefined) params.append("floor", String(floor));
+
+      const res = await fetch(`${API_BASE}/api/properties/search?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Erreur recherche");
+      const data = await res.json();
       setResults(data.results || []);
-      setTotalResults(data.total || data.results?.length || 0);
+      setTotalResults(data.total || 0);
       if ((data.results?.length || 0) === 0) {
-        toast.info(`Aucun bien trouvé à ${searchCity} pour ces critères.`);
+        toast.info(`Aucun bien trouvé à ${city} pour ces critères.`);
       }
     } catch (e: any) {
       toast.error("Erreur de recherche : " + e.message);
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [city, selectedSpecific, budget, rooms, floor, dealId]);
+
+  const handleOpenMap = (p: any) => {
+    if (p.latitude && p.longitude) {
+      setMapCenter([p.latitude, p.longitude]);
+      setMapSelectedProperty(p);
+      setShowMapModal(true);
+    } else {
+      toast.warning("Coordonnées non disponibles pour ce bien");
+      const firstWithCoord = results.find(r => r.latitude && r.longitude);
+      if (firstWithCoord) {
+        setMapCenter([firstWithCoord.latitude, firstWithCoord.longitude]);
+        setMapSelectedProperty(p);
+        setShowMapModal(true);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!selectedSpecific) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      doSearch(city, selectedSpecific, budget, rooms);
+      fetchResults();
     }, 600);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [city, selectedSpecific, budget, rooms, doSearch]);
+  }, [fetchResults]);
 
   const handleLink = async (prop: any) => {
     if (!dealId) {
@@ -316,6 +345,20 @@ function RecherchePage() {
                 >+</button>
               </div>
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Étage</label>
+              <select
+                value={floor === undefined ? "" : floor}
+                onChange={(e) => setFloor(e.target.value === "" ? undefined : parseInt(e.target.value))}
+                className="mt-1 w-full px-3 py-2 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
+              >
+                <option value="">Indifférent</option>
+                <option value="0">RDC</option>
+                {Array.from({ length: 15 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}ème</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -408,8 +451,8 @@ function RecherchePage() {
                     </button>
                   )}
                   <button
-                    onClick={() => toast.info(p.city)}
-                    className="px-3 py-2.5 rounded-lg neu-sm hover:neu-pressable"
+                    onClick={() => handleOpenMap(p)}
+                    className="px-3 py-2.5 rounded-lg neu-sm hover:neu-pressable text-alice"
                     aria-label="Voir sur carte"
                   >
                     <MapPin size={14} />
@@ -484,6 +527,45 @@ function RecherchePage() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale Carte */}
+      {showMapModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-10" onClick={() => setShowMapModal(false)}>
+          <div className="absolute inset-0 bg-eerie/80 backdrop-blur-md" />
+          <div 
+            className="relative bg-ghost rounded-[2rem] w-full h-full max-w-6xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 md:p-6 border-b border-border flex items-center justify-between bg-vanilla/10">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <MapPin className="text-alice" size={20} />
+                  Localisation des biens à {city}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {results.filter(r => r.latitude).length} biens géolocalisés affichés. Cliquez sur un marqueur pour plus d'infos.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowMapModal(false)}
+                className="w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:neu-pressable transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 relative">
+              <PropertyMap 
+                properties={results} 
+                selectedProperty={mapSelectedProperty}
+                center={mapCenter}
+              />
+              
+              {/* Overlay info si un bien est sélectionné sur la carte (optionnel, déjà géré par Popup) */}
             </div>
           </div>
         </div>

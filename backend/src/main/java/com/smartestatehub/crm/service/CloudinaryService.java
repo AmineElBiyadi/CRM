@@ -40,8 +40,7 @@ public class CloudinaryService {
         log.info("Upload Cloudinary → folder: {}, publicId: {}, type: {}", folder, publicId, resourceType);
         Map<String, Object> options = ObjectUtils.asMap(
                 "public_id", folder + "/" + publicId,
-                "resource_type", resourceType,
-                "overwrite", true
+                "resource_type", resourceType
         );
         Map<String, Object> result = cloudinary.uploader().unsignedUpload(fileBytes, uploadPreset, options);
         String url = (String) result.get("secure_url");

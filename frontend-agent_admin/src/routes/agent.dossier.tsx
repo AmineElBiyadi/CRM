@@ -111,6 +111,12 @@ function DossierPage() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
 
+  const floorOptions = [
+    { value: -1, label: "Indifférent" },
+    { value: 0, label: "RDC" },
+    ...Array.from({ length: 15 }, (_, i) => ({ value: i + 1, label: `${i + 1}ème` }))
+  ];
+
   const { data: dossier, isLoading: loadingDossier } = useQuery({
     queryKey: ["dossier", id],
     queryFn: () => fetchDossierDetail(id!),
@@ -203,6 +209,18 @@ function DossierPage() {
     }
   });
 
+  const updateDossierMutation = useMutation({
+    mutationFn: (request: UpdateDossierRequest) => apiUpdateDossier(id!, request),
+    onSuccess: () => {
+      toast.success("Dossier mis à jour avec succès");
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+      setEditingDossier(false);
+    },
+    onError: (e: any) => {
+      toast.error("Erreur lors de la mise à jour : " + e.message);
+    }
+  });
+
   const acceptOfferMutation = useMutation({
     mutationFn: apiAcceptOffer,
     onSuccess: () => {
@@ -274,6 +292,36 @@ function DossierPage() {
       setUploading(false);
     }
     e.target.value = "";
+  };
+
+  const handleRequestDocument = async () => {
+    if (!id || !newDocType) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/request?dealId=${id}&type=${newDocType}`, {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Demande de document enregistrée");
+      fetchDossierData();
+    } catch (e: any) {
+      toast.error("Échec de la demande : " + e.message);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm("Voulez-vous vraiment supprimer ce document ?")) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/${docId}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Document supprimé");
+      fetchDossierData();
+    } catch (e: any) {
+      toast.error("Échec de la suppression : " + e.message);
+    }
   };
 
   const handleStatusChange = async (contractId: string, newStatus: string) => {
@@ -534,34 +582,40 @@ function DossierPage() {
                   
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Date</label>
+                      <label htmlFor="interaction-date" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Date</label>
                       <input 
+                        id="interaction-date"
                         type="date" 
                         value={newDate} 
                         onChange={(e) => setNewDate(e.target.value)}
                         className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm" 
+                        title="Date de l'interaction"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Heure</label>
+                      <label htmlFor="interaction-time" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Heure</label>
                       <input 
+                        id="interaction-time"
                         type="time" 
                         value={newTime} 
                         onChange={(e) => setNewTime(e.target.value)}
                         className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm" 
+                        title="Heure de l'interaction"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1 flex items-center gap-1.5"><Clock size={12} /> Durée</label>
+                    <label htmlFor="interaction-duration-hrs" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1 flex items-center gap-1.5"><Clock size={12} /> Durée</label>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-0.5">
                         <div className="text-[10px] text-muted-foreground px-1">Heures</div>
                         <select
+                          id="interaction-duration-hrs"
                           value={newDurationHrs}
                           onChange={(e) => setNewDurationHrs(Number(e.target.value))}
                           className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+                          title="Nombre d'heures"
                         >
                           {Array.from({ length: 13 }, (_, i) => (
                             <option key={i} value={i}>{i}h</option>
@@ -571,9 +625,11 @@ function DossierPage() {
                       <div className="space-y-0.5">
                         <div className="text-[10px] text-muted-foreground px-1">Minutes</div>
                         <select
+                          id="interaction-duration-mins"
                           value={newDurationMins}
                           onChange={(e) => setNewDurationMins(Number(e.target.value))}
                           className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+                          title="Nombre de minutes"
                         >
                           {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
                             <option key={m} value={m}>{m}min</option>
@@ -594,6 +650,7 @@ function DossierPage() {
                     rows={3}
                     placeholder="Décrivez l'échange…"
                     className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
+                    title="Description de l'interaction"
                   />
                   <div className="flex gap-2">
                     <button 
@@ -723,11 +780,13 @@ function DossierPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Type</label>
+                      <label htmlFor="meeting-type" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Type</label>
                       <select 
+                        id="meeting-type"
                         value={newMeetingType} 
                         onChange={(e) => setNewMeetingType(e.target.value as MeetingType)}
                         className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+                        title="Type de rendez-vous"
                       >
                         <option value="OFFICE_APPOINTMENT">RDV Agence</option>
                         <option value="PROPERTY_VISIT">Visite immobilière</option>
@@ -737,21 +796,25 @@ function DossierPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                        <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Date</label>
+                        <label htmlFor="meeting-date" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Date</label>
                         <input 
+                          id="meeting-date"
                           type="date" 
                           value={newMeetingDate} 
                           onChange={(e) => setNewMeetingDate(e.target.value)}
                           className="w-full px-2 py-2 neu-inset rounded-lg bg-transparent text-xs" 
+                          title="Date du rendez-vous"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Heure</label>
+                        <label htmlFor="meeting-time" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Heure</label>
                         <input 
+                          id="meeting-time"
                           type="time" 
                           value={newMeetingTime} 
                           onChange={(e) => setNewMeetingTime(e.target.value)}
                           className="w-full px-2 py-2 neu-inset rounded-lg bg-transparent text-xs" 
+                          title="Heure du rendez-vous"
                         />
                       </div>
                     </div>
@@ -759,11 +822,13 @@ function DossierPage() {
 
                   {(newMeetingType === 'PROPERTY_VISIT' || newMeetingType === 'CONTRACT_SIGNING') && (
                     <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Adresse du bien</label>
+                      <label htmlFor="meeting-address" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Adresse du bien</label>
                       <select 
+                        id="meeting-address"
                         value={newMeetingAddress} 
                         onChange={(e) => setNewMeetingAddress(e.target.value)}
                         className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+                        title="Sélectionner l'adresse du bien"
                       >
                         <option value="">Sélectionner un bien...</option>
                         {dealProperties?.map((p: any) => (
@@ -779,6 +844,7 @@ function DossierPage() {
                     rows={2}
                     placeholder="Notes (ex: objectifs, points à aborder)…"
                     className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
+                    title="Notes du rendez-vous"
                   />
 
                   <div className="flex gap-2">
@@ -1209,35 +1275,54 @@ function DossierPage() {
           </h3>
           <div className="space-y-2">
             {docs.map((f, i) => {
-              const filename = f.filePath?.split(/[\\/]/).pop() || "Document";
-              const displayName = filename.includes('_') ? filename.substring(filename.indexOf('_') + 1) : filename;
+              let displayName = "";
+              if (f.filePath) {
+                const filename = f.filePath.split(/[\\/]/).pop() || "Document";
+                displayName = filename.includes('_') ? filename.substring(filename.indexOf('_') + 1) : filename;
+              } else {
+                const clientNameClean = dossier.clientName.replace(/\s+/g, '_');
+                displayName = `${f.documentType}_${clientNameClean}`;
+              }
+              
               return (
               <div
                 key={i}
-                className="flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group"
+                className={`flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group ${!f.filePath ? 'opacity-60 bg-alice/20' : ''}`}
               >
                 <Paperclip size={13} className="text-muted-foreground shrink-0" />
                 <span className="flex-1 truncate">
                   {displayName}
-                  <div className="text-[10px] text-muted-foreground opacity-70 mt-0.5">{f.documentType || f.type || "Document"}</div>
+                  <div className="text-[10px] text-muted-foreground opacity-70 mt-0.5">
+                    {f.documentType || f.type || "Document"} 
+                    {!f.filePath && <span className="ml-2 text-warn font-bold">(À fournir)</span>}
+                  </div>
                 </span>
-                <button
-                  onClick={() => {
-                    if (f.filePath) {
-                      if (f.filePath.startsWith("http")) {
-                        window.open(f.filePath, '_blank');
-                      } else {
-                        window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
-                      }
-                    } else {
-                      toast.error("Le lien vers ce document n'est pas disponible.");
-                    }
-                  }}
-                  className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50 transition-opacity"
-                  aria-label="Voir"
-                >
-                  <Eye size={11} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {f.filePath && (
+                    <button
+                      onClick={() => {
+                        if (f.filePath.startsWith("http")) {
+                          window.open(f.filePath, '_blank');
+                        } else {
+                          window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');
+                        }
+                      }}
+                      className="w-6 h-6 rounded flex items-center justify-center hover:bg-alice/50"
+                      aria-label="Voir"
+                      title="Voir le document"
+                    >
+                      <Eye size={11} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteDocument(f.idDocument || f.id)}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-warn/10 text-warn/70 hover:text-warn"
+                    aria-label="Supprimer"
+                    title="Supprimer le document"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
               </div>
             )})}
             {docs.length === 0 && !loadingContext && (
@@ -1249,10 +1334,13 @@ function DossierPage() {
           </div>
 
           <div className="mt-4 space-y-2">
+            <label htmlFor="new-doc-type" className="sr-only">Type de document</label>
             <select
+              id="new-doc-type"
               value={newDocType}
               onChange={(e) => setNewDocType(e.target.value)}
               className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+              title="Type de document"
             >
               <option value="INCOM_CERT">Certificat de revenus</option>
               <option value="BANK_STATMENT">Relevé bancaire</option>
@@ -1268,18 +1356,27 @@ function DossierPage() {
               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
               className="hidden"
               onChange={handleFileUpload}
+              title="Choisir un fichier"
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-full py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {uploading ? (
-                <><Loader2 size={12} className="animate-spin" /> Upload…</>
-              ) : (
-                <><Upload size={12} /> Ajouter un document</>
-              )}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {uploading ? (
+                  <><Loader2 size={12} className="animate-spin" /> Upload…</>
+                ) : (
+                  <><Upload size={12} /> Ajouter</>
+                )}
+              </button>
+              <button
+                onClick={handleRequestDocument}
+                className="py-2.5 rounded-lg bg-alice text-eerie text-xs font-medium hover:bg-alice/80 flex items-center justify-center gap-2"
+              >
+                <Plus size={12} /> Demander
+              </button>
+            </div>
           </div>
         </NeuCard>
 
@@ -1309,6 +1406,7 @@ function DossierPage() {
           >
             <ContractForm
               dealId={id!}
+              propertyRef={acceptedProperty}
               onClose={() => setShowContractForm(false)}
               onCreated={(c: any) => {
                 fetchDossierData();
@@ -1368,47 +1466,57 @@ function DossierPage() {
               {dossier.clientType === 'BUYER' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum (MAD)</label>
+                    <label htmlFor="edit-budget-min" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum (MAD)</label>
                     <input 
+                      id="edit-budget-min"
                       type="number"
                       value={editForm.budgetMin}
                       onChange={e => setEditForm({...editForm, budgetMin: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Budget minimum"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum (MAD)</label>
+                    <label htmlFor="edit-budget-max" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum (MAD)</label>
                     <input 
+                      id="edit-budget-max"
                       type="number"
                       value={editForm.budgetMax}
                       onChange={e => setEditForm({...editForm, budgetMax: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Budget maximum"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Zone Préférée</label>
+                    <label htmlFor="edit-area" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Zone Préférée</label>
                     <input 
+                      id="edit-area"
                       value={editForm.preferredArea}
                       onChange={e => setEditForm({...editForm, preferredArea: e.target.value})}
                       placeholder="Ex: Gauthier, Maarif..."
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Zone préférée"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface Préférée (m²)</label>
+                    <label htmlFor="edit-size" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface Préférée (m²)</label>
                     <input 
+                      id="edit-size"
                       type="number"
                       value={editForm.preferredSizeM2}
                       onChange={e => setEditForm({...editForm, preferredSizeM2: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Surface préférée"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage Préféré</label>
+                    <label htmlFor="edit-floor" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage Préféré</label>
                     <select 
+                      id="edit-floor"
                       value={editForm.preferredFloor}
                       onChange={e => setEditForm({...editForm, preferredFloor: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
+                      title="Étage préféré"
                     >
                       {floorOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1416,11 +1524,13 @@ function DossierPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Type de Bien</label>
+                    <label htmlFor="edit-type" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Type de Bien</label>
                     <select 
+                      id="edit-type"
                       value={editForm.propertySpecificType}
                       onChange={e => setEditForm({...editForm, propertySpecificType: e.target.value})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
+                      title="Type de bien"
                     >
                       <option value="">Sélectionner un type</option>
                       {propertyTypes?.map((pt: any) => (
@@ -1432,63 +1542,77 @@ function DossierPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="col-span-1 md:col-span-2 space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Titre de la Propriété</label>
+                    <label htmlFor="edit-title" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Titre de la Propriété</label>
                     <input 
+                      id="edit-title"
                       value={editForm.propertyTitle}
                       onChange={e => setEditForm({...editForm, propertyTitle: e.target.value})}
                       placeholder="Ex: Bel appartement à Gauthier"
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Titre de la propriété"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Adresse</label>
+                    <label htmlFor="edit-address" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Adresse</label>
                     <input 
+                      id="edit-address"
                       value={editForm.address}
                       onChange={e => setEditForm({...editForm, address: e.target.value})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Adresse"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Ville</label>
+                    <label htmlFor="edit-city" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Ville</label>
                     <input 
+                      id="edit-city"
                       value={editForm.city}
                       onChange={e => setEditForm({...editForm, city: e.target.value})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Ville"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé (MAD)</label>
+                    <label htmlFor="edit-asking-price" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé (MAD)</label>
                     <input 
+                      id="edit-asking-price"
                       type="number"
                       value={editForm.askingPrice}
                       onChange={e => setEditForm({...editForm, askingPrice: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Prix demandé"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface (m²)</label>
+                    <label htmlFor="edit-surface" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface (m²)</label>
                     <input 
+                      id="edit-surface"
                       type="number"
                       value={editForm.propertySurfaceM2}
                       onChange={e => setEditForm({...editForm, propertySurfaceM2: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Surface"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nombre de Pièces</label>
+                    <label htmlFor="edit-rooms" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nombre de Pièces</label>
                     <input 
+                      id="edit-rooms"
                       type="number"
                       value={editForm.numRooms}
                       onChange={e => setEditForm({...editForm, numRooms: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
+                      title="Nombre de pièces"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
+                    <label htmlFor="edit-prop-floor" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
                     <select 
+                      id="edit-prop-floor"
                       value={editForm.propertyFloor}
                       onChange={e => setEditForm({...editForm, propertyFloor: Number(e.target.value)})}
                       className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
+                      title="Étage"
                     >
                       {floorOptions.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>

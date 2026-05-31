@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/interactions/**").permitAll()
                         .requestMatchers("/api/pipeline/**").permitAll()
                         .requestMatchers("/api/dashboard/**").permitAll()
+                        .requestMatchers("/api/offers/**").permitAll()
                         .anyRequest().authenticated());
 
         // TODO: Brancher le JwtAuthenticationFilter ici quand TokenService sera

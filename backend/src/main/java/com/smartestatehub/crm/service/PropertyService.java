@@ -2,18 +2,14 @@ package com.smartestatehub.crm.service;
 
 import com.smartestatehub.crm.dto.PropertyDto;
 import com.smartestatehub.crm.external.PropertyApiClient;
-import com.smartestatehub.crm.model.Deal;
-import com.smartestatehub.crm.model.Property;
-import com.smartestatehub.crm.model.PropertyImage;
-import com.smartestatehub.crm.model.PropertyType;
-import com.smartestatehub.crm.model.PropertyUnavailableReason;
-import com.smartestatehub.crm.repository.DealRepository;
-import com.smartestatehub.crm.repository.OfferRepository;
-import com.smartestatehub.crm.repository.PropertyImageRepository;
-import com.smartestatehub.crm.repository.PropertyRepository;
-import com.smartestatehub.crm.repository.PropertyTypeRepository;
+import com.smartestatehub.crm.model.*;
+import com.smartestatehub.crm.repository.*;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,44 +33,68 @@ public class PropertyService {
     private final PropertyApiClient propertyApiClient;
 
     /**
-     * Effectue une recherche de biens immobiliers (externe RapidAPI ou mock Maroc de secours).
+     * Effectue une recherche de biens immobiliers dans la base de données locale.
      */
-    public PropertyDto.SearchResponse search(UUID dealId, String city, String propertyType, Double minPrice, Double maxPrice, Integer minRooms, Integer maxRooms, int page) {
-        if (dealId != null) {
-            Optional<Deal> dealOpt = dealRepository.findById(dealId);
-            if (dealOpt.isPresent() && dealOpt.get().getClientFolder() != null && dealOpt.get().getClientFolder().getBuyerFolder() != null) {
-                var buyerFolder = dealOpt.get().getClientFolder().getBuyerFolder();
-                if (city == null && buyerFolder.getPreferredArea() != null && !buyerFolder.getPreferredArea().isBlank()) {
-                    city = buyerFolder.getPreferredArea();
-                }
-                if (propertyType == null && buyerFolder.getPropertyType() != null) {
-                    propertyType = buyerFolder.getPropertyType().getSpecificType();
-                }
-                if (minPrice == null && buyerFolder.getBudgetMin() != null) {
-                    minPrice = buyerFolder.getBudgetMin();
-                }
-                if (maxPrice == null && buyerFolder.getBudgetMax() != null) {
-                    maxPrice = buyerFolder.getBudgetMax();
-                }
-            }
-        }
-        PropertyDto.SearchResponse response = propertyApiClient.searchProperties(city, propertyType, minPrice, maxPrice, minRooms, maxRooms, page);
-        
-        // Exclure les propriétés indisponibles (déjà en négociation chez nous)
-        if (response != null && response.getResults() != null) {
-            List<String> unavailableUrls = propertyRepository.findAll().stream()
-                    .filter(p -> !p.isAvailable() && p.getListingUrl() != null)
-                    .map(com.smartestatehub.crm.model.Property::getListingUrl)
-                    .collect(java.util.stream.Collectors.toList());
+    public PropertyDto.SearchResponse search(UUID dealId, String city, String propertyType, Double minPrice, Double maxPrice, Integer minRooms, Integer maxRooms, Integer floor, int page) {
+        log.info("Recherche locale : ville={}, type={}, prix=[{} - {}], chambres=[{} - {}], etage={}, page={}",
+                city, propertyType, minPrice, maxPrice, minRooms, maxRooms, floor, page);
 
-            List<PropertyDto.ExternalResult> filtered = response.getResults().stream()
-                    .filter(ext -> ext.getListingUrl() == null || !unavailableUrls.contains(ext.getListingUrl()))
-                    .collect(java.util.stream.Collectors.toList());
-            response.setResults(filtered);
-            response.setTotal(filtered.size());
-        }
-        
-        return response;
+        Specification<Property> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isNull(root.get("deletedAt")));
+            predicates.add(cb.isTrue(root.get("isAvailable")));
+
+            if (city != null && !city.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("city")), "%" + city.toLowerCase() + "%"));
+            }
+            if (propertyType != null && !propertyType.isBlank() && !propertyType.equalsIgnoreCase("Any")) {
+                predicates.add(cb.like(cb.lower(root.get("propertyType").get("specificType")), "%" + propertyType.toLowerCase() + "%"));
+            }
+            if (minPrice != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
+            }
+            if (maxPrice != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+            }
+            if (minRooms != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("numRooms"), minRooms));
+            }
+            if (maxRooms != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("numRooms"), maxRooms));
+            }
+            if (floor != null) {
+                predicates.add(cb.equal(root.get("floor"), floor));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Property> propertyPage = propertyRepository.findAll(spec, PageRequest.of(page - 1, 10));
+
+        List<PropertyDto.ExternalResult> results = propertyPage.getContent().stream()
+                .map(p -> PropertyDto.ExternalResult.builder()
+                        .externalId(p.getIdProperty().toString())
+                        .title(p.getTitle())
+                        .address(p.getAddress())
+                        .city(p.getCity())
+                        .price(p.getPrice())
+                        .surfaceM2(p.getSurfaceM2())
+                        .numRooms(p.getNumRooms())
+                        .floor(p.getFloor())
+                        .latitude(p.getLatitude())
+                        .longitude(p.getLongitude())
+                        .listingUrl(p.getListingUrl())
+                        .source("Local Database")
+                        .imageUrls(p.getImages() != null ? p.getImages().stream().map(PropertyImage::getImageUrl).collect(Collectors.toList()) : new ArrayList<>())
+                        .build())
+                .collect(Collectors.toList());
+
+        return PropertyDto.SearchResponse.builder()
+                .results(results)
+                .total((int) propertyPage.getTotalElements())
+                .page(page)
+                .pageSize(10)
+                .build();
     }
 
     /**
@@ -132,6 +152,8 @@ public class PropertyService {
                     .surfaceM2(request.getSurfaceM2())
                     .numRooms(request.getNumRooms())
                     .floor(request.getFloor())
+                    .latitude(request.getLatitude())
+                    .longitude(request.getLongitude())
                     .listingUrl(request.getListingUrl())
                     .propertyType(propertyType)
                     .isAvailable(false)
@@ -158,7 +180,6 @@ public class PropertyService {
             log.info("Nouvelle propriété sauvegardée avec succès. ID: {}", property.getIdProperty());
         }
 
-        // Note: Ici, on peut également logguer une interaction automatique sur le deal ou créer une offre de visite
         // Création de l'offre
         com.smartestatehub.crm.model.Offer offer = com.smartestatehub.crm.model.Offer.builder()
                 .deal(deal)
@@ -178,7 +199,7 @@ public class PropertyService {
     public List<PropertyDto.Response> getPropertiesByDeal(UUID dealId) {
         log.info("Récupération des propriétés liées au deal ID: {}", dealId);
         
-        List<com.smartestatehub.crm.model.Offer> offers = offerRepository.findByDealIdDeal(dealId);
+        List<com.smartestatehub.crm.model.Offer> offers = offerRepository.findByDeal_IdDeal(dealId);
         return offers.stream()
                 .map(offer -> {
                     Property p = offer.getProperty();
@@ -210,6 +231,8 @@ public class PropertyService {
                 .surfaceM2(p.getSurfaceM2())
                 .numRooms(p.getNumRooms())
                 .floor(p.getFloor())
+                .latitude(p.getLatitude())
+                .longitude(p.getLongitude())
                 .listingUrl(p.getListingUrl())
                 .isAvailable(p.isAvailable())
                 .imageUrls(imageUrls)
