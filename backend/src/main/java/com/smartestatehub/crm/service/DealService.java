@@ -2,6 +2,7 @@ package com.smartestatehub.crm.service;
 
 import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.auth.repository.UserRepository;
+import com.smartestatehub.crm.dto.ContractDto;
 import com.smartestatehub.crm.dto.CreateDossierRequest;
 import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
@@ -27,6 +28,7 @@ public class DealService {
     private final UserRepository userRepository;
     private final ClientFolderRepository clientFolderRepository;
     private final PropertyTypeRepository propertyTypeRepository;
+    private final ContractRepository contractRepository;
 
 
     @Transactional(readOnly = true)
@@ -212,9 +214,9 @@ public class DealService {
             BuyerFolder buyer = folder.getBuyerFolder();
             builder.budgetMin(buyer.getBudgetMin())
                     .budgetMax(buyer.getBudgetMax())
-                    .preferredArea(buyer.getPreferredArea())
                     .preferredSizeM2(buyer.getPreferredSizeM2())
                     .preferredFloor(buyer.getPreferredFloor())
+                    .preferredArea(buyer.getPreferredArea())
                     .propertyType(buyer.getPropertyType() != null ? buyer.getPropertyType().getSpecificType() : null);
         } else if (folder.getClientType() == ClientType.SELLER && folder.getSellerFolder() != null) {
             SellerFolder seller = folder.getSellerFolder();
@@ -237,7 +239,46 @@ public class DealService {
             }
         }
 
+        if (deal != null && deal.getDocuments() != null) {
+            builder.documents(deal.getDocuments().stream()
+                    .filter(doc -> doc.getDeletedAt() == null)
+                    .map(this::mapToDocumentDto)
+                    .collect(java.util.stream.Collectors.toList()));
+        }
+
+        if (deal != null) {
+            List<Contract> contracts = contractRepository.findByDealIdActive(deal.getIdDeal());
+            builder.contracts(contracts.stream()
+                    .map(this::mapToContractDto)
+                    .collect(java.util.stream.Collectors.toList()));
+        }
+
         return builder.build();
+    }
+
+    private ContractDto.Response mapToContractDto(Contract c) {
+        return ContractDto.Response.builder()
+                .idContract(c.getIdContract())
+                .agreedPrice(c.getAgreedPrice())
+                .depositAmount(c.getDepositAmount())
+                .status(c.getStatus())
+                .sentAt(c.getSentAt())
+                .signedAt(c.getSignedAt())
+                .aiRiskSummary(c.getAiRiskSummary())
+                .createdAt(c.getCreatedAt())
+                .pdfUrl(c.getPdfUrl())
+                .build();
+    }
+
+    private com.smartestatehub.crm.dto.DocumentDto mapToDocumentDto(Document d) {
+        return com.smartestatehub.crm.dto.DocumentDto.builder()
+                .idDocument(d.getIdDocument())
+                .documentType(d.getDocumentType().name())
+                .filePath(d.getFilePath())
+                .confirmedReceived(d.isConfirmedReceived())
+                .createdAt(d.getCreatedAt())
+                .dealId(d.getDeal().getIdDeal())
+                .build();
     }
 
     @Transactional

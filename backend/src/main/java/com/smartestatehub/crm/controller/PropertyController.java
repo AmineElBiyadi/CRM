@@ -1,5 +1,7 @@
 package com.smartestatehub.crm.controller;
 
+import com.smartestatehub.crm.model.Property;
+import com.smartestatehub.crm.repository.PropertyRepository;
 import com.smartestatehub.crm.dto.PropertyDto;
 import com.smartestatehub.crm.service.PropertyService;
 import lombok.RequiredArgsConstructor;
@@ -11,12 +13,20 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/properties")
+@RequestMapping({"/api/properties", "/api/public/properties"})
 @RequiredArgsConstructor
-@CrossOrigin(originPatterns = "*", allowedHeaders = "*", allowCredentials = "true")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class PropertyController {
 
+    private final PropertyRepository propertyRepository;
     private final PropertyService propertyService;
+
+    @GetMapping("/latest")
+    public ResponseEntity<Property> getLatestProperty() {
+        return propertyRepository.findLatestProperty()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     /**
      * GET /api/properties/search

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Sparkles, ArrowUp, FileText } from "lucide-react";
+import { useClientData } from "@/hooks/use-client-data";
 
 export const Route = createFileRoute("/client/assistant")({
   component: ClientAssistant,
@@ -29,7 +30,10 @@ const suggestions = [
 ];
 
 function ClientAssistant() {
-  const [messages, setMessages] = useState<Msg[]>(initial);
+  const { data } = useClientData();
+  const [messages, setMessages] = useState<Msg[]>([
+    { role: "ai", text: `Bonjour M. ${data?.profile?.lastName || "Benchekroun"} ! Je suis votre assistant SmartEstate. Posez-moi toutes vos questions sur votre dossier.` },
+  ]);
   const [input, setInput] = useState("");
 
   const send = (text: string) => {

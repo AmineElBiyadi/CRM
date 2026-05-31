@@ -81,4 +81,7 @@ public class Deal {
 
     @OneToMany(mappedBy = "deal", cascade = CascadeType.ALL)
     private List<DealAssignment> assignments;
+
+    @OneToMany(mappedBy = "deal", cascade = CascadeType.ALL)
+    private List<Document> documents;
 }

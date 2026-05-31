@@ -2,8 +2,9 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
-import { Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
+import { LogOut, Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { NotificationCenter } from "./notification-center";
 
 export interface NavItem {
   to: string;
@@ -52,6 +53,11 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const [notifs, setNotifs] = useState(() => initialNotifs(space));
   const unread = notifs.filter((n) => !n.read).length;
 
+  const handleLogout = () => {
+    localStorage.removeItem("client_id"); // Supprimer l'ID client du localStorage
+    window.location.href = "/"; // Rediriger vers la page d'accueil
+  };
+
   useEffect(() => {
     setNotifOpen(false);
   }, [location.pathname]);
@@ -92,21 +98,25 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="neu-sm p-3 flex items-center gap-3">
+        <Link 
+          to="/client/profil"
+          className={cn(
+            "p-3 flex items-center gap-3 rounded-2xl transition-all group",
+            location.pathname === "/client/profil" ? "neu-inset" : "neu-sm hover:neu-pressable"
+          )}
+        >
           <Avatar name={user.name} size={36} />
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{user.role}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold truncate group-hover:text-eerie transition-colors tracking-tight">{user.name}</div>
+            <div className="text-[10px] text-muted-foreground/70 uppercase font-bold tracking-widest">{user.role}</div>
           </div>
-        </div>
-        <div className="flex gap-2 text-xs">
-          <Link to="/" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
-            Changer d'espace
-          </Link>
-          <Link to="/design-system" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
-            Design
-          </Link>
-        </div>
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable transition-all text-xs font-bold text-destructive"
+        >
+          <LogOut size={16} /> Déconnexion
+        </button>
       </div>
     </>
   );
@@ -155,58 +165,23 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
             </div>
           </div>
           <div className="relative">
-            <button
-              onClick={() => setNotifOpen((v) => !v)}
-              className="relative w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:neu-pressable shrink-0"
-              aria-label="Notifications"
-            >
-              <Bell size={18} />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-eerie text-ghost text-[10px] font-bold flex items-center justify-center ring-2 ring-ghost">
-                  {unread}
-                </span>
-              )}
-            </button>
-            {notifOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
-                <div className="absolute right-0 mt-2 w-[340px] sm:w-[380px] z-40 bg-ghost rounded-2xl shadow-2xl border border-border overflow-hidden">
-                  <div className="px-4 py-3 flex items-center justify-between border-b border-border">
-                    <div>
-                      <div className="font-semibold text-sm">Notifications</div>
-                      <div className="text-[11px] text-muted-foreground">{unread} non lue(s)</div>
-                    </div>
-                    <button
-                      onClick={() => { setNotifs((p) => p.map((n) => ({ ...n, read: true }))); toast.success("Tout marqué comme lu"); }}
-                      className="text-xs text-eerie hover:underline font-medium"
-                    >
-                      Tout lire
-                    </button>
-                  </div>
-                  <div className="max-h-[60vh] overflow-y-auto soft-scroll divide-y divide-border">
-                    {notifs.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => { setNotifs((p) => p.map((x) => x.id === n.id ? { ...x, read: true } : x)); toast(n.title); }}
-                        className={cn("w-full text-left px-4 py-3 hover:bg-alice/30 transition-colors flex gap-3", !n.read && "bg-alice/20")}
-                      >
-                        <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", n.read ? "bg-muted" : "bg-vanilla")} />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{n.title}</div>
-                          <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>
-                          <div className="text-[10px] text-muted-foreground mt-1">{n.time}</div>
-                        </div>
-                      </button>
-                    ))}
-                    {notifs.length === 0 && (
-                      <div className="text-center text-xs text-muted-foreground py-8">Aucune notification.</div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
+          <NotificationCenter
+            notifications={notifs.map(n => ({
+              ...n,
+              type: n.id === "n2" ? "MEETING" : (n.id === "n3" ? "DOCUMENT" : "GENERAL") as any
+            }))}
+            onMarkRead={(id) => setNotifs(p => p.map(n => n.id === id ? { ...n, read: true } : n))}
+            onMarkAllRead={() => {
+              setNotifs(p => p.map(n => ({ ...n, read: true })));
+              toast.success("Tout marqué comme lu");
+            }}
+            onClear={() => {
+              setNotifs([]);
+              toast.info("Notifications effacées");
+            }}
+          />
           </div>
-          <div className={cn("hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold", accent, "text-eerie")}>
+          <div className={cn("hidden sm:block px-3 py-1.5 rounded-full text-[10px] uppercase font-black tracking-widest", accent, "text-eerie")}>
             {user.role}
           </div>
         </header>
