@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,7 +34,7 @@ public class DocumentService {
                 .idDocument(doc.getIdDocument())
                 .documentType(doc.getDocumentType() != null ? doc.getDocumentType().name() : null)
                 .filePath(doc.getFilePath())
-                .confirmedReceived(doc.getConfirmedReceived())
+                .confirmedReceived(doc.isConfirmedReceived())
                 .createdAt(doc.getCreatedAt())
                 .dealId(doc.getDeal() != null ? doc.getDeal().getIdDeal() : null)
                 .build();
@@ -46,18 +47,49 @@ public class DocumentService {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier (Deal) non trouvé avec l'ID: " + dealId));
 
-        // Nom unique
-        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
-        String publicId = java.util.UUID.randomUUID() + "_" + originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        // Nom généré : Type_FirstName_LastName
+        String clientName = deal.getClientFolder().getClient().getFirstName() + "_" + deal.getClientFolder().getClient().getLastName();
+        String generatedName = type.name() + "_" + clientName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        String publicId = java.util.UUID.randomUUID() + "_" + generatedName;
 
         // Upload sur Cloudinary
         String cloudinaryUrl = cloudinaryService.upload(file.getBytes(), publicId, "documents", "raw");
 
+        // Vérifier si un placeholder existe déjà pour ce deal et ce type sans chemin de fichier
+        List<Document> existing = documentRepository.findByDeal_IdDeal(dealId);
+        Document doc = existing.stream()
+                .filter(d -> d.getDocumentType() == type && d.getFilePath() == null)
+                .findFirst()
+                .orElse(null);
+
+        if (doc != null) {
+            doc.setFilePath(cloudinaryUrl);
+            doc.setConfirmedReceived(true);
+        } else {
+            doc = Document.builder()
+                    .deal(deal)
+                    .documentType(type)
+                    .filePath(cloudinaryUrl)
+                    .confirmedReceived(true)
+                    .isEmbedded(false)
+                    .build();
+        }
+
+        return toDto(documentRepository.save(doc));
+    }
+
+    @Transactional
+    public DocumentDto requestDocument(UUID dealId, DocumentType type) {
+        log.info("Demande de document (placeholder) pour le deal ID: {}, type: {}", dealId, type);
+
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new IllegalArgumentException("Dossier (Deal) non trouvé avec l'ID: " + dealId));
+
         Document doc = Document.builder()
                 .deal(deal)
                 .documentType(type)
-                .filePath(cloudinaryUrl)   // URL Cloudinary publique
-                .confirmedReceived(true)
+                .filePath(null)
+                .confirmedReceived(false)
                 .isEmbedded(false)
                 .build();
 
@@ -65,9 +97,18 @@ public class DocumentService {
     }
 
     public List<DocumentDto> getDocumentsByDeal(UUID dealId) {
-        return documentRepository.findByDeal_IdDeal(dealId)
-                .stream()
+        log.info("Récupération des documents pour le deal ID: {}", dealId);
+        return documentRepository.findByDeal_IdDealAndDeletedAtIsNull(dealId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteDocument(UUID documentId) {
+        log.info("Suppression logique du document ID: {}", documentId);
+        Document doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document non trouvé avec l'ID: " + documentId));
+        doc.setDeletedAt(LocalDateTime.now());
+        documentRepository.save(doc);
     }
 }

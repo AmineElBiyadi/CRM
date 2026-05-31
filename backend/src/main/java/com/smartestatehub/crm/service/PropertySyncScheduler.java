@@ -10,6 +10,8 @@ import com.smartestatehub.crm.repository.PropertyRepository;
 import com.smartestatehub.crm.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,8 +31,17 @@ public class PropertySyncScheduler {
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
 
-    private static final List<String> CITIES_TO_SYNC = Arrays.asList("New York", "Los Angeles", "Miami");
-    private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family");
+    private static final List<String> CITIES_TO_SYNC = Arrays.asList("New York", "Los Angeles", "Miami", "Chicago", "Houston");
+    private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family", "farm", "commercial");
+
+    /**
+     * Trigger a sync after startup so the DB has data without blocking context initialization.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        log.info("Initialisation : Lancement de la première synchronisation des propriétés...");
+        new Thread(this::syncPropertiesFromExternalApi).start();
+    }
 
     /**
      * Executes every 12 hours (0 0 0/12 * * ?) to keep the DB updated with latest properties
@@ -104,6 +115,8 @@ public class PropertySyncScheduler {
                     .surfaceM2(extProp.getSurfaceM2())
                     .numRooms(extProp.getNumRooms())
                     .floor(extProp.getFloor())
+                    .latitude(extProp.getLatitude())
+                    .longitude(extProp.getLongitude())
                     .listingUrl(extProp.getListingUrl())
                     .propertyType(type)
                     .isAvailable(true)

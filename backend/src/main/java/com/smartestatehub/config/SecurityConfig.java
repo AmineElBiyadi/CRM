@@ -32,15 +32,23 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/me").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/agent/**", "/api/crm/**").hasAnyRole("AGENT", "ADMIN")
+                .requestMatchers(
+                    "/api/agent/**",
+                    "/api/crm/**",
+                    "/api/documents/**",
+                    "/api/properties/**",
+                    "/api/property-types/**",
+                    "/api/contracts/**",
+                    "/api/offers/**"
+                ).hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers("/api/client/**").hasRole("CLIENT")
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(csrfFilter, JwtAuthenticationFilter.class)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(csrfFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

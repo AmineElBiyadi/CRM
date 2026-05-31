@@ -10,6 +10,11 @@ spring:
     import: 
       - optional:file:.env[.properties]
       - optional:file:../.env[.properties]
+      - optional:file:CRM/.env[.properties]
+
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration
   
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:postgres}?sslmode=require
@@ -29,7 +34,9 @@ spring:
 
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      # Placeholder when unset; mock beans are used (see OpenAiConfig).
+      # Remove spring.autoconfigure.exclude OpenAiAutoConfiguration when using a real key.
+      api-key: ${OPENAI_API_KEY:votre_cle_openai_ici}
       chat:
         options:
           model: gpt-4o

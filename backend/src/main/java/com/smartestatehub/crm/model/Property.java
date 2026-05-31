@@ -37,6 +37,9 @@ public class Property {
 
     private Integer floor;
 
+    private Double latitude;
+    private Double longitude;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_property_type", nullable = false)
     private PropertyType propertyType;
@@ -52,7 +55,8 @@ public class Property {
     private LocalDateTime unavailableAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "unavailable_reason")
+    @org.hibernate.annotations.JdbcType(org.hibernate.dialect.PostgreSQLEnumJdbcType.class)
+    @Column(name = "unavailable_reason", columnDefinition = "property_unavailable_reason")
     private PropertyUnavailableReason unavailableReason;
 
     @CreationTimestamp

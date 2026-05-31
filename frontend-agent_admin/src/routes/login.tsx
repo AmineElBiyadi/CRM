@@ -1,11 +1,17 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { apiLogin } from "@/lib/auth";
+import { apiLogin, ensureAuthenticated } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: async () => {
+    const user = await ensureAuthenticated();
+
+    if (!user) return;
+    throw redirect({ to: user.role === "ADMIN" ? "/admin" : "/agent" });
+  },
   head: () => ({
     meta: [
       { title: "Connexion — SmartEstateHub Espace Agent/Admin" },

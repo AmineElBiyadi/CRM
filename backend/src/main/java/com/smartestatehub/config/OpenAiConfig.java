@@ -9,7 +9,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.document.Document;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -20,9 +20,15 @@ import java.util.List;
 @Configuration
 public class OpenAiConfig {
 
+    private static final String PLACEHOLDER_KEY = "votre_cle_openai_ici";
+
+    private static final String MOCK_AI_CONDITION =
+            "!T(org.springframework.util.StringUtils).hasText('${spring.ai.openai.api-key:}') "
+                    + "|| '${spring.ai.openai.api-key:}'.equals('" + PLACEHOLDER_KEY + "')";
+
     @Bean
     @Primary
-    @ConditionalOnProperty(name = "spring.ai.openai.api-key", havingValue = "votre_cle_openai_ici", matchIfMissing = true)
+    @ConditionalOnExpression(MOCK_AI_CONDITION)
     public EmbeddingModel embeddingModel() {
         return new EmbeddingModel() {
             @Override
@@ -47,7 +53,7 @@ public class OpenAiConfig {
 
     @Bean
     @Primary
-    @ConditionalOnProperty(name = "spring.ai.openai.api-key", havingValue = "votre_cle_openai_ici", matchIfMissing = true)
+    @ConditionalOnExpression(MOCK_AI_CONDITION)
     public ChatModel chatModel() {
         return new ChatModel() {
             @Override

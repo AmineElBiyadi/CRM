@@ -3,6 +3,7 @@ package com.smartestatehub.auth.controller;
 import com.smartestatehub.auth.dto.LoginRequest;
 import com.smartestatehub.auth.dto.UserInfoResponse;
 import com.smartestatehub.auth.service.AuthService;
+import com.smartestatehub.auth.support.AuthCookies;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookies authCookies;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(
@@ -39,6 +41,7 @@ public class AuthController {
             UserInfoResponse user = authService.refresh(request, response);
             return ResponseEntity.ok(user);
         } catch (BadCredentialsException e) {
+            authCookies.clearAuthCookies(response);
             return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
         }
     }
