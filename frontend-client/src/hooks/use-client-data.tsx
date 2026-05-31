@@ -14,6 +14,7 @@ export interface ClientProfile {
   status: string;
   source: string;
   assignedAgentName: string;
+  assignedAgentPhone?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,8 +58,45 @@ export interface Meeting {
   idMeeting: string;
   scheduledAt: string;
   notesLogged: string;
+  propertyAddress: string;
+  reminder1hSent: boolean;
+  reminder24hSent: boolean;
   status: string;
   type: string;
+}
+
+export function useMeetingActions() {
+  const queryClient = useQueryClient();
+  const clientId = getClientId();
+
+  const accept = useMutation({
+    mutationFn: async (meetingId: string) => {
+      await axios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/accept`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+
+  const reschedule = useMutation({
+    mutationFn: async ({ meetingId, newDate, reason }: { meetingId: string; newDate: string; reason: string }) => {
+      await axios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/reschedule`, { newDate, reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+
+  const cancel = useMutation({
+    mutationFn: async ({ meetingId, reason }: { meetingId: string; reason: string }) => {
+      await axios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/cancel`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+
+  return { accept, reschedule, cancel };
 }
 
 export interface Document {

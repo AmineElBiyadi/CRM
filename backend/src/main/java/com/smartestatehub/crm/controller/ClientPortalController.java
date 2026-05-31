@@ -22,7 +22,8 @@ public class ClientPortalController {
             ClientPortalDataDto data = clientPortalService.getFullClientPortalData(clientId);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            e.printStackTrace(); // Log l'erreur pour le debug
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -46,16 +47,31 @@ public class ClientPortalController {
         }
     }
 
-    @PostMapping("/{clientId}/meetings/request")
-    public ResponseEntity<Void> requestMeeting(@PathVariable UUID clientId, @RequestBody java.util.Map<String, String> body) {
+    @PutMapping("/{clientId}/meetings/{meetingId}/accept")
+    public ResponseEntity<Void> acceptMeeting(@PathVariable UUID clientId, @PathVariable UUID meetingId) {
         try {
-            clientPortalService.requestMeeting(
-                    clientId,
-                    body.get("type"),
-                    body.get("preferredDate"),
-                    body.get("preferredTime"),
-                    body.get("message")
-            );
+            clientPortalService.acceptMeeting(clientId, meetingId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{clientId}/meetings/{meetingId}/reschedule")
+    public ResponseEntity<Void> rescheduleMeeting(@PathVariable UUID clientId, @PathVariable UUID meetingId, @RequestBody java.util.Map<String, String> body) {
+        try {
+            java.time.LocalDateTime newDate = java.time.LocalDateTime.parse(body.get("newDate"));
+            clientPortalService.rescheduleMeeting(clientId, meetingId, newDate, body.get("reason"));
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{clientId}/meetings/{meetingId}/cancel")
+    public ResponseEntity<Void> cancelMeeting(@PathVariable UUID clientId, @PathVariable UUID meetingId, @RequestBody java.util.Map<String, String> body) {
+        try {
+            clientPortalService.cancelMeeting(clientId, meetingId, body.get("reason"));
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

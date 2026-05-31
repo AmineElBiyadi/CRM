@@ -17,4 +17,6 @@ public class MeetingDto {
     private String status;
     private String notesLogged;
     private String propertyAddress;
+    private Boolean reminder1hSent;
+    private Boolean reminder24hSent;
 }

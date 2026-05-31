@@ -72,6 +72,8 @@ public class ClientPortalService {
                 .source(client.getSource())
                 .assignedAgentName(folders.isEmpty() || folders.get(0).getAssignedAgent() == null ? "Non assigné" : 
                     folders.get(0).getAssignedAgent().getFirstName() + " " + folders.get(0).getAssignedAgent().getLastName())
+                .assignedAgentPhone(folders.isEmpty() || folders.get(0).getAssignedAgent() == null ? null : 
+                    folders.get(0).getAssignedAgent().getPhone())
                 .createdAt(client.getCreatedAt())
                 .updatedAt(client.getUpdatedAt())
                 .build();
@@ -293,6 +295,9 @@ public class ClientPortalService {
                 .idMeeting(m.getIdMeeting())
                 .scheduledAt(m.getScheduledAt() != null ? m.getScheduledAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null)
                 .notesLogged(m.getNotesLogged())
+                .propertyAddress(m.getPropertyAddress())
+                .reminder1hSent(m.isReminder1hSent())
+                .reminder24hSent(m.isReminder24hSent())
                 .status(m.getStatus().name())
                 .type(m.getType().name())
                 .build();
@@ -454,27 +459,46 @@ public class ClientPortalService {
     }
 
     @Transactional
-    public void requestMeeting(UUID clientId, String type, String preferredDate, String preferredTime, String message) {
-        List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
-        if (folders.isEmpty()) throw new RuntimeException("No folder found for client");
+    public void acceptMeeting(UUID clientId, UUID meetingId) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new RuntimeException("Rendez-vous non trouvé"));
 
-        ClientFolder folder = folders.get(0);
-        Deal deal = folder.getDeals().isEmpty() ? null : folder.getDeals().get(0);
-        if (deal == null) throw new RuntimeException("No deal found");
-        InternalUser agent = folder.getAssignedAgent();
-        if (agent == null) throw new RuntimeException("No agent assigned");
+        // Verify that the meeting belongs to the client
+        if (!meeting.getDeal().getClientFolder().getClient().getIdClient().equals(clientId)) {
+            throw new RuntimeException("Accès non autorisé à ce rendez-vous");
+        }
 
-        String desc = String.format("[Demande RDV] Type: %s | Date préf: %s %s | Message: %s",
-                type, preferredDate, preferredTime, message != null ? message : "");
+        meeting.setStatus(MeetingStatus.SCHEDULED);
+        meetingRepository.save(meeting);
+    }
 
-        Interaction interaction = Interaction.builder()
-                .type(InteractionType.NOTE)
-                .description(desc)
-                .deal(deal)
-                .user(agent)
-                .build();
+    @Transactional
+    public void rescheduleMeeting(UUID clientId, UUID meetingId, LocalDateTime newDate, String reason) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new RuntimeException("Rendez-vous non trouvé"));
 
-        interactionRepository.save(interaction);
+        if (!meeting.getDeal().getClientFolder().getClient().getIdClient().equals(clientId)) {
+            throw new RuntimeException("Accès non autorisé à ce rendez-vous");
+        }
+
+        meeting.setScheduledAt(newDate);
+        meeting.setStatus(MeetingStatus.POSTPONED);
+        meeting.setNotesLogged((meeting.getNotesLogged() != null ? meeting.getNotesLogged() + "\n" : "") + "[Reprogrammation client] Motif: " + reason);
+        meetingRepository.save(meeting);
+    }
+
+    @Transactional
+    public void cancelMeeting(UUID clientId, UUID meetingId, String reason) {
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new RuntimeException("Rendez-vous non trouvé"));
+
+        if (!meeting.getDeal().getClientFolder().getClient().getIdClient().equals(clientId)) {
+            throw new RuntimeException("Accès non autorisé à ce rendez-vous");
+        }
+
+        meeting.setStatus(MeetingStatus.CANCELED);
+        meeting.setNotesLogged((meeting.getNotesLogged() != null ? meeting.getNotesLogged() + "\n" : "") + "[Annulation client] Motif: " + reason);
+        meetingRepository.save(meeting);
     }
 
     @Transactional

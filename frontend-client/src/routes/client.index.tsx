@@ -151,9 +151,6 @@ function ClientHome() {
           ) : (
             <div className="py-4 text-center">
               <p className="text-sm text-muted-foreground">Aucun rendez-vous prévu.</p>
-              <Link to="/client/rendez-vous" className="text-xs text-eerie font-medium hover:underline mt-2 block">
-                Solliciter une visite
-              </Link>
             </div>
           )}
         </NeuCard>
