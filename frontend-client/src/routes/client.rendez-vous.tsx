@@ -33,12 +33,12 @@ const MEETING_TYPE_MAP: Record<string, { label: string; icon: React.ReactNode; c
   CONTRACT_SIGNING:    { label: "Signature de contrat",       icon: <PenLine size={16} />,    color: "text-emerald-600 bg-emerald-50" },
 };
 
-const STATUS_CONFIG: Record<string, { label: string; tone: "success" | "info" | "warning" | "error" | "neutral"; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; tone: "success" | "info" | "warn" | "danger" | "neutral"; icon: any }> = {
   SCHEDULED:   { label: "Confirmé",    tone: "success", icon: CheckCircle2 },
   PENDING:     { label: "En attente",  tone: "info",    icon: Clock4 },
-  RESCHEDULED: { label: "Reprogrammé", tone: "warning", icon: Clock },
-  POSTPONED:   { label: "Reporté",     tone: "warning", icon: AlertCircle },
-  CANCELED:    { label: "Annulé",      tone: "error",   icon: XCircle },
+  RESCHEDULED: { label: "Reprogrammé", tone: "warn",    icon: Clock },
+  POSTPONED:   { label: "Reporté",     tone: "warn",    icon: AlertCircle },
+  CANCELED:    { label: "Annulé",      tone: "danger",  icon: XCircle },
   COMPLETED:   { label: "Terminé",     tone: "success", icon: CheckCircle2 },
 };
 
@@ -180,7 +180,7 @@ function ClientMeetings() {
           <div className="flex items-center gap-2">
             <Clock4 className="text-vanilla" size={18} />
             <h2 className="text-sm font-black uppercase tracking-widest text-eerie">Rappels à venir</h2>
-            <SoftBadge tone="warning" className="ml-2 font-bold">{reminderMeetings.length}</SoftBadge>
+            <SoftBadge tone="warn" className="ml-2 font-bold">{reminderMeetings.length}</SoftBadge>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {reminderMeetings.map((m) => (
@@ -202,10 +202,10 @@ function ClientMeetings() {
                     {(() => {
                       const diffHours = (new Date(m.scheduledAt).getTime() - new Date().getTime()) / (1000 * 60 * 60);
                       if (!m.reminder1hSent && diffHours <= 1 && diffHours > 0) {
-                        return <SoftBadge tone="error" className="text-[9px] px-2 py-1 font-black animate-pulse">MOINS D'UNE HEURE</SoftBadge>;
+                        return <SoftBadge tone="danger" className="text-[9px] px-2 py-1 font-black animate-pulse">MOINS D'UNE HEURE</SoftBadge>;
                       }
                       if (!m.reminder24hSent && diffHours <= 24 && diffHours > 0) {
-                        return <SoftBadge tone="warning" className="text-[9px] px-2 py-1 font-black">MOINS DE 24 HEURES</SoftBadge>;
+                        return <SoftBadge tone="warn" className="text-[9px] px-2 py-1 font-black">MOINS DE 24 HEURES</SoftBadge>;
                       }
                       return null;
                     })()}

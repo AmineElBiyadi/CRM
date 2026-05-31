@@ -33,9 +33,20 @@ export const Route = createFileRoute("/client/dossiers/$id")({
   component: DossierDetailPage,
 });
 
-const STEPS = ["Profil créé", "Recherche", "Visite", "Négociation", "Contrat", "Clôturé"];
+const STAGE_CONFIG: Record<string, { label: string; color: string; text: string }> = {
+  NEW: { label: "Nouveau", color: "bg-blue-100", text: "text-blue-600" },
+  COLD: { label: "Froid", color: "bg-gray-100", text: "text-gray-600" },
+  WARM: { label: "Tiède", color: "bg-[#e8e857]/30", text: "text-[#85851d]" },
+  HOT: { label: "Chaud", color: "bg-orange-100", text: "text-orange-600" },
+  NEGOTIATION: { label: "Négociation", color: "bg-purple-100", text: "text-purple-600" },
+  CONTRACT: { label: "Contrat", color: "bg-emerald-100", text: "text-emerald-600" },
+  CLOSED: { label: "Clôturé", color: "bg-green-100", text: "text-green-600" },
+  LOST: { label: "Perdu", color: "bg-red-100", text: "text-red-600" },
+};
+
+const STEPS = ["Nouveau", "Froid", "Tiède", "Chaud", "Négociation", "Contrat", "Clôturé"];
 const stageToIdx: Record<string, number> = {
-  COLD: 1, WARM: 1, HOT: 2, NEGOTIATION: 3, CONTRACT: 4, CLOSED: 5,
+  NEW: 0, COLD: 1, WARM: 2, HOT: 3, NEGOTIATION: 4, CONTRACT: 5, CLOSED: 6,
 };
 
 const PROPERTY_TYPES: Record<string, string> = {
@@ -350,43 +361,52 @@ function DossierDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {dossier.offers.map((offer: any) => {
                 const diff = offer.propertyPrice ? ((offer.offerAmount - offer.propertyPrice) / offer.propertyPrice) * 100 : 0;
-                const isSignificantDiff = Math.abs(diff) > 10;
+                const isSignificantDiff = Math.abs(diff) > 2;
                 
                 return (
-                  <NeuCard key={offer.idOffer} className="flex gap-4">
-                    <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
+                  <NeuCard key={offer.idOffer} className="flex gap-4 group hover:neu-pressable transition-all">
+                    <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 shadow-inner">
                       <img 
                         src={offer.propertyImage || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop"} 
                         alt="Property" 
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-bold truncate pr-2">{offer.propertyTitle}</h4>
+                        <h4 className="font-black truncate pr-2 text-eerie">{offer.propertyTitle}</h4>
                         <SoftBadge tone={
                           offer.status === 'ACCEPTED' ? 'success' : 
                           offer.status === 'REJECTED' ? 'danger' : 
                           offer.status === 'WITHDRAWN' ? 'warn' : 'info'
-                        }>
-                          {offer.status}
+                        } className="text-[9px] px-2 py-0.5 font-black uppercase">
+                          {offer.status === 'ACCEPTED' ? 'ACCEPTEE' : 
+                           offer.status === 'REJECTED' ? 'REFUSEE' : 
+                           offer.status === 'WITHDRAWN' ? 'RETIREE' : 'EN EXAMEN'}
                         </SoftBadge>
                       </div>
-                      <div className="text-lg font-black text-eerie">{formatCurrency(offer.offerAmount)}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-muted-foreground line-through">{formatCurrency(offer.propertyPrice)}</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-lg font-black text-eerie">{formatCurrency(offer.offerAmount)}</span>
                         {isSignificantDiff && (
-                          <span className="text-[10px] font-bold text-orange-600 px-1.5 py-0.5 bg-orange-50 rounded">
+                          <span className={cn(
+                            "text-[10px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5",
+                            diff > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                          )}>
+                            {diff > 0 ? <TrendingUp size={10} /> : <TrendingUp size={10} className="rotate-180" />}
                             {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
                           </span>
                         )}
                       </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Prix demandé :</span>
+                        <span className="text-[10px] font-black text-muted-foreground/80 line-through">{formatCurrency(offer.propertyPrice)}</span>
+                      </div>
                       <div className="flex items-center justify-between mt-4">
-                        <span className="text-[10px] text-muted-foreground">Soumise le {formatDate(offer.createdAt)}</span>
-                        {offer.status === 'ACCEPTED' && dossier.contracts?.length > 0 && (
-                          <button className="text-[10px] font-bold text-eerie flex items-center gap-1 hover:underline">
-                            Voir contrat <ArrowRight size={10} />
-                          </button>
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">Soumise le {formatDate(offer.createdAt)}</span>
+                        {offer.status === 'ACCEPTED' && (
+                          <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full animate-pulse">
+                            <CheckCircle2 size={10} /> ÉTAPE CONTRAT
+                          </div>
                         )}
                       </div>
                     </div>

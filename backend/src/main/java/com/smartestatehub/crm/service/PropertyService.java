@@ -178,7 +178,7 @@ public class PropertyService {
     public List<PropertyDto.Response> getPropertiesByDeal(UUID dealId) {
         log.info("Récupération des propriétés liées au deal ID: {}", dealId);
         
-        List<com.smartestatehub.crm.model.Offer> offers = offerRepository.findByDealIdDeal(dealId);
+        List<com.smartestatehub.crm.model.Offer> offers = offerRepository.findByDeal_IdDeal(dealId);
         return offers.stream()
                 .map(offer -> {
                     Property p = offer.getProperty();

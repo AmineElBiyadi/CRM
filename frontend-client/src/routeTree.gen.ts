@@ -21,6 +21,7 @@ import { Route as ClientDocumentsRouteImport } from './routes/client.documents'
 import { Route as ClientContratsRouteImport } from './routes/client.contrats'
 import { Route as ClientChronologieRouteImport } from './routes/client.chronologie'
 import { Route as ClientAssistantRouteImport } from './routes/client.assistant'
+import { Route as ClientDossiersIndexRouteImport } from './routes/client.dossiers.index'
 import { Route as ClientDossiersIdRouteImport } from './routes/client.dossiers.$id'
 
 const DesignSystemRoute = DesignSystemRouteImport.update({
@@ -83,6 +84,11 @@ const ClientAssistantRoute = ClientAssistantRouteImport.update({
   path: '/assistant',
   getParentRoute: () => ClientRoute,
 } as any)
+const ClientDossiersIndexRoute = ClientDossiersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientDossiersRoute,
+} as any)
 const ClientDossiersIdRoute = ClientDossiersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client/': typeof ClientIndexRoute
   '/client/dossiers/$id': typeof ClientDossiersIdRoute
+  '/client/dossiers/': typeof ClientDossiersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,12 +118,12 @@ export interface FileRoutesByTo {
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
-  '/client/dossiers': typeof ClientDossiersRouteWithChildren
   '/client/profil': typeof ClientProfilRoute
   '/client/proprietes': typeof ClientProprietesRoute
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client': typeof ClientIndexRoute
   '/client/dossiers/$id': typeof ClientDossiersIdRoute
+  '/client/dossiers': typeof ClientDossiersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,6 +140,7 @@ export interface FileRoutesById {
   '/client/rendez-vous': typeof ClientRendezVousRoute
   '/client/': typeof ClientIndexRoute
   '/client/dossiers/$id': typeof ClientDossiersIdRoute
+  '/client/dossiers/': typeof ClientDossiersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +158,7 @@ export interface FileRouteTypes {
     | '/client/rendez-vous'
     | '/client/'
     | '/client/dossiers/$id'
+    | '/client/dossiers/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -158,12 +167,12 @@ export interface FileRouteTypes {
     | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
-    | '/client/dossiers'
     | '/client/profil'
     | '/client/proprietes'
     | '/client/rendez-vous'
     | '/client'
     | '/client/dossiers/$id'
+    | '/client/dossiers'
   id:
     | '__root__'
     | '/'
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/client/rendez-vous'
     | '/client/'
     | '/client/dossiers/$id'
+    | '/client/dossiers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -273,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientAssistantRouteImport
       parentRoute: typeof ClientRoute
     }
+    '/client/dossiers/': {
+      id: '/client/dossiers/'
+      path: '/'
+      fullPath: '/client/dossiers/'
+      preLoaderRoute: typeof ClientDossiersIndexRouteImport
+      parentRoute: typeof ClientDossiersRoute
+    }
     '/client/dossiers/$id': {
       id: '/client/dossiers/$id'
       path: '/$id'
@@ -285,10 +302,12 @@ declare module '@tanstack/react-router' {
 
 interface ClientDossiersRouteChildren {
   ClientDossiersIdRoute: typeof ClientDossiersIdRoute
+  ClientDossiersIndexRoute: typeof ClientDossiersIndexRoute
 }
 
 const ClientDossiersRouteChildren: ClientDossiersRouteChildren = {
   ClientDossiersIdRoute: ClientDossiersIdRoute,
+  ClientDossiersIndexRoute: ClientDossiersIndexRoute,
 }
 
 const ClientDossiersRouteWithChildren = ClientDossiersRoute._addFileChildren(
