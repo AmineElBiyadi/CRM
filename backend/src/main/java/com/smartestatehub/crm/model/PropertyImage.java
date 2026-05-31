@@ -21,7 +21,7 @@ public class PropertyImage {
     @Column(name = "id_property_image", updatable = false, nullable = false)
     private UUID idPropertyImage;
 
-    @Column(name = "image_url", nullable = false)
+    @Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(name = "display_order")

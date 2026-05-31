@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentIndexRouteImport } from './routes/agent.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AgentRechercheRouteImport } from './routes/agent.recherche'
+import { Route as AgentDossiersRouteImport } from './routes/agent.dossiers'
 import { Route as AgentDossierRouteImport } from './routes/agent.dossier'
 import { Route as AgentClientsRouteImport } from './routes/agent.clients'
 import { Route as AgentAgendaRouteImport } from './routes/agent.agenda'
@@ -24,6 +25,8 @@ import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminAutomationsRouteImport } from './routes/admin.automations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAgentsRouteImport } from './routes/admin.agents'
+import { Route as AgentDossiersIndexRouteImport } from './routes/agent.dossiers.index'
+import { Route as AgentDossiersCreateRouteImport } from './routes/agent.dossiers.create'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -65,6 +68,11 @@ const AgentRechercheRoute = AgentRechercheRouteImport.update({
   path: '/recherche',
   getParentRoute: () => AgentRoute,
 } as any)
+const AgentDossiersRoute = AgentDossiersRouteImport.update({
+  id: '/dossiers',
+  path: '/dossiers',
+  getParentRoute: () => AgentRoute,
+} as any)
 const AgentDossierRoute = AgentDossierRouteImport.update({
   id: '/dossier',
   path: '/dossier',
@@ -100,6 +108,16 @@ const AdminAgentsRoute = AdminAgentsRouteImport.update({
   path: '/agents',
   getParentRoute: () => AdminRoute,
 } as any)
+const AgentDossiersIndexRoute = AgentDossiersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AgentDossiersRoute,
+} as any)
+const AgentDossiersCreateRoute = AgentDossiersCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AgentDossiersRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -114,9 +132,12 @@ export interface FileRoutesByFullPath {
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
   '/agent/dossier': typeof AgentDossierRoute
+  '/agent/dossiers': typeof AgentDossiersRouteWithChildren
   '/agent/recherche': typeof AgentRechercheRoute
   '/admin/': typeof AdminIndexRoute
   '/agent/': typeof AgentIndexRoute
+  '/agent/dossiers/create': typeof AgentDossiersCreateRoute
+  '/agent/dossiers/': typeof AgentDossiersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,6 +153,8 @@ export interface FileRoutesByTo {
   '/agent/recherche': typeof AgentRechercheRoute
   '/admin': typeof AdminIndexRoute
   '/agent': typeof AgentIndexRoute
+  '/agent/dossiers/create': typeof AgentDossiersCreateRoute
+  '/agent/dossiers': typeof AgentDossiersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,9 +170,12 @@ export interface FileRoutesById {
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
   '/agent/dossier': typeof AgentDossierRoute
+  '/agent/dossiers': typeof AgentDossiersRouteWithChildren
   '/agent/recherche': typeof AgentRechercheRoute
   '/admin/': typeof AdminIndexRoute
   '/agent/': typeof AgentIndexRoute
+  '/agent/dossiers/create': typeof AgentDossiersCreateRoute
+  '/agent/dossiers/': typeof AgentDossiersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,9 +192,12 @@ export interface FileRouteTypes {
     | '/agent/agenda'
     | '/agent/clients'
     | '/agent/dossier'
+    | '/agent/dossiers'
     | '/agent/recherche'
     | '/admin/'
     | '/agent/'
+    | '/agent/dossiers/create'
+    | '/agent/dossiers/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -184,6 +213,8 @@ export interface FileRouteTypes {
     | '/agent/recherche'
     | '/admin'
     | '/agent'
+    | '/agent/dossiers/create'
+    | '/agent/dossiers'
   id:
     | '__root__'
     | '/'
@@ -198,9 +229,12 @@ export interface FileRouteTypes {
     | '/agent/agenda'
     | '/agent/clients'
     | '/agent/dossier'
+    | '/agent/dossiers'
     | '/agent/recherche'
     | '/admin/'
     | '/agent/'
+    | '/agent/dossiers/create'
+    | '/agent/dossiers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -269,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRechercheRouteImport
       parentRoute: typeof AgentRoute
     }
+    '/agent/dossiers': {
+      id: '/agent/dossiers'
+      path: '/dossiers'
+      fullPath: '/agent/dossiers'
+      preLoaderRoute: typeof AgentDossiersRouteImport
+      parentRoute: typeof AgentRoute
+    }
     '/agent/dossier': {
       id: '/agent/dossier'
       path: '/dossier'
@@ -318,6 +359,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAgentsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/agent/dossiers/': {
+      id: '/agent/dossiers/'
+      path: '/'
+      fullPath: '/agent/dossiers/'
+      preLoaderRoute: typeof AgentDossiersIndexRouteImport
+      parentRoute: typeof AgentDossiersRoute
+    }
+    '/agent/dossiers/create': {
+      id: '/agent/dossiers/create'
+      path: '/create'
+      fullPath: '/agent/dossiers/create'
+      preLoaderRoute: typeof AgentDossiersCreateRouteImport
+      parentRoute: typeof AgentDossiersRoute
+    }
   }
 }
 
@@ -339,10 +394,25 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AgentDossiersRouteChildren {
+  AgentDossiersCreateRoute: typeof AgentDossiersCreateRoute
+  AgentDossiersIndexRoute: typeof AgentDossiersIndexRoute
+}
+
+const AgentDossiersRouteChildren: AgentDossiersRouteChildren = {
+  AgentDossiersCreateRoute: AgentDossiersCreateRoute,
+  AgentDossiersIndexRoute: AgentDossiersIndexRoute,
+}
+
+const AgentDossiersRouteWithChildren = AgentDossiersRoute._addFileChildren(
+  AgentDossiersRouteChildren,
+)
+
 interface AgentRouteChildren {
   AgentAgendaRoute: typeof AgentAgendaRoute
   AgentClientsRoute: typeof AgentClientsRoute
   AgentDossierRoute: typeof AgentDossierRoute
+  AgentDossiersRoute: typeof AgentDossiersRouteWithChildren
   AgentRechercheRoute: typeof AgentRechercheRoute
   AgentIndexRoute: typeof AgentIndexRoute
 }
@@ -351,6 +421,7 @@ const AgentRouteChildren: AgentRouteChildren = {
   AgentAgendaRoute: AgentAgendaRoute,
   AgentClientsRoute: AgentClientsRoute,
   AgentDossierRoute: AgentDossierRoute,
+  AgentDossiersRoute: AgentDossiersRouteWithChildren,
   AgentRechercheRoute: AgentRechercheRoute,
   AgentIndexRoute: AgentIndexRoute,
 }

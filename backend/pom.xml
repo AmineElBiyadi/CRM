@@ -94,6 +94,13 @@
             <version>9.1.22</version>
         </dependency>
 
+        <!-- Cloudinary — Stockage fichiers -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http45</artifactId>
+            <version>1.39.0</version>
+        </dependency>
+
         <!-- Developer Tools & Boilerplate -->
         <dependency>
             <groupId>org.projectlombok</groupId>

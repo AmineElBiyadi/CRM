@@ -2,6 +2,8 @@ package com.smartestatehub.crm.model;
 
 import com.smartestatehub.auth.model.InternalUser;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import java.util.UUID;
 import jakarta.persistence.*;
 import lombok.*;
@@ -22,11 +24,13 @@ public class DealStageUpdate {
     private UUID idUpdate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "from_stage")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "from_stage", columnDefinition = "deal_stage")
     private DealStage fromStage;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "to_stage", nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "to_stage", nullable = false, columnDefinition = "deal_stage")
     private DealStage toStage;
 
     @CreationTimestamp

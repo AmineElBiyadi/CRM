@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -21,23 +22,21 @@ public class SecurityConfig {
 
     private final CsrfFilter csrfFilter;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            .cors(cors -> {}) // relies on CorsConfig bean
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                // Admin-only endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                // Agent + Admin endpoints
                 .requestMatchers("/api/agent/**", "/api/crm/**").hasAnyRole("AGENT", "ADMIN")
-                // Client-only endpoints
                 .requestMatchers("/api/client/**").hasRole("CLIENT")
-                // Everything else requires authentication
                 .anyRequest().authenticated()
             )
             .addFilterBefore(csrfFilter, JwtAuthenticationFilter.class)

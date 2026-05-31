@@ -5,6 +5,8 @@ import com.smartestatehub.crm.model.Client;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,7 +32,8 @@ public class Notification {
     private String message;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "sender_type")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "sender_type", columnDefinition = "sender_type")
     private SenderType senderType;
 
     @Builder.Default

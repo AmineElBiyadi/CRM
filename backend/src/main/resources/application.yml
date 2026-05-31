@@ -1,3 +1,5 @@
+#fichier de configuration principal de notre backend Spring Boot, afin de centraliser tous les paramètres de l'application pour faciliter la gestion et la modification de la configuration(API, BD , serveur, JWT, ...) sans avoir à toucher ou recompiler le code source Java .De plus, il permet de charger des variables d'environnement (ex: via un fichier .env).
+
 server:
   port: 8081
 
@@ -15,9 +17,10 @@ spring:
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   
+  #hange-la en ddl-auto: validate (qui vérifie la DB mais ne la modifie pas) ou ddl-auto: none (désactive tout).
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -62,6 +65,9 @@ app:
     from-email: ${SENDGRID_FROM_EMAIL:noreply@smartestatehub.com}
   n8n:
     webhook-url: ${N8N_WEBHOOK_URL:http://localhost:5678/webhook}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:dam3isgtd}
+    upload-preset: ${CLOUDINARY_UPLOAD_PRESET:Rawabet}
 
 # Supervision Actuator
 management:

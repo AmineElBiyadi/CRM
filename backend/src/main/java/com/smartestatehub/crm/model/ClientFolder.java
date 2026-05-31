@@ -4,7 +4,9 @@ import com.smartestatehub.auth.model.InternalUser;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,7 +26,7 @@ public class ClientFolder {
     @Column(name = "id_profile", updatable = false, nullable = false)
     private UUID idProfile;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_client", nullable = false)
     private Client client;
 
@@ -37,8 +39,15 @@ public class ClientFolder {
     private InternalUser createdByAgent;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "client_type", nullable = false, length = 10)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "client_type", nullable = false, columnDefinition = "client_type")
     private ClientType clientType;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Builder.Default
+    @Column(name = "status", nullable = false, columnDefinition = "folder_status")
+    private FolderStatus status = FolderStatus.PENDING;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
