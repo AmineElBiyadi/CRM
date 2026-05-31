@@ -62,13 +62,16 @@ function ClientMeetings() {
   const [newDate, setNewDate] = useState("");
   
   // Filtres
+  const [dealFilter, setDealFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [periodFilter, setPeriodFilter] = useState("ALL"); // ALL, UPCOMING, PAST, REMINDERS
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   const meetings = data?.meetings || [];
+  const deals = data?.dossiers || [];
 
   const reminderMeetings = useMemo(() => {
+    // ... (keep existing reminderMeetings logic)
     const now = new Date();
     return meetings.filter(m => {
       const scheduledDate = new Date(m.scheduledAt);
@@ -91,6 +94,11 @@ function ClientMeetings() {
     // Exclure les statuts MISSED et DRAFT par défaut
     let result = meetings.filter(m => m.status !== "MISSED" && m.status !== "DRAFT");
     const today = startOfToday();
+
+    // Filtre par dossier
+    if (dealFilter !== "ALL") {
+      result = result.filter(m => m.idDeal === dealFilter);
+    }
 
     // Filtre par type
     if (typeFilter !== "ALL") {
@@ -158,6 +166,12 @@ function ClientMeetings() {
     }
   };
 
+  const getDealTitle = (deal: any) => {
+    if (deal.propertyTitle) return deal.propertyTitle;
+    const type = deal.clientType === "BUYER" ? "Achat" : "Vente";
+    return `${type} — ${deal.city || 'Dossier'}`;
+  };
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center p-12">
@@ -219,6 +233,20 @@ function ClientMeetings() {
 
       {/* Barre de Filtres */}
       <div className="flex flex-wrap items-center gap-4 p-4 neu-inset rounded-2xl">
+        <div className="flex items-center gap-2 px-3 py-2 bg-ghost rounded-xl border border-border/40 min-w-[200px]">
+          <Building size={14} className="text-muted-foreground" />
+          <select 
+            className="bg-transparent text-xs font-bold focus:outline-none w-full"
+            value={dealFilter}
+            onChange={(e) => setDealFilter(e.target.value)}
+          >
+            <option value="ALL">Tous mes dossiers ({deals.length})</option>
+            {deals.map(deal => (
+              <option key={deal.idDeal} value={deal.idDeal}>{getDealTitle(deal)}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex items-center gap-2 px-3 py-2 bg-ghost rounded-xl border border-border/40">
           <Filter size={14} className="text-muted-foreground" />
           <select 
@@ -290,6 +318,17 @@ function ClientMeetings() {
                       <span className={cn("text-[10px] font-black uppercase tracking-widest", typeColor(m.type).split(' ')[0])}>
                         {typeLabel(m.type)}
                       </span>
+                      {dealFilter === "ALL" && (
+                        <>
+                          <div className="h-3 w-[1px] bg-border mx-1" />
+                          <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest bg-alice px-1.5 py-0.5 rounded">
+                            {(() => {
+                              const deal = deals.find(d => d.idDeal === m.idDeal);
+                              return deal ? getDealTitle(deal) : "Dossier";
+                            })()}
+                          </span>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <h3 className="text-xl font-black text-eerie">

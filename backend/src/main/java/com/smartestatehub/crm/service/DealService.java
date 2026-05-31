@@ -214,9 +214,9 @@ public class DealService {
             BuyerFolder buyer = folder.getBuyerFolder();
             builder.budgetMin(buyer.getBudgetMin())
                     .budgetMax(buyer.getBudgetMax())
-                    .preferredArea(buyer.getPreferredArea())
                     .preferredSizeM2(buyer.getPreferredSizeM2())
                     .preferredFloor(buyer.getPreferredFloor())
+                    .preferredArea(buyer.getPreferredArea())
                     .propertyType(buyer.getPropertyType() != null ? buyer.getPropertyType().getSpecificType() : null);
         } else if (folder.getClientType() == ClientType.SELLER && folder.getSellerFolder() != null) {
             SellerFolder seller = folder.getSellerFolder();

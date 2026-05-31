@@ -25,6 +25,7 @@ public class ClientPortalService {
     private final MeetingRepository meetingRepository;
     private final DocumentRepository documentRepository;
     private final ContractRepository contractRepository;
+    private final OfferRepository offerRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -361,6 +362,7 @@ public class ClientPortalService {
                 .aiRiskSummary(c.getAiRiskSummary())
                 .createdAt(c.getCreatedAt())
                 .pdfUrl(c.getPdfUrl())
+                .dealId(c.getDeal() != null ? c.getDeal().getIdDeal() : null)
                 .build();
     }
 
@@ -538,6 +540,45 @@ public class ClientPortalService {
         meeting.setStatus(MeetingStatus.CANCELED);
         meeting.setNotesLogged((meeting.getNotesLogged() != null ? meeting.getNotesLogged() + "\n" : "") + "[Annulation client] Motif: " + reason);
         meetingRepository.save(meeting);
+    }
+
+    @Transactional
+    public void acceptOffer(UUID clientId, UUID offerId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new RuntimeException("Offre non trouvée"));
+
+        if (!offer.getDeal().getClientFolder().getClient().getIdClient().equals(clientId)) {
+            throw new RuntimeException("Accès non autorisé à cette offre");
+        }
+
+        offer.setStatus(OfferStatus.ACCEPTED);
+        offerRepository.save(offer);
+    }
+
+    @Transactional
+    public void rejectOffer(UUID clientId, UUID offerId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new RuntimeException("Offre non trouvée"));
+
+        if (!offer.getDeal().getClientFolder().getClient().getIdClient().equals(clientId)) {
+            throw new RuntimeException("Accès non autorisé à cette offre");
+        }
+
+        offer.setStatus(OfferStatus.REJECTED);
+        offerRepository.save(offer);
+    }
+
+    @Transactional
+    public void withdrawOffer(UUID clientId, UUID offerId) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new RuntimeException("Offre non trouvée"));
+
+        if (!offer.getDeal().getClientFolder().getClient().getIdClient().equals(clientId)) {
+            throw new RuntimeException("Accès non autorisé à cette offre");
+        }
+
+        offer.setStatus(OfferStatus.WITHDRAW);
+        offerRepository.save(offer);
     }
 
     @Transactional

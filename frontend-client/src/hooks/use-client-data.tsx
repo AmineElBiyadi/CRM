@@ -79,6 +79,7 @@ export interface Contract {
   aiRiskSummary?: string;
   createdAt: string;
   pdfUrl?: string;
+  dealId: string;
 }
 
 export interface Interaction {
@@ -135,22 +136,38 @@ export function useMeetingActions() {
   return { accept, reschedule, cancel };
 }
 
-export interface Document {
-  idDocument: string;
-  documentType: string;
-  filePath: string;
-  confirmedReceived: boolean;
-  createdAt: string;
-  dealId: string;
-}
+export function useOfferActions() {
+  const queryClient = useQueryClient();
+  const clientId = getClientId();
 
-export interface Contract {
-  idContract: string;
-  agreedPrice: number;
-  depositAmount: number;
-  status: string;
-  aiRiskSummary: string;
-  createdAt: string;
+  const accept = useMutation({
+    mutationFn: async (offerId: string) => {
+      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/offers/${offerId}/accept`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+
+  const reject = useMutation({
+    mutationFn: async (offerId: string) => {
+      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/offers/${offerId}/reject`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+
+  const withdraw = useMutation({
+    mutationFn: async (offerId: string) => {
+      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/offers/${offerId}/withdraw`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
+    },
+  });
+
+  return { accept, reject, withdraw };
 }
 
 export interface TimelineEvent {

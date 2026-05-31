@@ -77,6 +77,36 @@ public class ClientPortalController {
         }
     }
 
+    @PutMapping("/{clientId}/offers/{offerId}/accept")
+    public ResponseEntity<Void> acceptOffer(@PathVariable UUID clientId, @PathVariable UUID offerId) {
+        try {
+            clientPortalService.acceptOffer(clientId, offerId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{clientId}/offers/{offerId}/reject")
+    public ResponseEntity<Void> rejectOffer(@PathVariable UUID clientId, @PathVariable UUID offerId) {
+        try {
+            clientPortalService.rejectOffer(clientId, offerId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{clientId}/offers/{offerId}/withdraw")
+    public ResponseEntity<Void> withdrawOffer(@PathVariable UUID clientId, @PathVariable UUID offerId) {
+        try {
+            clientPortalService.withdrawOffer(clientId, offerId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PutMapping("/{clientId}/password")
     public ResponseEntity<?> updatePassword(@PathVariable UUID clientId, @RequestBody ChangePasswordDto dto) {
         try {

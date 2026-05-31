@@ -55,6 +55,7 @@ public class ContractDto {
         private String aiRiskSummary;
         private LocalDateTime createdAt;
         private String pdfUrl;
+        private UUID dealId;
         private List<PaymentResponse> payments;
     }
 

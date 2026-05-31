@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { useDossiers, useDossier, useDossierActivity } from "@/hooks/use-dossiers";
+import { useClientData, useOfferActions } from "@/hooks/use-client-data";
 import { documentApi } from "@/api/documentApi";
 import { toast } from "sonner";
 import { NeuCard } from "@/components/ui/neu-card";
@@ -87,6 +88,8 @@ function DossierDetailPage() {
   const { id } = useParams({ from: "/client/dossiers/$id" });
   const { data: dossier, isLoading: loadingDossier, refetch: refetchDossier } = useDossier(id);
   const { data: activity, isLoading: loadingActivity } = useDossierActivity(id);
+  const { data: clientData, isLoading: loadingClientData, refetch: refetchClientData } = useClientData();
+  const { accept: acceptOffer, reject: rejectOffer, withdraw: withdrawOffer } = useOfferActions();
   
   // Get documents directly from dossier object
   const documents = dossier?.documents || [];
@@ -275,6 +278,8 @@ function DossierDetailPage() {
           </div>
           <div className="h-10" /> {/* Spacer for absolute labels */}
         </NeuCard>
+
+        <div className="h-4" /> {/* Smaller spacer */}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -285,19 +290,23 @@ function DossierDetailPage() {
               <h3 className="text-sm font-black uppercase tracking-widest text-eerie flex items-center gap-2">
                 <Building2 size={18} className="text-vanilla" /> Caractéristiques du bien
               </h3>
-              {dossier.askingPrice ? (
+              {dossier.clientType === "SELLER" ? (
                 <div className="text-right">
                   <p className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
-                    {dossier.clientType === "SELLER" ? "Prix demandé" : "Prix du bien"}
+                    Prix demandé
                   </p>
-                  <p className="text-2xl font-black text-vanilla">{formatCurrency(dossier.askingPrice)}</p>
+                  <p className="text-2xl font-black text-vanilla">{formatCurrency(dossier.askingPrice || 0)}</p>
                 </div>
-              ) : dossier.budgetMax ? (
+              ) : (
                 <div className="text-right">
-                  <p className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">Budget cible</p>
-                  <p className="text-xl font-black text-vanilla">{formatCurrency(dossier.budgetMin)} - {formatCurrency(dossier.budgetMax)}</p>
+                  <p className="text-[9px] font-black text-muted-foreground/60 uppercase tracking-widest">
+                    Budget cible
+                  </p>
+                  <p className="text-xl font-black text-vanilla">
+                    {formatCurrency(dossier.budgetMin || 0)} - {formatCurrency(dossier.budgetMax || 0)}
+                  </p>
                 </div>
-              ) : null}
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -332,18 +341,24 @@ function DossierDetailPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Pièces</p>
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50">
+                  {dossier.clientType === 'BUYER' ? "Quartier souhaité" : "Pièces"}
+                </p>
                 <div className="flex items-center gap-2">
                   <div className="p-2 bg-alice rounded-xl text-eerie shadow-sm">
-                    <Layers size={14} />
+                    {dossier.clientType === 'BUYER' ? <MapPin size={14} /> : <Layers size={14} />}
                   </div>
-                  <p className="text-sm font-black text-eerie">{dossier.numRooms || "--"} pièces</p>
+                  <p className="text-sm font-black text-eerie">
+                    {dossier.clientType === 'BUYER' 
+                      ? (dossier.preferredArea || "Non spécifié") 
+                      : (dossier.numRooms || "--") + " pièces"}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Photos Gallery */}
-            {dossier.propertyImageUrls && dossier.propertyImageUrls.length > 0 && (
+            {/* Photos Gallery (Only for Sellers) */}
+            {dossier.clientType === 'SELLER' && dossier.propertyImageUrls && dossier.propertyImageUrls.length > 0 && (
               <div className="space-y-4 pt-4 border-t border-border/40">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
                   <ImageIcon size={14} /> Galerie photos ({dossier.propertyImageUrls.length})
@@ -547,7 +562,6 @@ function DossierDetailPage() {
           {/* Offers Tab */}
           {dossier.clientType === 'BUYER' && (
             <TabsContent value="offers" className="pt-8">
-              {/* ... (keep existing offers content) */}
               {!dossier.offers || dossier.offers.length === 0 ? (
                 <div className="py-20 text-center space-y-4 bg-alice/10 rounded-3xl border border-dashed border-border/40">
                   <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm border border-border/20">
@@ -565,54 +579,107 @@ function DossierDetailPage() {
                     const isSignificantDiff = Math.abs(diff) > 2;
 
                     return (
-                      <NeuCard key={offer.idOffer} className="flex gap-6 group hover:neu-pressable transition-all p-6">
-                        <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0 shadow-inner border-2 border-white">
-                          <img
-                            src={offer.propertyImage || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop"}
-                            alt="Property"
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 flex flex-col justify-between">
-                          <div className="flex justify-between items-start mb-1">
-                            <h4 className="font-black truncate pr-2 text-eerie text-base group-hover:text-vanilla transition-colors">{offer.propertyTitle}</h4>
-                            <SoftBadge tone={
-                              offer.status === 'ACCEPTED' ? 'success' :
-                                offer.status === 'REJECTED' ? 'danger' :
-                                  offer.status === 'WITHDRAWN' ? 'warn' : 'info'
-                            } className="text-[8px] px-2 py-0.5 font-black uppercase tracking-widest">
-                              {offer.status === 'ACCEPTED' ? 'ACCEPTEE' :
-                                offer.status === 'REJECTED' ? 'REFUSEE' :
-                                  offer.status === 'WITHDRAWN' ? 'RETIREE' : 'EN EXAMEN'}
-                            </SoftBadge>
+                      <NeuCard key={offer.idOffer} className="flex flex-col group hover:neu-pressable transition-all p-6 space-y-6">
+                        <div className="flex gap-6">
+                          <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0 shadow-inner border-2 border-white">
+                            <img
+                              src={offer.propertyImage || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1000&auto=format&fit=crop"}
+                              alt="Property"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
                           </div>
-                          <div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-xl font-black text-eerie">{formatCurrency(offer.offerAmount)}</span>
-                              {isSignificantDiff && (
-                                <span className={cn(
-                                  "text-[9px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5",
-                                  diff > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-                                )}>
-                                  {diff > 0 ? <TrendingUp size={10} /> : <TrendingUp size={10} className="rotate-180" />}
-                                  {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
-                                </span>
+                          <div className="flex-1 min-w-0 flex flex-col justify-between">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-black truncate pr-2 text-eerie text-base group-hover:text-vanilla transition-colors">{offer.propertyTitle}</h4>
+                              <SoftBadge tone={
+                                offer.status === 'ACCEPTED' ? 'success' :
+                                  offer.status === 'REJECTED' ? 'danger' :
+                                    offer.status === 'WITHDRAW' ? 'neutral' : 'info'
+                              } className="text-[8px] px-2 py-0.5 font-black uppercase tracking-widest">
+                                {offer.status === 'ACCEPTED' ? 'ACCEPTÉE' :
+                                  offer.status === 'REJECTED' ? 'REFUSÉE' :
+                                    offer.status === 'WITHDRAW' ? 'RETIRÉE' : 'EN EXAMEN'}
+                              </SoftBadge>
+                            </div>
+                            <div>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-xl font-black text-eerie">{formatCurrency(offer.offerAmount)}</span>
+                                {isSignificantDiff && (
+                                  <span className={cn(
+                                    "text-[9px] font-black px-1.5 py-0.5 rounded-lg flex items-center gap-0.5",
+                                    diff > 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                                  )}>
+                                    {diff > 0 ? <TrendingUp size={10} /> : <TrendingUp size={10} className="rotate-180" />}
+                                    {diff > 0 ? '+' : ''}{diff.toFixed(1)}%
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-40">Prix demandé :</span>
+                                <span className="text-[9px] font-black text-muted-foreground/60 line-through">{formatCurrency(offer.propertyPrice)}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mt-4">
+                              <span className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-widest">Soumise le {formatDate(offer.createdAt)}</span>
+                              {offer.status === 'ACCEPTED' && (
+                                <div className="flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full animate-pulse tracking-widest">
+                                  <CheckCircle2 size={10} /> ÉTAPE CONTRAT
+                                </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-40">Prix demandé :</span>
-                              <span className="text-[9px] font-black text-muted-foreground/60 line-through">{formatCurrency(offer.propertyPrice)}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between mt-4">
-                            <span className="text-[8px] font-black text-muted-foreground/60 uppercase tracking-widest">Soumise le {formatDate(offer.createdAt)}</span>
-                            {offer.status === 'ACCEPTED' && (
-                              <div className="flex items-center gap-1 text-[8px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full animate-pulse tracking-widest">
-                                <CheckCircle2 size={10} /> ÉTAPE CONTRAT
-                              </div>
-                            )}
                           </div>
                         </div>
+
+                        {offer.status === 'PENDING' && (
+                          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/40">
+                            <button
+                              onClick={() => {
+                                acceptOffer.mutate(offer.idOffer, {
+                                  onSuccess: () => {
+                                    toast.success("Offre acceptée avec succès !");
+                                    refetchDossier();
+                                  },
+                                  onError: () => toast.error("Erreur lors de l'acceptation de l'offre")
+                                });
+                              }}
+                              disabled={acceptOffer.isPending || rejectOffer.isPending}
+                              className="py-3 bg-eerie text-white rounded-xl font-black text-[9px] tracking-widest flex items-center justify-center gap-2 hover:bg-eerie/90 transition-all active:scale-95 shadow-md disabled:opacity-50"
+                            >
+                              {acceptOffer.isPending ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} className="text-vanilla" />}
+                              ACCEPTER L'OFFRE
+                            </button>
+                            <button
+                              onClick={() => {
+                                rejectOffer.mutate(offer.idOffer, {
+                                  onSuccess: () => {
+                                    toast.success("Offre refusée");
+                                    refetchDossier();
+                                  },
+                                  onError: () => toast.error("Erreur lors du refus de l'offre")
+                                });
+                              }}
+                              disabled={acceptOffer.isPending || rejectOffer.isPending}
+                              className="py-3 bg-alice text-danger rounded-xl font-black text-[9px] tracking-widest flex items-center justify-center gap-2 hover:bg-danger/5 transition-all active:scale-95 border border-danger/10 disabled:opacity-50"
+                            >
+                              {rejectOffer.isPending ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                              REFUSER
+                            </button>
+                          </div>
+                        )}
+
+                        {offer.status === 'ACCEPTED' && (
+                          <div className="pt-2 border-t border-border/40">
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-3">
+                              <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white shrink-0">
+                                <CheckCircle2 size={16} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black text-emerald-900 uppercase tracking-widest">Offre acceptée</p>
+                                <p className="text-[9px] font-bold text-emerald-700/70 uppercase">L'agent prépare actuellement le contrat de vente.</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </NeuCard>
                     );
                   })}
