@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ClientRouteImport } from './routes/client'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
@@ -17,6 +18,11 @@ import { Route as ClientDocumentsRouteImport } from './routes/client.documents'
 import { Route as ClientChronologieRouteImport } from './routes/client.chronologie'
 import { Route as ClientAssistantRouteImport } from './routes/client.assistant'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientRoute = ClientRouteImport.update({
   id: '/client',
   path: '/client',
@@ -56,6 +62,7 @@ const ClientAssistantRoute = ClientAssistantRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
+  '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/documents': typeof ClientDocumentsRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/documents': typeof ClientDocumentsRoute
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
+  '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/documents': typeof ClientDocumentsRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/client'
+    | '/login'
     | '/client/assistant'
     | '/client/chronologie'
     | '/client/documents'
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/client/assistant'
     | '/client/chronologie'
     | '/client/documents'
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/client'
+    | '/login'
     | '/client/assistant'
     | '/client/chronologie'
     | '/client/documents'
@@ -112,10 +124,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientRoute: typeof ClientRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client': {
       id: '/client'
       path: '/client'
@@ -190,6 +210,7 @@ const ClientRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientRoute: ClientRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

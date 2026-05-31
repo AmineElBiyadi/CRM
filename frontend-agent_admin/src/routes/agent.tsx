@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/app-shell";
 import { LayoutDashboard, Users, FolderOpen, Search, CalendarDays } from "lucide-react";
+import { ensureAuthenticated, getUser } from "@/lib/auth";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 const nav = [
   { to: "/agent", label: "Dashboard", icon: LayoutDashboard },
@@ -11,13 +12,28 @@ const nav = [
 ];
 
 export const Route = createFileRoute("/agent")({
-  component: () => (
+  beforeLoad: async () => {
+    const user = await ensureAuthenticated();
+
+    if (!user) throw redirect({ to: "/login" });
+    if (user.role !== "AGENT") throw redirect({ to: "/admin" });
+  },
+  component: AgentLayout,
+});
+
+function AgentLayout() {
+  const user = getUser()!;
+
+  return (
     <AppShell
       space="agent"
       spaceLabel="Espace Agent"
-      user={{ name: "Sara El Idrissi", role: "Commercial" }}
+      user={{
+        name: `${user.firstName} ${user.lastName}`,
+        role: user.role,
+      }}
       nav={nav}
       accent="bg-honeydew"
     />
-  ),
-});
+  );
+}

@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/app-shell";
 import { LayoutDashboard, Users, KanbanSquare, Workflow, BarChart3 } from "lucide-react";
+import { ensureAuthenticated, getUser } from "@/lib/auth";
 
 const nav = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -11,13 +12,28 @@ const nav = [
 ];
 
 export const Route = createFileRoute("/admin")({
-  component: () => (
+  beforeLoad: async () => {
+    const user = await ensureAuthenticated();
+
+    if (!user) throw redirect({ to: "/login" });
+    if (user.role !== "ADMIN") throw redirect({ to: "/agent" });
+  },
+  component: AdminLayout,
+});
+
+function AdminLayout() {
+  const user = getUser()!;
+
+  return (
     <AppShell
       space="admin"
       spaceLabel="Espace Admin"
-      user={{ name: "Rachid Alami", role: "Directeur" }}
+      user={{
+        name: `${user.firstName} ${user.lastName}`,
+        role: user.role,
+      }}
       nav={nav}
-      accent="bg-alice"
+      accent="bg-honeydew"
     />
-  ),
-});
+  );
+}

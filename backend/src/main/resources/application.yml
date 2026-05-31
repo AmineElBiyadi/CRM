@@ -48,8 +48,20 @@ spring:
 # Sécurité JWT
 jwt:
   secret: ${JWT_SECRET:default_super_secret_key_which_must_be_long_enough_to_meet_requirements_32_bytes}
-  expiration: 86400000 # 24 heures en ms
-  refresh-expiration: 604800000 # 7 jours en ms
+  expiration: 3600000 # 1 heure (access token)
+  refresh-expiration: 604800000 # 7 jours en ms (remember me)
+
+app:
+  cookie:
+    secure: false # true en production (HTTPS)
+  rapidapi:
+    key: ${RAPIDAPI_KEY}
+    host: ${RAPIDAPI_HOST:realty-in-us.p.rapidapi.com}
+  sendgrid:
+    api-key: ${SENDGRID_API_KEY}
+    from-email: ${SENDGRID_FROM_EMAIL:noreply@smartestatehub.com}
+  n8n:
+    webhook-url: ${N8N_WEBHOOK_URL:http://localhost:5678/webhook}
 
 # Supervision Actuator
 management:
@@ -60,14 +72,3 @@ management:
   endpoint:
     health:
       show-details: always
-
-# Configurations d'intégrations externes
-app:
-  rapidapi:
-    key: ${RAPIDAPI_KEY}
-    host: ${RAPIDAPI_HOST:realty-in-us.p.rapidapi.com}
-  sendgrid:
-    api-key: ${SENDGRID_API_KEY}
-    from-email: ${SENDGRID_FROM_EMAIL:noreply@smartestatehub.com}
-  n8n:
-    webhook-url: ${N8N_WEBHOOK_URL:http://localhost:5678/webhook}

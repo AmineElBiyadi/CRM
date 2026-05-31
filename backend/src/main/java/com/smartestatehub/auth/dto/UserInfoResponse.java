@@ -11,11 +11,9 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginResponse {
+public class UserInfoResponse {
 
-    private String token;
-    private String refreshToken;
-    private String role;          // "ADMIN" or "AGENT"
+    private String role;
     private UUID userId;
     private String firstName;
     private String lastName;
