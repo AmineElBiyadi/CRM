@@ -49,10 +49,17 @@ public class DocumentService {
 
         // Nom généré : Type_FirstName_LastName
         String clientName = deal.getClientFolder().getClient().getFirstName() + "_" + deal.getClientFolder().getClient().getLastName();
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        
         String generatedName = type.name() + "_" + clientName.replaceAll("[^a-zA-Z0-9._-]", "_");
-        String publicId = java.util.UUID.randomUUID() + "_" + generatedName;
+        String publicId = java.util.UUID.randomUUID() + "_" + generatedName + extension;
 
-        // Upload sur Cloudinary
+        // Upload sur Cloudinary en forçant le type RAW pour les PDFs
+        // Cela garantit que Cloudinary ne tente pas de les traiter comme des images, ce qui cause les erreurs 401
         String cloudinaryUrl = cloudinaryService.upload(file.getBytes(), publicId, "documents", "raw");
 
         // Vérifier si un placeholder existe déjà pour ce deal et ce type sans chemin de fichier

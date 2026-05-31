@@ -3,16 +3,52 @@ import { useQuery } from "@tanstack/react-query";
 import { dossierApi } from "@/api/dossierApi";
 
 export interface Dossier {
+  idDeal?: string;
   idProfile: string;
-  stage: string;
-  propertyType: string;
+  idClient: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
   clientType: "BUYER" | "SELLER";
+  stage: string;
+  aiLeadScore: number;
+  aiScoreExplanation?: string;
+  aiRecommendedAction?: string;
+  aiSummary?: string;
   isUrgent: boolean;
-  assignedAgentName?: string;
+  
+  // Buyer specifics
+  budgetMin?: number;
+  budgetMax?: number;
+  preferredArea?: string;
+  preferredSizeM2?: number;
+  preferredFloor?: number;
+  propertyType?: string;
+
+  // Seller specifics
+  propertyTitle?: string;
+  address?: string;
+  city?: string;
+  askingPrice?: number;
+  propertySurfaceM2?: number;
+  numRooms?: number;
+  propertyFloor?: number;
+  propertyImageUrls?: string[];
+
+  assignedAgentName: string;
+  assignedAgentPhone?: string;
+  lastInteractionAt?: string;
+  createdAt?: string;
+
   propertyCount: number;
   documentCount: number;
   meetingCount: number;
-  aiLeadScore: number;
+
+  properties?: any[];
+  offers?: any[];
+  meetings?: any[];
+  contracts?: any[];
+  documents?: any[];
   [key: string]: any;
 }
 

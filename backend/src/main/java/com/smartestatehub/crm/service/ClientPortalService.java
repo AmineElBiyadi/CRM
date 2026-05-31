@@ -179,6 +179,7 @@ public class ClientPortalService {
                 .clientSource(client.getSource())
                 .clientType(folder.getClientType())
                 .assignedAgentName(agentName)
+                .assignedAgentPhone(agent != null ? agent.getPhone() : null)
                 .stage(deal.getStage())
                 .aiLeadScore(deal.getAiLeadScore())
                 .aiScoreExplanation(deal.getAiScoreExplanation())
@@ -196,6 +197,32 @@ public class ClientPortalService {
             dto.setPreferredSizeM2(buyer.getPreferredSizeM2());
             dto.setPreferredFloor(buyer.getPreferredFloor());
             dto.setPropertyType(buyer.getPropertyType() != null ? buyer.getPropertyType().getSpecificType() : null);
+
+            // For Buyers, if they have an active offer or a visit, use that property's details as the "primary" property
+            Property primaryProp = null;
+            if (deal.getOffers() != null && !deal.getOffers().isEmpty()) {
+                // Take the property from the latest offer
+                primaryProp = deal.getOffers().stream()
+                        .sorted(Comparator.comparing(Offer::getCreatedAt).reversed())
+                        .map(Offer::getProperty)
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            if (primaryProp != null) {
+                dto.setPropertyTitle(primaryProp.getTitle());
+                dto.setAddress(primaryProp.getAddress());
+                dto.setCity(primaryProp.getCity());
+                dto.setAskingPrice(primaryProp.getPrice());
+                dto.setPropertySurfaceM2(primaryProp.getSurfaceM2());
+                dto.setNumRooms(primaryProp.getNumRooms());
+                dto.setPropertyFloor(primaryProp.getFloor());
+                if (primaryProp.getImages() != null) {
+                    dto.setPropertyImageUrls(primaryProp.getImages().stream()
+                            .map(PropertyImage::getImageUrl)
+                            .collect(Collectors.toList()));
+                }
+            }
         } else if (folder.getClientType() == ClientType.SELLER && folder.getSellerFolder() != null) {
             SellerFolder seller = folder.getSellerFolder();
             if (seller.getProperties() != null && !seller.getProperties().isEmpty()) {
@@ -240,6 +267,15 @@ public class ClientPortalService {
 
         dto.setOffers(deal.getOffers() != null ? deal.getOffers().stream()
                 .map(this::mapToOfferDetailDto)
+                .collect(Collectors.toList()) : List.of());
+
+        dto.setMeetings(deal.getMeetings() != null ? deal.getMeetings().stream()
+                .map(this::mapToMeetingDto)
+                .collect(Collectors.toList()) : List.of());
+
+        dto.setDocuments(deal.getDocuments() != null ? deal.getDocuments().stream()
+                .filter(doc -> doc.getDeletedAt() == null)
+                .map(this::mapToDocumentDto)
                 .collect(Collectors.toList()) : List.of());
 
         // For properties, we can show those linked to offers or those visited
@@ -308,7 +344,7 @@ public class ClientPortalService {
                 .idDocument(d.getIdDocument())
                 .documentType(d.getDocumentType().name())
                 .filePath(d.getFilePath())
-                .confirmedReceived(d.getConfirmedReceived())
+                .confirmedReceived(d.isConfirmedReceived())
                 .createdAt(d.getCreatedAt())
                 .dealId(d.getDeal().getIdDeal())
                 .build();
@@ -320,8 +356,11 @@ public class ClientPortalService {
                 .agreedPrice(c.getAgreedPrice())
                 .depositAmount(c.getDepositAmount())
                 .status(c.getStatus())
+                .sentAt(c.getSentAt())
+                .signedAt(c.getSignedAt())
                 .aiRiskSummary(c.getAiRiskSummary())
                 .createdAt(c.getCreatedAt())
+                .pdfUrl(c.getPdfUrl())
                 .build();
     }
 
@@ -402,7 +441,7 @@ public class ClientPortalService {
         for (Document d : documents) {
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("DOCUMENT")
-                    .title("Document " + (d.getConfirmedReceived() ? "reçu" : "attendu"))
+                    .title("Document " + (d.isConfirmedReceived() ? "reçu" : "attendu"))
                     .description(d.getDocumentType().name())
                     .date(d.getCreatedAt().format(iso))
                     .build());

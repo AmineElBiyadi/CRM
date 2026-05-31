@@ -5,6 +5,19 @@ const API_BASE_URL = "http://localhost:8081/api/public/client-portal";
 
 const getClientId = () => localStorage.getItem("client_id") || "d755eba6-106f-4f81-af56-4e4d60f16840";
 
+// Configure axios for use-client-data
+const clientPortalAxios = axios.create({
+  withCredentials: true,
+});
+
+clientPortalAxios.interceptors.request.use((config) => {
+  const clientId = getClientId();
+  if (clientId) {
+    config.headers["X-Client-Id"] = clientId;
+  }
+  return config;
+});
+
 export interface ClientProfile {
   idClient: string;
   firstName: string;
@@ -43,6 +56,29 @@ export interface DossierDetail {
   lastInteractionAt: string;
   visitStatus?: "VISITED" | "VISIT_PLANNED" | "PROPOSED";
   clientFriendlyAction?: string;
+  documents?: Document[];
+  contracts?: Contract[];
+  offers?: any[];
+  meetings?: any[];
+}
+
+export interface Document {
+  idDocument: string;
+  documentType: string;
+  filePath: string;
+  confirmedReceived: boolean;
+  createdAt: string;
+  dealId: string;
+}
+
+export interface Contract {
+  idContract: string;
+  status: string;
+  agreedPrice: number;
+  depositAmount: number;
+  aiRiskSummary?: string;
+  createdAt: string;
+  pdfUrl?: string;
 }
 
 export interface Interaction {
@@ -71,7 +107,7 @@ export function useMeetingActions() {
 
   const accept = useMutation({
     mutationFn: async (meetingId: string) => {
-      await axios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/accept`);
+      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/accept`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
@@ -80,7 +116,7 @@ export function useMeetingActions() {
 
   const reschedule = useMutation({
     mutationFn: async ({ meetingId, newDate, reason }: { meetingId: string; newDate: string; reason: string }) => {
-      await axios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/reschedule`, { newDate, reason });
+      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/reschedule`, { newDate, reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
@@ -89,7 +125,7 @@ export function useMeetingActions() {
 
   const cancel = useMutation({
     mutationFn: async ({ meetingId, reason }: { meetingId: string; reason: string }) => {
-      await axios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/cancel`, { reason });
+      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/cancel`, { reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
@@ -141,7 +177,7 @@ export function useClientData() {
   return useQuery<ClientPortalData>({
     queryKey: ["clientPortalData", clientId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_BASE_URL}/${clientId}/full-data`);
+      const { data } = await clientPortalAxios.get(`${API_BASE_URL}/${clientId}/full-data`);
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -153,7 +189,7 @@ export function useUpdateProfile() {
   const clientId = getClientId();
   return useMutation({
     mutationFn: async (dto: { firstName?: string; lastName?: string; email?: string; phone?: string }) => {
-      const response = await axios.put(`${API_BASE_URL}/${clientId}/profile`, dto);
+      const response = await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/profile`, dto);
       return response.data;
     },
     onSuccess: () => {
@@ -166,7 +202,7 @@ export function useUpdatePassword() {
   const clientId = getClientId();
   return useMutation({
     mutationFn: async (dto: { oldPassword?: string; newPassword: string }) => {
-      const response = await axios.put(`${API_BASE_URL}/${clientId}/password`, dto);
+      const response = await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/password`, dto);
       return response.data;
     },
   });

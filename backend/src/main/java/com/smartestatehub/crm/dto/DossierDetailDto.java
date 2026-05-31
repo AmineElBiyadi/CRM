@@ -47,6 +47,7 @@ public class DossierDetailDto {
     private List<String> propertyImageUrls;
     
     private String assignedAgentName;
+    private String assignedAgentPhone;
     private LocalDateTime lastInteractionAt;
 
     // Computed fields for client portal
@@ -56,5 +57,7 @@ public class DossierDetailDto {
     // Collections for detail view
     private List<PropertyDto.Response> properties;
     private List<OfferDetailDto> offers;
+    private List<MeetingDto> meetings;
     private List<ContractDto.Response> contracts;
+    private List<DocumentDto> documents;
 }

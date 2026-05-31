@@ -6,6 +6,7 @@ const getClientId = () => localStorage.getItem("client_id") || "d755eba6-106f-4f
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
 });
 
 apiClient.interceptors.request.use((config) => {
