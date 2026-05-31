@@ -44,7 +44,9 @@ public class ContractPdfService {
             String publicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + ".pdf";
             
             // On utilise "image" au lieu de "raw" pour que Cloudinary génère une preview du PDF
-            String url = cloudinaryService.upload(pdfBytes, publicId, "contracts", "image");
+            // Suppression de l'extension .pdf redondante si déjà présente dans le publicId
+            String finalPublicId = publicId.endsWith(".pdf") ? publicId.substring(0, publicId.length() - 4) : publicId;
+            String url = cloudinaryService.upload(pdfBytes, finalPublicId, "contracts", "image");
             log.info("PDF contrat uploadé sur Cloudinary: {}", url);
             return url;
 
@@ -144,6 +146,12 @@ public class ContractPdfService {
                     </p>
                   </div>
                   """ : "") + """
+
+                  <div style="font-style: italic; font-size: 10px; color: #666; text-align: justify; margin: 20px 0;">
+                    En signant ce contrat, vous vous engagez formellement à en respecter l'intégralité des clauses.
+                    Toute inexécution ou manquement aux obligations stipulées dans le présent acte pourra entraîner
+                    des conséquences juridiques et financières importantes, conformément à la législation en vigueur.
+                  </div>
 
                   <div class="section" style="margin-top:50px;">
                     <table width="100%"><tr>

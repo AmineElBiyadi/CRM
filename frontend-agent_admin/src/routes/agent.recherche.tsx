@@ -16,7 +16,7 @@ export const Route = createFileRoute("/agent/recherche")({
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
 
 // Villes US populaires pour la RapidAPI Realty
-const US_CITIES = [
+const CITIES = [
   "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
   "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
   "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte",
@@ -108,21 +108,6 @@ function RecherchePage() {
     fetchTypes();
   }, []);
 
-  // City autocomplete logic
-  const handleCityInputChange = (val: string) => {
-    setCityInput(val);
-    const filtered = US_CITIES.filter((c) =>
-      c.toLowerCase().startsWith(val.toLowerCase())
-    ).slice(0, 8);
-    setFilteredCities(filtered.length > 0 ? filtered : US_CITIES.slice(0, 8));
-    setShowCityDropdown(true);
-  };
-
-  const selectCity = (c: string) => {
-    setCity(c);
-    setCityInput(c);
-    setShowCityDropdown(false);
-  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -215,175 +200,132 @@ function RecherchePage() {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 max-w-[1400px]">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Recherche immobilière</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Résultats mis à jour automatiquement · RapidAPI Realty in US
-        </p>
-      </div>
+    <div className="space-y-8 p-4 md:p-8 max-w-7xl mx-auto">
+      {/* Header & Filtres */}
+      <div className="flex flex-col gap-6 bg-white/40 p-6 rounded-3xl neu-sm">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-black tracking-tight flex items-center gap-3">
+            <Building2 className="text-alice" /> Recherche Immobilière
+          </h1>
+          <SoftBadge tone="info">{totalResults} résultats trouvés</SoftBadge>
+        </div>
 
-      <NeuCard>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-          {/* Ville avec autocomplete */}
-          <div ref={dropdownRef} className="relative">
-            <label className="text-xs font-medium text-muted-foreground">Ville</label>
-            <div className="relative mt-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Ville</label>
+            <div className="relative" ref={dropdownRef}>
               <input
+                type="text"
                 value={cityInput}
-                onChange={(e) => handleCityInputChange(e.target.value)}
-                onFocus={() => {
-                  const filtered = US_CITIES.filter((c) =>
-                    c.toLowerCase().startsWith(cityInput.toLowerCase())
-                  ).slice(0, 8);
-                  setFilteredCities(filtered.length > 0 ? filtered : US_CITIES.slice(0, 8));
+                onChange={(e) => {
+                  setCityInput(e.target.value);
+                  setFilteredCities(CITIES.filter(c => c.toLowerCase().includes(e.target.value.toLowerCase())));
                   setShowCityDropdown(true);
                 }}
-                onBlur={() => {
-                  const match = US_CITIES.find((c) => c.toLowerCase() === cityInput.toLowerCase());
-                  if (match) { setCity(match); setCityInput(match); }
-                  else setCityInput(city);
-                }}
-                placeholder="Chercher une ville US…"
-                className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none pr-8"
+                onFocus={() => setShowCityDropdown(true)}
+                className="w-full px-4 py-2.5 rounded-xl neu-inset bg-transparent text-sm focus:outline-none"
+                placeholder="Ex: Casablanca..."
               />
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            </div>
-            {showCityDropdown && filteredCities.length > 0 && (
-              <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-ghost border border-border rounded-xl shadow-xl overflow-hidden">
-                {filteredCities.map((c) => (
-                  <button
-                    key={c}
-                    onMouseDown={() => selectCity(c)}
-                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-alice/40 transition-colors ${c === city ? "font-semibold bg-alice/20" : ""}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Sélecteur Catégorie générale */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Catégorie</label>
-            {loadingTypes ? (
-              <div className="mt-2 px-4 py-3 neu-inset rounded-lg flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 size={14} className="animate-spin" /> Chargement…
-              </div>
-            ) : (
-              <select
-                value={selectedGeneral}
-                onChange={(e) => {
-                  setSelectedGeneral(e.target.value);
-                  const firstSpecific = groupedTypes[e.target.value]?.[0] || "";
-                  setSelectedSpecific(firstSpecific);
-                }}
-                className="mt-2 w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none cursor-pointer text-sm"
-              >
-                {Object.keys(groupedTypes).map((generalType) => (
-                  <option key={generalType} value={generalType}>
-                    {generalType}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Sélecteur Type spécifique */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Type de bien</label>
-            {loadingTypes ? (
-              <div className="mt-2 px-4 py-3 neu-inset rounded-lg" />
-            ) : (
-              <select
-                value={selectedSpecific}
-                onChange={(e) => setSelectedSpecific(e.target.value)}
-                className="mt-2 w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none cursor-pointer text-sm"
-              >
-                {(groupedTypes[selectedGeneral] || []).map((specificType) => (
-                  <option key={specificType} value={specificType}>
-                    {specificType}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Budget + Chambres */}
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                Budget max · <span className="font-bold text-foreground">${budget}M</span>
-              </label>
-              <div className="mt-2 px-1">
-                <input
-                  type="range" min={0.5} max={10} step={0.1}
-                  value={budget}
-                  onChange={(e) => setBudget(parseFloat(e.target.value))}
-                  className="w-full accent-eerie"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>$0.5M</span><span>$10M</span>
+              {showCityDropdown && filteredCities.length > 0 && (
+                <div className="absolute z-10 w-full mt-2 bg-ghost rounded-xl shadow-xl border border-border max-h-48 overflow-y-auto">
+                  {filteredCities.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setCity(c);
+                        setCityInput(c);
+                        setShowCityDropdown(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-alice/10 transition-colors"
+                    >
+                      {c}
+                    </button>
+                  ))}
                 </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Catégorie</label>
+            <select
+              value={selectedGeneral}
+              onChange={(e) => {
+                const gen = e.target.value;
+                setSelectedGeneral(gen);
+                setSelectedSpecific(groupedTypes[gen]?.[0] || "");
+              }}
+              className="w-full px-4 py-2.5 rounded-xl neu-inset bg-transparent text-sm focus:outline-none appearance-none cursor-pointer"
+            >
+              {Object.keys(groupedTypes).map(gen => <option key={gen} value={gen}>{gen}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Type de bien</label>
+            <select
+              value={selectedSpecific}
+              onChange={(e) => setSelectedSpecific(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl neu-inset bg-transparent text-sm focus:outline-none appearance-none cursor-pointer"
+            >
+              {groupedTypes[selectedGeneral]?.map(spec => <option key={spec} value={spec}>{spec}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1 flex justify-between">
+              Budget max <span>${budget}M</span>
+            </label>
+            <div className="px-2 py-3">
+              <input
+                type="range"
+                min="0.1"
+                max="20"
+                step="0.1"
+                value={budget}
+                onChange={(e) => setBudget(parseFloat(e.target.value))}
+                className="w-full accent-alice h-1.5 rounded-full cursor-pointer"
+              />
+              <div className="flex justify-between text-[8px] text-muted-foreground mt-1">
+                <span>$0.1M</span>
+                <span>$20M</span>
               </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Chambres min</label>
-              <div className="mt-1 flex items-center gap-2 neu-inset rounded-lg p-1">
-                <button
-                  onClick={() => setRooms((r: number) => Math.max(1, r - 1))}
-                  aria-label="Moins"
-                  className="w-8 h-8 rounded-md neu-sm hover:neu-pressable active:scale-95 transition-transform font-bold"
-                >−</button>
-                <span className="flex-1 text-center font-semibold text-sm">{rooms}</span>
-                <button
-                  onClick={() => setRooms((r: number) => Math.min(10, r + 1))}
-                  aria-label="Plus"
-                  className="w-8 h-8 rounded-md neu-sm hover:neu-pressable active:scale-95 transition-transform font-bold"
-                >+</button>
+          </div>
+
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Chambres</label>
+              <div className="flex items-center gap-2 neu-inset rounded-xl p-1">
+                <button onClick={() => setRooms((r: number) => Math.max(1, r - 1))} className="w-8 h-8 rounded-lg neu-sm hover:neu-pressable text-xs">−</button>
+                <span className="flex-1 text-center font-bold text-xs">{rooms}</span>
+                <button onClick={() => setRooms((r: number) => Math.min(10, r + 1))} className="w-8 h-8 rounded-lg neu-sm hover:neu-pressable text-xs">+</button>
               </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Étage</label>
+            
+            <div className="flex-1 space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
               <select
                 value={floor === undefined ? "" : floor}
                 onChange={(e) => setFloor(e.target.value === "" ? undefined : parseInt(e.target.value))}
-                className="mt-1 w-full px-3 py-2 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
+                className="w-full px-3 py-2.5 rounded-xl neu-inset bg-transparent text-sm focus:outline-none appearance-none cursor-pointer"
               >
-                <option value="">Indifférent</option>
+                <option value="">Tous</option>
                 <option value="0">RDC</option>
-                {Array.from({ length: 15 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>{i + 1}ème</option>
-                ))}
+                {Array.from({ length: 15 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}e</option>)}
               </select>
             </div>
+
+            <button
+              onClick={fetchResults}
+              disabled={searching}
+              className="w-12 h-11 rounded-xl bg-eerie text-ghost flex items-center justify-center hover:opacity-90 transition-all shadow-lg disabled:opacity-50"
+            >
+              {searching ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
+            </button>
           </div>
         </div>
-
-        {searching && (
-          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 size={13} className="animate-spin" /> Mise à jour des résultats…
-          </div>
-        )}
-
-        {/* Badge de la sélection en cours */}
-        {selectedSpecific && (
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] text-muted-foreground">Filtres actifs :</span>
-            <span className="text-[11px] bg-eerie/10 text-eerie px-2.5 py-1 rounded-full font-medium">
-              {selectedGeneral}
-            </span>
-            <span className="text-[11px] bg-alice/50 text-foreground px-2.5 py-1 rounded-full font-medium">
-              {selectedSpecific}
-            </span>
-            <span className="text-[11px] bg-alice/50 text-foreground px-2.5 py-1 rounded-full font-medium">
-              {city} · ≤{budget}M$ · {rooms}+ ch.
-            </span>
-          </div>
-        )}
-      </NeuCard>
+      </div>
 
       {/* Résultats */}
       <div>

@@ -84,4 +84,16 @@ public class ContractController {
         contractService.deleteContract(contractId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * PUT /api/contracts/{contractId}
+     * Modifie un contrat existant (uniquement s'il est au statut DRAFT).
+     */
+    @PutMapping("/{contractId}")
+    public ResponseEntity<ContractDto.Response> updateContract(
+            @PathVariable("contractId") UUID contractId,
+            @RequestBody ContractDto.CreateRequest request) {
+        ContractDto.Response response = contractService.updateContract(contractId, request);
+        return ResponseEntity.ok(response);
+    }
 }

@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @Slf4j
@@ -25,6 +26,9 @@ public class PropertyApiClient {
 
     @Value("${app.rapidapi.host:realty-in-us.p.rapidapi.com}")
     private String apiHost;
+
+    @Value("${app.rapidapi.zillow-host:zillow-com1.p.rapidapi.com}")
+    private String zillowHost;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -117,26 +121,20 @@ public class PropertyApiClient {
             }
             bodyBuilder.append("\"status\":[\"for_sale\"],");
             bodyBuilder.append("\"sort\":{\"direction\":\"desc\",\"field\":\"list_date\"}");
-            if (minPrice != null)
-                bodyBuilder.append(",\"list_price\":{\"min\":").append(minPrice.intValue()).append("}");
+            
+            // Prix : Pas de restriction sur le minimum, et flexibilité de +20% sur le maximum (souplesse)
             if (maxPrice != null) {
-                // Si déjà un min_price, on refait l'objet complet
-                if (minPrice != null) {
-                    // Remplacer le dernier objet list_price pour inclure max
-                    String existing = ",\"list_price\":{\"min\":" + minPrice.intValue() + "}";
-                    int idx = bodyBuilder.lastIndexOf(existing);
-                    if (idx >= 0) {
-                        bodyBuilder.replace(idx, idx + existing.length(),
-                                ",\"list_price\":{\"min\":" + minPrice.intValue() + ",\"max\":" + maxPrice.intValue()
-                                        + "}");
-                    }
-                } else {
-                    bodyBuilder.append(",\"list_price\":{\"max\":").append(maxPrice.intValue()).append("}");
-                }
+                double flexibleMax = maxPrice * 1.2;
+                bodyBuilder.append(",\"list_price\":{\"max\":").append((int) flexibleMax).append("}");
             }
-            if (minRooms != null)
-                bodyBuilder.append(",\"beds\":{\"min\":").append(minRooms).append("}");
-            bodyBuilder.append("}");
+            
+            if (minRooms != null) {
+                 bodyBuilder.append(",\"beds\":{\"min\":").append(Math.max(1, minRooms - 1)).append("}");
+             }
+             if (maxRooms != null) {
+                 bodyBuilder.append(",\"beds\":{\"max\":").append(maxRooms + 1).append("}");
+             }
+             bodyBuilder.append("}");
 
             String requestBody = bodyBuilder.toString();
             log.debug("RapidAPI v3 body: {}", requestBody);
@@ -312,6 +310,96 @@ public class PropertyApiClient {
         return PropertyDto.SearchResponse.builder()
                 .results(new ArrayList<>())
                 .total(0)
+                .page(page)
+                .pageSize(10)
+                .build();
+    }
+
+    /**
+     * Recherche via Zillow.com API (Focus Land / Residential / Commercial)
+     */
+    public PropertyDto.SearchResponse searchZillowProperties(String city, String type, int page) {
+        log.info("Recherche Zillow : city={}, type={}, page={}", city, type, page);
+        if (apiKey == null || apiKey.isBlank()) return emptyResponse(page);
+
+        try {
+            // letsscrape Real Estate Zillow API - /propertyExtendedSearch
+            String url = "https://" + zillowHost + "/propertyExtendedSearch?location=" + city.replace(" ", "%20") + "&page=" + page;
+            
+            if (type != null && type.equalsIgnoreCase("land")) {
+                url += "&home_type=LotsLand";
+            }
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("x-rapidapi-key", apiKey)
+                    .header("x-rapidapi-host", zillowHost)
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                return parseZillowApiResponse(response.body(), page);
+            }
+        } catch (Exception e) {
+            log.error("Erreur Zillow: {}", e.getMessage());
+        }
+        return emptyResponse(page);
+    }
+
+    private PropertyDto.SearchResponse parseZillowApiResponse(String body, int page) throws IOException {
+        JsonNode root = objectMapper.readTree(body);
+        List<PropertyDto.ExternalResult> results = new ArrayList<>();
+        
+        // Structure Zillow (letsscrape) : data -> listings
+        JsonNode dataNode = root.path("data");
+        JsonNode listings = dataNode.path("listings");
+        
+        if (!listings.isArray()) {
+            // Fallback si la structure est différente
+            listings = root.path("props").isArray() ? root.path("props") : root.path("results");
+        }
+
+        if (listings.isArray()) {
+            for (JsonNode l : listings) {
+                JsonNode homeInfo = l.path("hdpData").path("homeInfo");
+                
+                String zpid = l.path("zpid").asText(UUID.randomUUID().toString());
+                String title = homeInfo.path("homeType").asText("Propriété Zillow");
+                String address = l.path("address").asText("Adresse non spécifiée");
+                String city = l.path("addressCity").asText(homeInfo.path("city").asText("Inconnue"));
+                
+                Double price = l.path("unformattedPrice").asDouble(homeInfo.path("price").asDouble(0.0));
+                Double surface = l.path("area").asDouble(homeInfo.path("livingArea").asDouble(100.0));
+                Integer beds = l.has("beds") ? l.get("beds").asInt() : homeInfo.path("bedrooms").asInt(0);
+                
+                Double lat = l.path("latLong").path("latitude").asDouble(homeInfo.path("latitude").asDouble(0.0));
+                Double lon = l.path("latLong").path("longitude").asDouble(homeInfo.path("longitude").asDouble(0.0));
+                
+                String img = l.path("imgSrc").asText("https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80");
+                String detailUrl = l.path("detailUrl").asText("#");
+
+                results.add(PropertyDto.ExternalResult.builder()
+                        .externalId(zpid)
+                        .title(title + " - " + city)
+                        .address(address)
+                        .city(city)
+                        .price(price)
+                        .surfaceM2(surface * SQFT_TO_M2)
+                        .numRooms(beds)
+                        .floor(1) // Par défaut
+                        .latitude(lat != 0 ? lat : null)
+                        .longitude(lon != 0 ? lon : null)
+                        .listingUrl(detailUrl)
+                        .source("Zillow.com")
+                        .imageUrls(List.of(img))
+                        .build());
+            }
+        }
+        
+        return PropertyDto.SearchResponse.builder()
+                .results(results)
+                .total(results.size())
                 .page(page)
                 .pageSize(10)
                 .build();

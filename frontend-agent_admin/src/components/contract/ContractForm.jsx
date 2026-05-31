@@ -107,6 +107,26 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
         return false;
       }
       
+      // Validation des dates de versement (chronologie)
+      const sortedPayments = [...payments].sort((a, b) => a.id - b.id);
+      const today = new Date().toISOString().split('T')[0];
+      
+      for (let i = 0; i < sortedPayments.length; i++) {
+        const p = sortedPayments[i];
+        if (!p.dueDate) {
+          toast.error(`Veuillez saisir une date pour le versement ${i + 1}`);
+          return false;
+        }
+        if (p.dueDate < today) {
+          toast.error(`La date du versement ${i + 1} ne peut pas être dans le passé`);
+          return false;
+        }
+        if (i > 0 && p.dueDate < sortedPayments[i-1].dueDate) {
+          toast.error(`La date du versement ${i + 1} doit être égale ou postérieure au versement ${i}`);
+          return false;
+        }
+      }
+      
       // Validation de la date de remise des clés par rapport aux versements
       if (form.keyDate) {
         const lastPaymentDate = payments.reduce((max, p) => {
@@ -294,7 +314,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
       {/* ── Step 3 : Calendrier de paiement ── */}
       {step === 3 && (
         <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-alice/40 text-sm space-y-1">
+          <div className={`p-4 rounded-xl text-sm space-y-1 transition-colors ${remainingAfterPayments !== 0 ? "bg-warn/10 border border-warn/30" : "bg-alice/40"}`}>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Prix total</span>
               <span className="font-semibold">{fmtUSD(form.agreedPrice)}</span>
@@ -309,12 +329,17 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
             </div>
             <div
               className={`flex justify-between border-t border-border pt-2 font-bold ${
-                remainingAfterPayments < 0 ? "text-destructive" : ""
+                remainingAfterPayments !== 0 ? "text-warn" : "text-eerie"
               }`}
             >
               <span>Restant</span>
               <span>{fmtUSD(remainingAfterPayments)}</span>
             </div>
+            {remainingAfterPayments !== 0 && (
+              <p className="text-[10px] text-warn font-bold mt-2 flex items-center gap-1">
+                <AlertCircle size={10} /> Le total doit être égal au prix total
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">

@@ -284,7 +284,8 @@ function DossierPage() {
       // Optionnel : Générer le nom comme avant
       const clientName = (dossier?.clientName || "Document").replace(/\s+/g, '_');
       const extension = files[0].name.split('.').pop()?.toLowerCase() || 'pdf';
-      const publicId = `${newDocType}_${clientName}_${Date.now()}.${extension}`;
+      // Supprimer l'extension du publicId car Cloudinary l'ajoute automatiquement selon le mode
+      const publicId = `${newDocType}_${clientName}_${Date.now()}`;
       formData.append("public_id", publicId);
 
       const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd";
@@ -800,8 +801,8 @@ function DossierPage() {
                   <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
-                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'info')}>
-                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Négociation")}
+                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'warn')}>
+                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Rejetée")}
                     </SoftBadge>
                   </div>
                   

@@ -69,6 +69,7 @@ app:
   rapidapi:
     key: ${RAPIDAPI_KEY}
     host: ${RAPIDAPI_HOST:realty-in-us.p.rapidapi.com}
+    zillow-host: ${ZILLOW_HOST:zillow-com1.p.rapidapi.com}
   sendgrid:
     api-key: ${SENDGRID_API_KEY}
     from-email: ${SENDGRID_FROM_EMAIL:noreply@rawabit.com}
