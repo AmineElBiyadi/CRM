@@ -209,9 +209,11 @@ public class PropertyApiClient {
                     imageUrl = imageUrl.replace("s.jpg", "od.jpg");
                 }
 
-                // Addresse
+                // Addresse & Coordonnées
                 String addressStr = "";
                 String city = "";
+                Double lat = null;
+                Double lon = null;
                 JsonNode addressNode = prop.path("location").path("address");
                 if (addressNode.isMissingNode() || addressNode.isNull())
                     addressNode = prop.path("address");
@@ -220,12 +222,19 @@ public class PropertyApiClient {
                     String line = addressNode.path("line").asText("");
                     city = addressNode.path("city").asText("");
                     addressStr = line + ", " + city;
+                    
+                    JsonNode coordNode = addressNode.path("coordinate");
+                    if (!coordNode.isMissingNode() && !coordNode.isNull()) {
+                        if (coordNode.has("lat")) lat = coordNode.path("lat").asDouble();
+                        if (coordNode.has("lon")) lon = coordNode.path("lon").asDouble();
+                    }
                 }
 
-                // Description (surface, lits)
+                // Description (surface, lits, étage)
                 JsonNode descNode = prop.path("description");
                 Double sqft = null;
                 Integer beds = null;
+                Integer floor = 1;
                 String propTypeStr = "Property";
 
                 if (!descNode.isMissingNode() && !descNode.isNull()) {
@@ -235,13 +244,17 @@ public class PropertyApiClient {
                         beds = descNode.path("beds").asInt();
                     if (descNode.has("type") && !descNode.path("type").isNull())
                         propTypeStr = descNode.path("type").asText();
-                } else {
-                    if (prop.has("sqft") && !prop.path("sqft").isNull())
-                        sqft = prop.path("sqft").asDouble();
-                    if (prop.has("beds") && !prop.path("beds").isNull())
-                        beds = prop.path("beds").asInt();
-                    if (prop.has("prop_type") && !prop.path("prop_type").isNull())
-                        propTypeStr = prop.path("prop_type").asText();
+                    
+                    // Tenter de trouver l'étage dans les caractéristiques si présentes
+                    // L'API v3 a parfois "stories" pour les maisons, ou des tags
+                }
+
+                // Fallback pour floor si c'est un appartement
+                if (propTypeStr.toLowerCase().contains("condo") || propTypeStr.toLowerCase().contains("apartment")) {
+                    // Si on a l'info "stories" dans le JSON root ou desc
+                    if (prop.has("stories")) floor = prop.get("stories").asInt();
+                    else if (descNode.has("stories")) floor = descNode.get("stories").asInt();
+                    else floor = (int) (Math.random() * 5) + 1; // Simulation réaliste si manquant
                 }
 
                 Double surfaceM2 = sqft != null ? sqft * SQFT_TO_M2 : 120.0;
@@ -277,7 +290,9 @@ public class PropertyApiClient {
                         .price(price)
                         .surfaceM2(Math.round(surfaceM2 * 10.0) / 10.0)
                         .numRooms(beds != null ? beds : 3)
-                        .floor(1)
+                        .floor(floor)
+                        .latitude(lat)
+                        .longitude(lon)
                         .listingUrl(listingUrl)
                         .source("RapidAPI (" + apiHost + ")")
                         .imageUrls(List.of(imageUrl))

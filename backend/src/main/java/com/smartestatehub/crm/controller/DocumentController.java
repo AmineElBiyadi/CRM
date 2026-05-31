@@ -4,6 +4,10 @@ import com.smartestatehub.crm.dto.DocumentDto;
 import com.smartestatehub.crm.model.DocumentType;
 import com.smartestatehub.crm.service.DocumentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,10 +17,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -35,9 +35,23 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.uploadDocument(dealId, file, type));
     }
 
+    @PostMapping("/request")
+    public ResponseEntity<DocumentDto> requestDocument(
+            @RequestParam("dealId") UUID dealId,
+            @RequestParam("type") DocumentType type) {
+        
+        return ResponseEntity.ok(documentService.requestDocument(dealId, type));
+    }
+
     @GetMapping("/deal/{dealId}")
     public ResponseEntity<List<DocumentDto>> getDocumentsByDeal(@PathVariable UUID dealId) {
         return ResponseEntity.ok(documentService.getDocumentsByDeal(dealId));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDocument(@PathVariable UUID id) {
+        documentService.deleteDocument(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/file")

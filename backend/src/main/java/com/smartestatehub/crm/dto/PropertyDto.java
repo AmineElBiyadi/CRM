@@ -23,6 +23,8 @@ public class PropertyDto {
         private Double surfaceM2;
         private Integer numRooms;
         private Integer floor;
+        private Double latitude;
+        private Double longitude;
         private String listingUrl;
         private String propertyTypeGeneral;   // ex : "Residential Properties"
         private String propertyTypeSpecific;  // ex : "Apartment / Flat"
@@ -48,6 +50,8 @@ public class PropertyDto {
         private Double surfaceM2;
         private Integer numRooms;
         private Integer floor;
+        private Double latitude;
+        private Double longitude;
         private String listingUrl;
         private boolean isAvailable;
         private List<String> imageUrls;
