@@ -49,7 +49,7 @@ public class OfferService {
         offerRepository.save(acceptedOffer);
 
         // Trouver toutes les autres offres du Deal et les REJETER, puis libérer leurs propriétés
-        List<Offer> otherOffers = offerRepository.findByDealIdDeal(deal.getIdDeal());
+        List<Offer> otherOffers = offerRepository.findByDeal_IdDeal(deal.getIdDeal());
         for (Offer offer : otherOffers) {
             if (!offer.getIdOffer().equals(offerId) && offer.getStatus() == OfferStatus.PENDING) {
                 offer.setStatus(OfferStatus.REJECTED);

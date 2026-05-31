@@ -41,7 +41,7 @@ export function ContractForm({ dealId, propertyRef, onClose, onCreated }) {
   const [form, setForm] = useState({
     propertyTitle: propertyRef?.title || "",
     propertyAddress: propertyRef?.address || "",
-    agreedPrice: "",
+    agreedPrice: propertyRef?.price || "",
     depositAmount: "",
     depositDate: "",
     keyDate: "",

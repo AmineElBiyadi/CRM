@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +30,18 @@ public class PropertySyncScheduler {
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
 
-    private static final List<String> CITIES_TO_SYNC = Arrays.asList("New York", "Los Angeles", "Miami");
-    private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family");
+    private static final List<String> CITIES_TO_SYNC = Arrays.asList("New York", "Los Angeles", "Miami", "Chicago", "Houston");
+    private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family", "farm", "commercial");
+
+    /**
+     * Trigger a sync on startup to ensure the DB has data immediately.
+     */
+    @PostConstruct
+    public void init() {
+        log.info("Initialisation : Lancement de la première synchronisation des propriétés...");
+        // On lance dans un nouveau thread pour ne pas bloquer le démarrage de l'application
+        new Thread(this::syncPropertiesFromExternalApi).start();
+    }
 
     /**
      * Executes every 12 hours (0 0 0/12 * * ?) to keep the DB updated with latest properties
@@ -104,6 +115,8 @@ public class PropertySyncScheduler {
                     .surfaceM2(extProp.getSurfaceM2())
                     .numRooms(extProp.getNumRooms())
                     .floor(extProp.getFloor())
+                    .latitude(extProp.getLatitude())
+                    .longitude(extProp.getLongitude())
                     .listingUrl(extProp.getListingUrl())
                     .propertyType(type)
                     .isAvailable(true)

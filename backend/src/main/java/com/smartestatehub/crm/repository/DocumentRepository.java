@@ -9,5 +9,6 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
+    List<Document> findByDeal_IdDealAndDeletedAtIsNull(UUID dealId);
     List<Document> findByDeal_IdDeal(UUID dealId);
 }

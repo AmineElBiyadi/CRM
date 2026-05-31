@@ -29,23 +29,23 @@ public class Document {
     @Column(name = "document_type", nullable = false, columnDefinition = "document_type")
     private DocumentType documentType;
 
-    @Column(name = "file_path", nullable = false)
+    @Column(name = "file_path", nullable = true)
     private String filePath;
 
-    @Column(name = "confirmed_received")
+    @Column(name = "confirmed_received", nullable = false)
     @Builder.Default
-    private Boolean confirmedReceived = false;
+    private boolean confirmedReceived = false;
 
     @Column(name = "is_embedded")
     @Builder.Default
     private Boolean isEmbedded = false;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_deal", nullable = false)
