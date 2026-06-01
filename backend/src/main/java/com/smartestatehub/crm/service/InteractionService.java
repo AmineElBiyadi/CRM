@@ -4,11 +4,13 @@ import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.crm.dto.CreateInteractionRequest;
 import com.smartestatehub.crm.dto.InteractionDto;
+import com.smartestatehub.crm.event.InteractionCreatedEvent;
 import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.Interaction;
 import com.smartestatehub.crm.repository.DealRepository;
 import com.smartestatehub.crm.repository.InteractionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class InteractionService {
     private final InteractionRepository interactionRepository;
     private final DealRepository dealRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<InteractionDto> getInteractionsByDeal(UUID dealId) {
@@ -56,6 +59,9 @@ public class InteractionService {
         // Update last interaction time on deal
         deal.setLastInteractionAt(request.getOccurredAt());
         dealRepository.save(deal);
+
+        // Publier l'événement pour que l'IA puisse réagir (résumé, scoring, etc.)
+        eventPublisher.publishEvent(new InteractionCreatedEvent(this, interaction));
 
         return mapToDto(interaction);
     }
