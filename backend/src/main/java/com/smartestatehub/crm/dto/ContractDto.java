@@ -17,6 +17,9 @@ public class ContractDto {
     public static class CreateRequest {
         private Double agreedPrice;
         private Double depositAmount;
+        private LocalDateTime depositDate;
+        private LocalDateTime keyHandoverDate;
+        private String internalNotes;
         private String notes;
         /** Liste des versements planifiés */
         private List<PaymentRequest> payments;
@@ -49,6 +52,9 @@ public class ContractDto {
         private UUID idContract;
         private Double agreedPrice;
         private Double depositAmount;
+        private LocalDateTime depositDate;
+        private LocalDateTime keyHandoverDate;
+        private String internalNotes;
         private ContractStatus status;
         private LocalDateTime sentAt;
         private LocalDateTime signedAt;
