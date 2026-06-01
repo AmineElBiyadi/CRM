@@ -29,16 +29,18 @@ spring:
 
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${NVIDIA_NIM_API_KEY:${OPENAI_API_KEY}}
+      base-url: https://integrate.api.nvidia.com/v1
       chat:
         options:
-          model: gpt-4o
+          model: openai/gpt-oss-20b
+          temperature: 0.7
       embedding:
         options:
-          model: text-embedding-3-small
+          model: nvidia/llama-3.2-nv-embedqa-1b-v2
     vectorstore:
       pgvector:
-        dimension: 1536
+        dimensions: 1536
         database-name: ${DB_NAME:postgres}
         table-name: document_embeddings
         index-type: HNSW
@@ -66,6 +68,9 @@ management:
 
 # Configurations d'intégrations externes
 app:
+  ai:
+    model-fast: openai/gpt-oss-20b
+    model-smart: openai/gpt-oss-120b
   rapidapi:
     key: ${RAPIDAPI_KEY}
     host: ${RAPIDAPI_HOST:realty-in-us.p.rapidapi.com}
