@@ -30,7 +30,7 @@ spring:
   ai:
     openai:
       api-key: ${NVIDIA_NIM_API_KEY:${OPENAI_API_KEY}}
-      base-url: https://integrate.api.nvidia.com/v1
+      base-url: https://integrate.api.nvidia.com
       chat:
         options:
           model: openai/gpt-oss-20b

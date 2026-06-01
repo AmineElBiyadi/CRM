@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
 // @ts-ignore
 import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
+import { refreshLeadScore, refreshInteractionSummary } from "@/api/aiApi";
 
 type DossierSearch = {
   id?: string;
@@ -236,6 +237,28 @@ function DossierPage() {
     }
   });
 
+  const aiRefreshMutation = useMutation({
+    mutationFn: refreshLeadScore,
+    onSuccess: () => {
+      toast.success("Score IA mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: (e: any) => {
+      toast.error("Échec du rafraîchissement IA : " + e.message);
+    }
+  });
+
+  const aiSummaryRefreshMutation = useMutation({
+    mutationFn: refreshInteractionSummary,
+    onSuccess: () => {
+      toast.success("Résumé IA mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: (e: any) => {
+      toast.error("Échec du rafraîchissement du résumé : " + e.message);
+    }
+  });
+
   /* documents */
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<any[]>([]);
@@ -355,11 +378,17 @@ function DossierPage() {
   };
 
   const handleLogInteraction = () => {
-    if (!newDesc.trim()) {
-      toast.error("Veuillez saisir une description");
+    if (newDesc.trim().length < 3) {
+      toast.error("Veuillez saisir une description plus détaillée (min. 3 caractères)");
       return;
     }
     const occurredAt = `${newDate}T${newTime}:00`;
+    
+    if (new Date(occurredAt) > new Date()) {
+      toast.error("La date de l'interaction ne peut pas être dans le futur");
+      return;
+    }
+
     const totalMinutes = newDurationHrs * 60 + newDurationMins;
     const request: CreateInteractionRequest = {
       idDeal: id!,
@@ -497,7 +526,19 @@ function DossierPage() {
         </NeuCard>
 
         <NeuCard className="text-center bg-alice/40">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Lead Score IA</div>
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+              <Sparkles size={12} className="text-primary" /> Lead Score IA
+            </div>
+            <button 
+              onClick={() => aiRefreshMutation.mutate(id!)}
+              disabled={aiRefreshMutation.isPending}
+              className="p-1 hover:bg-alice rounded-full transition-all disabled:opacity-50"
+              title="Recalculer le score"
+            >
+              <RefreshCw size={14} className={`text-muted-foreground ${aiRefreshMutation.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <div className="my-4 flex justify-center">
             <LeadScore score={dossier.aiLeadScore || 0} size={120} />
           </div>
@@ -586,13 +627,14 @@ function DossierPage() {
                     <div className="space-y-1">
                       <label htmlFor="interaction-date" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Date</label>
                       <input 
-                        id="interaction-date"
-                        type="date" 
-                        value={newDate} 
-                        onChange={(e) => setNewDate(e.target.value)}
-                        className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm" 
-                        title="Date de l'interaction"
-                      />
+                          id="interaction-date"
+                          type="date" 
+                          value={newDate} 
+                          max={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setNewDate(e.target.value)}
+                          className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm" 
+                          title="Date de l'interaction"
+                        />
                     </div>
                     <div className="space-y-1">
                       <label htmlFor="interaction-time" className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold px-1">Heure</label>
@@ -649,9 +691,9 @@ function DossierPage() {
                   <textarea
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
-                    rows={3}
-                    placeholder="Décrivez l'échange…"
-                    className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
+                    rows={4}
+                    placeholder='Ex: "Le client souhaite visiter avant fin juillet, budget confirmé à 800 000 MAD, très intéressé par Hay Riad"'
+                    className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm leading-relaxed"
                     title="Description de l'interaction"
                   />
                   <div className="flex gap-2">
@@ -1253,11 +1295,12 @@ function DossierPage() {
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Sparkles size={12} /> Résumé IA</span>
             <button
-              onClick={() => queryClient.invalidateQueries({ queryKey: ["dossier", id] })}
-              className="w-7 h-7 rounded-lg neu-sm flex items-center justify-center"
+              onClick={() => aiSummaryRefreshMutation.mutate(id!)}
+              disabled={aiSummaryRefreshMutation.isPending}
+              className="w-7 h-7 rounded-lg neu-sm flex items-center justify-center disabled:opacity-50"
               aria-label="Régénérer"
             >
-              <RefreshCw size={12} />
+              <RefreshCw size={12} className={aiSummaryRefreshMutation.isPending ? "animate-spin" : ""} />
             </button>
           </div>
           <p className="text-sm leading-relaxed">
