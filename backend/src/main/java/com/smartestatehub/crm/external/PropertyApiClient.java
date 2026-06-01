@@ -328,6 +328,8 @@ public class PropertyApiClient {
             
             if (type != null && type.equalsIgnoreCase("land")) {
                 url += "&home_type=LotsLand";
+            } else if (type != null && type.equalsIgnoreCase("commercial")) {
+                url += "&home_type=Multi-family"; // Proche du commercial sur Zillow
             }
 
             HttpRequest request = HttpRequest.newBuilder()

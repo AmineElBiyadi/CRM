@@ -30,14 +30,17 @@ public class PropertySyncScheduler {
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
 
-    private static final List<String> CITIES_TO_SYNC = Arrays.asList("New York", "Los Angeles", "Miami", "Chicago", "Houston");
+    private static final List<String> CITIES_TO_SYNC = Arrays.asList(
+        "New York", "Los Angeles", "Miami", "Chicago", "Houston", 
+        "Bronx", "Brooklyn", "Queens", "Staten Island", "Manhattan"
+    );
     private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family", "farm", "commercial");
 
     /**
      * Trigger a sync on startup to ensure the DB has data immediately.
-     * ACTIF POUR LE PREMIER RUN (Zillow uniquement).
+     * DÉSACTIVÉ (Synchronisation initiale effectuée).
      */
-    @PostConstruct
+    //@PostConstruct
     public void init() {
         log.info("Initialisation : Lancement de la première synchronisation des propriétés (Zillow)...");
         new Thread(this::syncPropertiesFromExternalApi).start();
@@ -70,9 +73,16 @@ public class PropertySyncScheduler {
 
             // 2. Zillow (Commercial & Land)
             try {
-                PropertyDto.SearchResponse zillowRes = propertyApiClient.searchZillowProperties(city, "land", 1);
-                if (zillowRes != null && zillowRes.getResults() != null) {
-                    saveExternalProperties(zillowRes.getResults(), "land");
+                log.info("Synchronisation Zillow pour {} (Type: Land)", city);
+                PropertyDto.SearchResponse zillowLand = propertyApiClient.searchZillowProperties(city, "land", 1);
+                if (zillowLand != null && zillowLand.getResults() != null) {
+                    saveExternalProperties(zillowLand.getResults(), "land");
+                }
+
+                log.info("Synchronisation Zillow pour {} (Type: Commercial)", city);
+                PropertyDto.SearchResponse zillowComm = propertyApiClient.searchZillowProperties(city, "commercial", 1);
+                if (zillowComm != null && zillowComm.getResults() != null) {
+                    saveExternalProperties(zillowComm.getResults(), "commercial");
                 }
             } catch (Exception e) {
                 log.error("Erreur sync Zillow pour {} : {}", city, e.getMessage());

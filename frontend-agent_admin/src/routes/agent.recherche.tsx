@@ -17,16 +17,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
 
 // Villes US populaires pour la RapidAPI Realty
 const CITIES = [
-  "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
-  "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
-  "Austin", "Jacksonville", "Fort Worth", "Columbus", "Charlotte",
-  "Indianapolis", "San Francisco", "Seattle", "Denver", "Nashville",
-  "Oklahoma City", "El Paso", "Washington", "Boston", "Las Vegas",
-  "Portland", "Memphis", "Louisville", "Baltimore", "Milwaukee",
-  "Albuquerque", "Tucson", "Fresno", "Sacramento", "Mesa",
-  "Kansas City", "Atlanta", "Omaha", "Colorado Springs", "Raleigh",
-  "Long Beach", "Virginia Beach", "Minneapolis", "Tampa", "New Orleans",
-  "Arlington", "Bakersfield", "Honolulu", "Anaheim", "Aurora",
+  "Arleta", "Astoria", "Baisley Park", "Bayside", "Belle Harbor", "Bronx",
+  "Brooklyn", "Cambria Heights", "Chicago", "East Elmhurst", "East Los Angeles",
+  "Floral Park", "Flushing", "Houston", "Howard Beach", "Jamaica", "LA",
+  "La Crescenta", "Los Angeles", "Manhattan", "Marina del Rey", "martil",
+  "Miami", "Middle Village", "New York", "North Hollywood", "North Miami",
+  "Northridge", "Pacific Palisades", "Panorama City", "Playa Del Rey", "Queens",
+  "Queens Village", "San Fernando", "San Pedro", "Sherman Oaks", "Staten Island",
+  "Sun Valley", "Van Nuys", "Woodland Hills"
 ];
 
 
@@ -273,36 +271,21 @@ function RecherchePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1 flex justify-between">
-              Budget max <span>${budget}M</span>
+            <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">
+              Budget max ($)
             </label>
-            <div className="px-2 py-3">
+            <div className="px-1 py-1">
               <input
-                type="range"
-                min="0.1"
-                max="20"
-                step="0.1"
-                value={budget}
-                onChange={(e) => setBudget(parseFloat(e.target.value))}
-                className="w-full accent-alice h-1.5 rounded-full cursor-pointer"
+                type="number"
+                value={budget * 1_000_000}
+                onChange={(e) => setBudget(parseFloat(e.target.value) / 1_000_000)}
+                className="w-full px-4 py-2.5 rounded-xl neu-inset bg-transparent text-sm focus:outline-none"
+                placeholder="Ex: 500000"
               />
-              <div className="flex justify-between text-[8px] text-muted-foreground mt-1">
-                <span>$0.1M</span>
-                <span>$20M</span>
-              </div>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Chambres</label>
-              <div className="flex items-center gap-2 neu-inset rounded-xl p-1">
-                <button onClick={() => setRooms((r: number) => Math.max(1, r - 1))} className="w-8 h-8 rounded-lg neu-sm hover:neu-pressable text-xs">−</button>
-                <span className="flex-1 text-center font-bold text-xs">{rooms}</span>
-                <button onClick={() => setRooms((r: number) => Math.min(10, r + 1))} className="w-8 h-8 rounded-lg neu-sm hover:neu-pressable text-xs">+</button>
-              </div>
-            </div>
-            
             <div className="flex-1 space-y-1.5">
               <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
               <select
@@ -319,7 +302,7 @@ function RecherchePage() {
             <button
               onClick={fetchResults}
               disabled={searching}
-              className="w-12 h-11 rounded-xl bg-eerie text-ghost flex items-center justify-center hover:opacity-90 transition-all shadow-lg disabled:opacity-50"
+              className="w-12 h-11 rounded-xl bg-eerie text-ghost flex items-center justify-center hover:opacity-90 transition-all shadow-lg disabled:opacity-50 mt-5"
             >
               {searching ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
             </button>
@@ -373,9 +356,11 @@ function RecherchePage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="font-bold">{p.price?.toLocaleString('en-US')} $</span>
-                  <SoftBadge tone="info">
-                    {p.numRooms ? `${p.numRooms} pièces` : "N/D"}
-                  </SoftBadge>
+                  {selectedGeneral !== "Land" && (
+                    <SoftBadge tone="info">
+                      {p.numRooms ? `${p.numRooms} pièces` : "N/D"}
+                    </SoftBadge>
+                  )}
                 </div>
                 <div className="flex gap-2 mt-4">
                   <button
@@ -437,11 +422,11 @@ function RecherchePage() {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
-                  { l: "Prix", v: "$" + detail.price?.toLocaleString("en-US") },
-                  { l: "Surface", v: detail.surfaceM2 + " m²" },
-                  { l: "Chambres", v: String(detail.numRooms) },
-                  { l: "Étage", v: String(detail.floor ?? "—") },
-                ].map((s) => (
+                  { l: "Prix", v: "$" + detail.price?.toLocaleString("en-US"), show: true },
+                  { l: "Surface", v: detail.surfaceM2 + " m²", show: true },
+                  { l: "Chambres", v: String(detail.numRooms), show: selectedGeneral !== "Land" },
+                  { l: "Étage", v: String(detail.floor ?? "—"), show: selectedGeneral !== "Land" },
+                ].filter(s => s.show).map((s) => (
                   <div key={s.l} className="neu-inset rounded-xl p-3 text-center">
                     <div className="font-bold text-xs truncate">{s.v}</div>
                     <div className="text-[10px] uppercase text-muted-foreground mt-0.5">{s.l}</div>
@@ -451,7 +436,7 @@ function RecherchePage() {
               <div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Bien de type <strong>{selectedSpecific}</strong> ({selectedGeneral}) situé à {detail.city}.
-                  {detail.surfaceM2} m² — {detail.numRooms} pièces.
+                  {detail.surfaceM2} m² {selectedGeneral !== "Land" ? `— ${detail.numRooms} pièces` : ""}.
                 </p>
                 <div className="mt-3">
                   <a href={detail.listingUrl} target="_blank" rel="noreferrer" className="text-xs text-alice hover:underline flex items-center gap-1">

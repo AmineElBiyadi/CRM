@@ -43,10 +43,10 @@ public class ContractPdfService {
             String cleanClientName = clientName.replaceAll("[^a-zA-Z0-9_-]", "_");
             String publicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + ".pdf";
             
-            // On utilise "image" au lieu de "raw" pour que Cloudinary génère une preview du PDF
-            // Suppression de l'extension .pdf redondante si déjà présente dans le publicId
-            String finalPublicId = publicId.endsWith(".pdf") ? publicId.substring(0, publicId.length() - 4) : publicId;
-            String url = cloudinaryService.upload(pdfBytes, finalPublicId, "contracts", "image");
+            // On utilise "image" pour que Cloudinary permette la visualisation directe du PDF.
+            // On s'assure que le publicId ne contient AUCUNE extension .pdf pour éviter le .pdf.pdf
+            String basePublicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+            String url = cloudinaryService.upload(pdfBytes, basePublicId, "contracts", "image");
             log.info("PDF contrat uploadé sur Cloudinary: {}", url);
             return url;
 

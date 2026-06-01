@@ -284,12 +284,13 @@ function DossierPage() {
       // Optionnel : Générer le nom comme avant
       const clientName = (dossier?.clientName || "Document").replace(/\s+/g, '_');
       const extension = files[0].name.split('.').pop()?.toLowerCase() || 'pdf';
-      // Supprimer l'extension du publicId car Cloudinary l'ajoute automatiquement selon le mode
+      
+      // IMPORTANT : Ne pas mettre d'extension dans le public_id si on utilise resource_type "image"
       const publicId = `${newDocType}_${clientName}_${Date.now()}`;
       formData.append("public_id", publicId);
 
       const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd";
-      // On utilise resource_type "auto" ou "image" pour les PDF pour faciliter la prévisualisation
+      // On force "image" pour les PDF pour permettre la visualisation directe dans le navigateur
       const resourceType = extension === 'pdf' ? 'image' : 'auto';
       const resCloud = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
         method: "POST",
