@@ -94,6 +94,13 @@
             <version>9.1.22</version>
         </dependency>
 
+        <!-- Apache PDFBox — Extraction de texte PDF -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.30</version>
+        </dependency>
+
         <!-- Cloudinary — Stockage fichiers -->
         <dependency>
             <groupId>com.cloudinary</groupId>

@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.smartestatehub.crm.event.DocumentUploadedEvent;
+import org.springframework.context.ApplicationEventPublisher;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,6 +30,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final DealRepository dealRepository;
     private final CloudinaryService cloudinaryService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     private DocumentDto toDto(Document doc) {
@@ -82,7 +86,12 @@ public class DocumentService {
                     .build();
         }
 
-        return toDto(documentRepository.save(doc));
+        Document savedDoc = documentRepository.save(doc);
+        
+        // Publier l'événement pour déclencher le RAG en arrière-plan
+        eventPublisher.publishEvent(new DocumentUploadedEvent(this, savedDoc));
+
+        return toDto(savedDoc);
     }
 
     @Transactional

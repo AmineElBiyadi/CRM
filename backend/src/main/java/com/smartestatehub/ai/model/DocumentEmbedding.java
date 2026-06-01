@@ -24,10 +24,11 @@ public class DocumentEmbedding {
     private String chunkText;
 
     /**
-     * Géré par pgvector (dimension 1536 pour OpenAI).
+     * Utilisation de double[] pour stocker les vecteurs.
+     * columnDefinition="vector(1536)" permet à Hibernate de créer le bon type dans PostgreSQL.
      */
     @Column(name = "embedding", columnDefinition = "vector(1536)")
-    private String embedding;
+    private double[] embedding;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_document", nullable = false)
