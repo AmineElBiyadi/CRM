@@ -41,26 +41,11 @@ public class DocumentService {
     }
 
     @Transactional
-    public DocumentDto uploadDocument(UUID dealId, MultipartFile file, DocumentType type) throws IOException {
-        log.info("Upload de document pour le deal ID: {}, type: {}", dealId, type);
+    public DocumentDto saveDocumentInfo(UUID dealId, String cloudinaryUrl, DocumentType type) {
+        log.info("Enregistrement des infos du document pour le deal ID: {}, type: {}", dealId, type);
 
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier (Deal) non trouvé avec l'ID: " + dealId));
-
-        // Nom généré : Type_FirstName_LastName
-        String clientName = deal.getClientFolder().getClient().getFirstName() + "_" + deal.getClientFolder().getClient().getLastName();
-        String originalFilename = file.getOriginalFilename();
-        String extension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        }
-        
-        String generatedName = type.name() + "_" + clientName.replaceAll("[^a-zA-Z0-9._-]", "_");
-        String publicId = java.util.UUID.randomUUID() + "_" + generatedName + extension;
-
-        // Upload sur Cloudinary en forçant le type RAW pour les PDFs
-        // Cela garantit que Cloudinary ne tente pas de les traiter comme des images, ce qui cause les erreurs 401
-        String cloudinaryUrl = cloudinaryService.upload(file.getBytes(), publicId, "documents", "raw");
 
         // Vérifier si un placeholder existe déjà pour ce deal et ce type sans chemin de fichier
         List<Document> existing = documentRepository.findByDeal_IdDeal(dealId);

@@ -26,6 +26,8 @@ import {
 import { getPropertiesByDeal } from "@/api/propertyApi";
 // @ts-ignore
 import { acceptOffer as apiAcceptOffer } from "@/api/offerApi";
+// @ts-ignore
+import { deleteContract as apiDeleteContract } from "@/api/contractApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
@@ -271,25 +273,48 @@ function DossierPage() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0 || !id) return;
+    if (files.length === 0 || !id || !newDocType) return;
     
     setUploading(true);
-    const formData = new FormData();
-    formData.append("dealId", id);
-    formData.append("file", files[0]);
-    formData.append("type", newDocType);
-
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/upload`, {
+      // 1. Direct Upload to Cloudinary (Frontend)
+      const formData = new FormData();
+      formData.append("file", files[0]);
+      formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "Rawabet");
+      formData.append("folder", "documents");
+      
+      // Optionnel : Générer le nom comme avant
+      const clientName = (dossier?.clientName || "Document").replace(/\s+/g, '_');
+      const extension = files[0].name.split('.').pop()?.toLowerCase() || 'pdf';
+      
+      // IMPORTANT : Ne pas mettre d'extension dans le public_id si on utilise resource_type "image"
+      const publicId = `${newDocType}_${clientName}_${Date.now()}`;
+      formData.append("public_id", publicId);
+
+      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd";
+      // On force "image" pour les PDF pour permettre la visualisation directe dans le navigateur
+      const resourceType = extension === 'pdf' ? 'image' : 'auto';
+      const resCloud = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
         method: "POST",
-        body: formData,
+        body: formData
+      });
+      
+      if (!resCloud.ok) throw new Error("Erreur lors de l'upload Cloudinary");
+      const cloudData = await resCloud.json();
+      const uploadedUrl = cloudData.secure_url;
+
+      // 2. Save only the URL in our Backend
+      const resBackend = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/save-info?dealId=${id}&type=${newDocType}&url=${encodeURIComponent(uploadedUrl)}`, {
+        method: "POST",
         credentials: "include"
       });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success("Document uploadé");
+
+      if (!resBackend.ok) throw new Error(await resBackend.text());
+      
+      toast.success("Document versionné avec succès");
       fetchDossierData();
     } catch (e: any) {
-      toast.error("Upload échoué : " + e.message);
+      toast.error("Échec de l'opération : " + e.message);
     } finally {
       setUploading(false);
     }
@@ -351,6 +376,17 @@ function DossierPage() {
       toast.success("Versement marqué comme payé !");
     } catch (e: any) {
       toast.error(e.message);
+    }
+  };
+
+  const handleDeleteContract = async (contractId: string) => {
+    if (!confirm("Voulez-vous vraiment supprimer ce brouillon de contrat ?")) return;
+    try {
+      await apiDeleteContract(contractId);
+      setContracts((prev) => prev.filter((c) => c.idContract !== contractId));
+      toast.success("Contrat supprimé");
+    } catch (e: any) {
+      toast.error("Erreur : " + e.message);
     }
   };
 
@@ -417,8 +453,35 @@ function DossierPage() {
 
 
   if (!id) return <div className="p-10 text-center">Aucun dossier sélectionné.</div>;
-  if (loadingDossier) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin" /></div>;
-  if (!dossier) return <div className="p-10 text-center">Dossier introuvable.</div>;
+  
+  if (loadingDossier) {
+    return (
+      <div className="min-h-screen bg-ghost flex flex-col items-center justify-center p-6 text-center gap-4">
+        <Loader2 className="animate-spin text-alice" size={48} />
+        <div className="animate-pulse">
+          <h2 className="text-xl font-bold text-eerie">Chargement du dossier...</h2>
+          <p className="text-sm text-muted-foreground mt-1">Nous préparons les informations de votre client.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dossier) {
+    return (
+      <div className="min-h-screen bg-ghost flex flex-col items-center justify-center p-6 text-center gap-4">
+        <div className="p-10 text-center neu-sm rounded-3xl bg-white/50">
+          <h2 className="text-xl font-bold text-warn">Dossier introuvable</h2>
+          <p className="text-sm text-muted-foreground mt-2">Ce dossier n'existe pas ou a été supprimé.</p>
+          <button 
+            onClick={() => window.history.back()}
+            className="mt-6 px-6 py-2 rounded-xl bg-eerie text-ghost text-sm font-medium"
+          >
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const currentStageIdx = STAGES.findIndex(s => s.value === dossier.stage);
   const acceptedProperty = linkedProperties.find(p => p.offerStatus === 'ACCEPTED');
@@ -741,8 +804,8 @@ function DossierPage() {
                   <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
                   <div className="flex items-center justify-between mt-2">
                     <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
-                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'info')}>
-                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Négociation")}
+                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'warn')}>
+                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Rejetée")}
                     </SoftBadge>
                   </div>
                   
@@ -1178,18 +1241,29 @@ function DossierPage() {
                         <FileSignature size={16} /> {index === 0 ? "Contrat en cours" : "Contrat archivé"}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
+                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M $
                       </p>
                     </div>
-                    {c.pdfUrl && (
-                      <button
-                        onClick={() => window.open(c.pdfUrl, '_blank')}
-                        className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
-                        title="Aperçu du PDF"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {c.status === 'DRAFT' && (
+                        <button
+                          onClick={() => handleDeleteContract(c.idContract)}
+                          className="p-2 rounded-lg neu-sm hover:bg-warn/10 text-warn/70 hover:text-warn transition-all flex items-center justify-center shrink-0"
+                          title="Supprimer le brouillon"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      {c.pdfUrl && (
+                        <button
+                          onClick={() => window.open(c.pdfUrl, '_blank')}
+                          className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
+                          title="Aperçu du PDF"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Tracker statut */}
@@ -1224,15 +1298,15 @@ function DossierPage() {
                               <div className="text-xs text-muted-foreground">{p.dueDate}</div>
                             </div>
                             <div className="text-sm font-bold shrink-0">
-                              {(p.amount || 0).toLocaleString("fr-MA")} MAD
+                              {(p.amount || 0).toLocaleString("en-US")} $
                             </div>
                             {!p.isPaid && (
                                <button 
                                  onClick={() => handleMarkPaid(c.idContract, p.idPayment)}
-                                 className="text-[10px] uppercase font-bold px-2 py-1.5 bg-honeydew text-eerie rounded-md hover:bg-honeydew/80 ml-1 transition-all"
+                                 className="text-[10px] uppercase font-bold px-3 py-2 bg-honeydew text-eerie rounded-lg hover:opacity-90 ml-1 shadow-sm transition-all flex items-center gap-1.5"
                                  title="Marquer comme payé"
                                >
-                                 Payer
+                                 <Check size={10} /> Payer
                                </button>
                             )}
                           </div>

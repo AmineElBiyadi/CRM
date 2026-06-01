@@ -25,13 +25,13 @@ public class DocumentController {
 
     private final DocumentService documentService;
 
-    @PostMapping("/upload")
-    public ResponseEntity<DocumentDto> uploadDocument(
+    @PostMapping("/save-info")
+    public ResponseEntity<DocumentDto> saveDocumentInfo(
             @RequestParam("dealId") UUID dealId,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("type") DocumentType type) throws IOException {
+            @RequestParam("url") String url,
+            @RequestParam("type") DocumentType type) {
         
-        return ResponseEntity.ok(documentService.uploadDocument(dealId, file, type));
+        return ResponseEntity.ok(documentService.saveDocumentInfo(dealId, url, type));
     }
 
     @PostMapping("/request")

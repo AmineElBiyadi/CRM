@@ -50,17 +50,15 @@ public class PropertyService {
             if (propertyType != null && !propertyType.isBlank() && !propertyType.equalsIgnoreCase("Any")) {
                 predicates.add(cb.like(cb.lower(root.get("propertyType").get("specificType")), "%" + propertyType.toLowerCase() + "%"));
             }
-            if (minPrice != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
-            }
+            // Prix : Pas de restriction sur le minimum, et flexibilité de +20% sur le maximum
             if (maxPrice != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+                predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice * 1.2)); // +20% de marge supérieure
             }
             if (minRooms != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("numRooms"), minRooms));
+                predicates.add(cb.greaterThanOrEqualTo(root.get("numRooms"), Math.max(1, minRooms - 1))); // -1 chambre
             }
             if (maxRooms != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("numRooms"), maxRooms));
+                predicates.add(cb.lessThanOrEqualTo(root.get("numRooms"), maxRooms + 1)); // +1 chambre
             }
             if (floor != null) {
                 predicates.add(cb.equal(root.get("floor"), floor));
