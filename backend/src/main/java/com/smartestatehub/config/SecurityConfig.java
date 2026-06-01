@@ -43,6 +43,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/interactions/**").permitAll()
                         .requestMatchers("/api/pipeline/**").permitAll()
                         .requestMatchers("/api/dashboard/**").permitAll()
+                        .requestMatchers("/api/public/client-portal/**").permitAll()
+                        .requestMatchers("/api/client/**").permitAll()
                         .requestMatchers("/api/offers/**").permitAll()
                         .anyRequest().authenticated());
 

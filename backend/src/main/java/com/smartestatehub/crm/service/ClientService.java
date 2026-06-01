@@ -6,6 +6,7 @@ import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.event.ClientConfirmedEvent;
 import com.smartestatehub.crm.event.DossierConfirmedEvent;
 import com.smartestatehub.crm.model.*;
+import com.smartestatehub.crm.repository.DealAssignmentRepository;
 import com.smartestatehub.crm.repository.ClientFolderRepository;
 import com.smartestatehub.crm.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final ClientFolderRepository clientFolderRepository;
     private final UserRepository userRepository;
+    private final DealAssignmentRepository dealAssignmentRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
@@ -114,11 +117,36 @@ public class ClientService {
         ClientFolder folder = clientFolderRepository.findById(dossierId)
                 .orElseThrow(() -> new RuntimeException("Dossier not found"));
 
-        InternalUser agent = userRepository.findById(agentId)
+        InternalUser newAgent = userRepository.findById(agentId)
                 .orElseThrow(() -> new RuntimeException("Agent not found"));
 
-        folder.setAssignedAgent(agent);
-        clientFolderRepository.save(folder);
+        InternalUser oldAgent = folder.getAssignedAgent();
+        
+        // Si l'agent change, on journalise
+        if (oldAgent == null || !oldAgent.getIdUser().equals(agentId)) {
+            folder.setAssignedAgent(newAgent);
+            clientFolderRepository.save(folder);
+
+            // Pour chaque deal dans ce dossier, on met à jour l'affectation
+            if (folder.getDeals() != null) {
+                for (Deal deal : folder.getDeals()) {
+                    // 1. Clore l'ancienne affectation si elle existe
+                    List<DealAssignment> activeAssignments = dealAssignmentRepository.findByDeal_IdDealAndUnassignedAtIsNull(deal.getIdDeal());
+                    for (DealAssignment da : activeAssignments) {
+                        da.setUnassignedAt(LocalDateTime.now());
+                        dealAssignmentRepository.save(da);
+                    }
+
+                    // 2. Créer la nouvelle affectation
+                    dealAssignmentRepository.save(DealAssignment.builder()
+                            .deal(deal)
+                            .user(newAgent)
+                            .assignedAt(LocalDateTime.now())
+                            .reason("Réaffectation manuelle")
+                            .build());
+                }
+            }
+        }
     }
 
     @Transactional(readOnly = true)

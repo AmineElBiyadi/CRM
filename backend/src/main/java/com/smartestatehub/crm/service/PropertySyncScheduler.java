@@ -65,6 +65,9 @@ public class PropertySyncScheduler {
                     if (response != null && response.getResults() != null) {
                         saveExternalProperties(response.getResults(), propertyType);
                     }
+                    
+                    // Ajouter un délai de 2 secondes entre les appels pour éviter le "Too Many Requests" (HTTP 429)
+                    Thread.sleep(2000); 
                 } catch (Exception e) {
                     log.error("Erreur sync RealtyInUS pour {} : {}", city, e.getMessage());
                 }

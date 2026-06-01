@@ -14,6 +14,9 @@ import java.util.UUID;
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, UUID>, JpaSpecificationExecutor<Property> {
 
+    @Query("SELECT p FROM Property p ORDER BY p.createdAt DESC LIMIT 1")
+    Optional<Property> findLatestProperty();
+
     /** Propriétés liées à un dossier vendeur */
     @Query("SELECT p FROM Property p WHERE p.sellerFolder.idProfile = :sellerProfileId AND p.deletedAt IS NULL")
     List<Property> findBySellerProfileId(@Param("sellerProfileId") UUID sellerProfileId);

@@ -4,6 +4,7 @@ import com.smartestatehub.crm.model.ClientType;
 import com.smartestatehub.crm.model.DealStage;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -43,8 +44,20 @@ public class DossierDetailDto {
     private Double propertySurfaceM2;
     private Integer numRooms;
     private Integer propertyFloor;
-    private java.util.List<String> propertyImageUrls;
+    private List<String> propertyImageUrls;
     
     private String assignedAgentName;
+    private String assignedAgentPhone;
     private LocalDateTime lastInteractionAt;
+
+    // Computed fields for client portal
+    private String visitStatus; // "VISITED" | "VISIT_PLANNED" | "PROPOSED"
+    private String clientFriendlyAction; // Mapped from aiRecommendedAction
+
+    // Collections for detail view
+    private List<PropertyDto.Response> properties;
+    private List<OfferDetailDto> offers;
+    private List<MeetingDto> meetings;
+    private List<ContractDto.Response> contracts;
+    private List<DocumentDto> documents;
 }
