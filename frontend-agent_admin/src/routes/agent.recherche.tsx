@@ -20,7 +20,7 @@ const CITIES = [
   "Arleta", "Astoria", "Baisley Park", "Bayside", "Belle Harbor", "Bronx",
   "Brooklyn", "Cambria Heights", "Chicago", "East Elmhurst", "East Los Angeles",
   "Floral Park", "Flushing", "Houston", "Howard Beach", "Jamaica", "LA",
-  "La Crescenta", "Los Angeles", "Manhattan", "Marina del Rey", "martil",
+  "La Crescenta", "Los Angeles", "Manhattan", "Marina del Rey",
   "Miami", "Middle Village", "New York", "North Hollywood", "North Miami",
   "Northridge", "Pacific Palisades", "Panorama City", "Playa Del Rey", "Queens",
   "Queens Village", "San Fernando", "San Pedro", "Sherman Oaks", "Staten Island",
