@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchMonthMeetings, fetchWeekMeetings, type MeetingType, type MeetingItem } from "@/api/dossiersApi";
+import { fetchMonthMeetings, fetchWeekMeetings, type MeetingType, type MeetingItem } from "@/api/meetingApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { SoftBadge } from "@/components/ui/design-bits";
 import { 
