@@ -145,9 +145,9 @@ public class DealService {
         Deal deal = Deal.builder()
                 .clientFolder(folder)
                 .stage(DealStage.COLD)
-                .aiLeadScore((int) (Math.random() * 20) + 50) // Mock initial score 50-70
-                .aiRecommendedAction("Analyser les besoins et proposer une première sélection.")
-                .aiSummary("Nouveau dossier " + request.getType() + " créé.")
+                .aiLeadScore(0)
+                .aiRecommendedAction("En attente de la première interaction pour analyse.")
+                .aiSummary("Nouveau dossier créé. En attente d'interactions.")
                 .isUrgent(false)
                 .build();
         
