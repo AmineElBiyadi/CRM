@@ -29,6 +29,8 @@ public class DealService {
     private final ClientFolderRepository clientFolderRepository;
     private final PropertyTypeRepository propertyTypeRepository;
     private final ContractRepository contractRepository;
+    private final DealStageUpdateRepository dealStageUpdateRepository;
+    private final DealAssignmentRepository dealAssignmentRepository;
 
 
     @Transactional(readOnly = true)
@@ -150,6 +152,22 @@ public class DealService {
                 .build();
         
         deal = dealRepository.save(deal);
+
+        // Journaliser le premier stage
+        dealStageUpdateRepository.save(DealStageUpdate.builder()
+                .deal(deal)
+                .fromStage(null)
+                .toStage(DealStage.COLD)
+                .user(agent)
+                .build());
+
+        // Journaliser la première affectation
+        dealAssignmentRepository.save(DealAssignment.builder()
+                .deal(deal)
+                .user(agent)
+                .assignedAt(java.time.LocalDateTime.now())
+                .reason("Création du dossier")
+                .build());
 
         return mapToSummaryDto(deal);
     }
@@ -356,12 +374,24 @@ public class DealService {
     }
 
     @Transactional
-    public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage) {
+    public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage, UUID userId) {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
         
+        InternalUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        DealStage oldStage = deal.getStage();
         deal.setStage(newStage);
         deal = dealRepository.save(deal);
+
+        // Journaliser le changement de stage
+        dealStageUpdateRepository.save(DealStageUpdate.builder()
+                .deal(deal)
+                .fromStage(oldStage)
+                .toStage(newStage)
+                .user(user)
+                .build());
         
         return getDossierDetail(deal.getIdDeal());
     }

@@ -40,7 +40,10 @@ public class DealController {
     }
 
     @PatchMapping("/{id}/stage")
-    public DossierDetailDto updateDealStage(@PathVariable("id") UUID dealId, @RequestParam("stage") DealStage stage) {
-        return dealService.updateDealStage(dealId, stage);
+    public DossierDetailDto updateDealStage(
+            @PathVariable("id") UUID dealId, 
+            @RequestParam("stage") DealStage stage,
+            @RequestHeader("X-Agent-Id") UUID agentId) {
+        return dealService.updateDealStage(dealId, stage, agentId);
     }
 }
