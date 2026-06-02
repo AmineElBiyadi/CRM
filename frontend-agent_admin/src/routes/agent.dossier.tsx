@@ -555,10 +555,18 @@ function DossierPage() {
           <h2 className="font-bold text-lg mt-3">{dossier.clientName}</h2>
           <SoftBadge tone="info" className="mt-1">{dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}</SoftBadge>
           <div className="text-left mt-5 space-y-2 text-sm">
-            <a href={`tel:${dossier.clientPhone}`} className="flex items-center gap-2 hover:underline">
+            <a 
+              href={`tel:${dossier.clientPhone}`} 
+              className="flex items-center gap-2 hover:underline"
+              onClick={() => toast.info(`Appel vers ${dossier.clientPhone}…`)}
+            >
               <Phone size={14} /> {dossier.clientPhone}
             </a>
-            <a href={`mailto:${dossier.clientEmail}`} className="flex items-center gap-2 hover:underline">
+            <a 
+              href={`mailto:${dossier.clientEmail}`} 
+              className="flex items-center gap-2 hover:underline"
+              onClick={() => toast.info(`Ouverture de la messagerie pour ${dossier.clientName}`)}
+            >
               <Mail size={14} /> {dossier.clientEmail}
             </a>
           </div>
@@ -811,64 +819,100 @@ function DossierPage() {
 
         {tab === "Propriétés" && (
           <>
-            <div className="flex gap-3 flex-wrap">
-              <Link 
-                to="/agent/recherche" 
-                search={{ 
-                  dealId: id,
-                  city: dossier.preferredArea || dossier.city || "",
-                  maxPrice: dossier.budgetMax || dossier.askingPrice || undefined,
-                  propertyType: dossier.propertyType || "",
-                  minRooms: dossier.numRooms || undefined
-                }} 
-                className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium"
-              >
-                <Building2 size={16} /> Rechercher biens
-              </Link>
-              <button
-                onClick={() => toast.success("Données synchronisées avec la DB")}
-                className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl bg-vanilla text-eerie text-sm font-medium hover:opacity-90"
-              >
-                <Sparkles size={16} /> Recommandation IA
-              </button>
-            </div>
+            {dossier.clientType === 'BUYER' && (
+              <div className="flex gap-3 flex-wrap mb-4">
+                <Link 
+                  to="/agent/recherche" 
+                  search={{ 
+                    dealId: id,
+                    city: dossier.preferredArea || dossier.city || "",
+                    maxPrice: dossier.budgetMax || dossier.askingPrice || undefined,
+                    propertyType: dossier.propertyType || "",
+                    minRooms: dossier.numRooms || undefined
+                  }} 
+                  className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-medium"
+                >
+                  <Building2 size={16} /> Rechercher biens
+                </Link>
+                <button
+                  onClick={() => toast.success("Données synchronisées avec la DB")}
+                  className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl bg-vanilla text-eerie text-sm font-medium hover:opacity-90"
+                >
+                  <Sparkles size={16} /> Recommandation IA
+                </button>
+              </div>
+            )}
+            
             <div className="grid sm:grid-cols-2 gap-4">
-              {linkedProperties.map((p) => (
-                <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <div className="relative">
-                    <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
-                    {p.offerStatus === 'ACCEPTED' && (
-                      <div className="absolute top-2 right-2 bg-honeydew text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
-                        <Check size={10} /> ACCEPTEE
+              {dossier.clientType === 'SELLER' ? (
+                // Pour un vendeur, on affiche uniquement sa propriété à vendre
+                dossier.address ? (
+                  <NeuCard size="sm" pressable onClick={() => setPropDetail({
+                    address: dossier.address,
+                    title: dossier.propertyTitle,
+                    city: dossier.city,
+                    price: dossier.askingPrice,
+                    surfaceM2: dossier.propertySurfaceM2,
+                    numRooms: dossier.numRooms,
+                    imageUrls: dossier.propertyImageUrls
+                  })}>
+                    <div className="relative">
+                      <img src={dossier.propertyImageUrls?.[0] || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={dossier.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                      <div className="absolute top-2 right-2 bg-vanilla text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                        BIEN À VENDRE
                       </div>
-                    )}
-                  </div>
-                  <div className="font-medium text-sm">{p.address}</div>
-                  <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
-                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'warn')}>
-                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Rejetée")}
-                    </SoftBadge>
-                  </div>
-                  
-                  {p.offerStatus === 'PENDING' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        acceptOfferMutation.mutate(p.idOffer);
-                      }}
-                      disabled={acceptOfferMutation.isPending}
-                      className="w-full mt-3 py-2 rounded-lg bg-honeydew text-eerie text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                    >
-                      {acceptOfferMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                      Accepter l'offre
-                    </button>
+                    </div>
+                    <div className="font-medium text-sm">{dossier.propertyTitle || dossier.address}</div>
+                    <div className="text-xs text-muted-foreground">{dossier.propertySurfaceM2} m² · {dossier.numRooms} pcs</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="font-bold text-sm">{dossier.askingPrice?.toLocaleString('en-US')} $</span>
+                      <SoftBadge tone="success">En vente</SoftBadge>
+                    </div>
+                  </NeuCard>
+                ) : (
+                  <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété enregistrée pour ce vendeur.</p>
+                )
+              ) : (
+                // Pour un acheteur, on affiche les propriétés liées/proposées
+                <>
+                  {linkedProperties.map((p) => (
+                    <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
+                      <div className="relative">
+                        <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                        {p.offerStatus === 'ACCEPTED' && (
+                          <div className="absolute top-2 right-2 bg-honeydew text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                            <Check size={10} /> ACCEPTEE
+                          </div>
+                        )}
+                      </div>
+                      <div className="font-medium text-sm">{p.address}</div>
+                      <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
+                        <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'warn')}>
+                          {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Rejetée")}
+                        </SoftBadge>
+                      </div>
+                      
+                      {p.offerStatus === 'PENDING' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            acceptOfferMutation.mutate(p.idOffer);
+                          }}
+                          disabled={acceptOfferMutation.isPending}
+                          className="w-full mt-3 py-2 rounded-lg bg-honeydew text-eerie text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                        >
+                          {acceptOfferMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                          Accepter l'offre
+                        </button>
+                      )}
+                    </NeuCard>
+                  ))}
+                  {linkedProperties.length === 0 && !loadingContext && (
+                    <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
                   )}
-                </NeuCard>
-              ))}
-              {linkedProperties.length === 0 && !loadingContext && (
-                <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
+                </>
               )}
             </div>
           </>

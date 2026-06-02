@@ -22,6 +22,11 @@ public interface DealRepository extends JpaRepository<Deal, UUID> {
     long countByClientFolder_AssignedAgent_IdUserAndStageNotInAndDeletedAtIsNull(UUID agentId,
             List<DealStage> excludedStages);
 
-    @Query("SELECT AVG(d.aiLeadScore) FROM Deal d WHERE d.clientFolder.assignedAgent.idUser = :agentId AND d.deletedAt IS NULL")
+    @Query("SELECT AVG(d.aiLeadScore) FROM Deal d " +
+           "JOIN d.clientFolder cf " +
+           "JOIN cf.assignedAgent a " +
+           "WHERE a.idUser = :agentId " +
+           "AND d.deletedAt IS NULL " +
+           "AND CAST(d.stage AS string) NOT IN ('CLOSED', 'LOST')")
     Double avgLeadScoreByAgent(@Param("agentId") UUID agentId);
 }
