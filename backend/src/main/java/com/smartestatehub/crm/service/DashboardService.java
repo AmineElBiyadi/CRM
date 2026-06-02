@@ -63,8 +63,8 @@ public class DashboardService {
         Double avgScore = dealRepository.avgLeadScoreByAgent(agentId);
         int avgLeadScore = avgScore != null ? (int) Math.round(avgScore) : 0;
         
-        // Score mensuel (exemple : basé sur l'activité ou fixé à 87 pour la démo mais récupéré du backend)
-        int monthlyScore = 87; 
+        // Score mensuel (basé sur le score moyen des leads et l'activité)
+        int monthlyScore = (int) Math.min(100, Math.round(avgLeadScore * 0.8 + (weekMeetings * 5))); 
 
         AgentKpiDto kpis = new AgentKpiDto(activeClients, weekMeetings, pendingContracts, avgLeadScore, monthlyScore);
 
