@@ -348,8 +348,22 @@ function AgentDashboard() {
                     >
                       <FileText size={14} />
                     </Link>
-                    <button onClick={() => toast.success(`Message envoyé à ${c.clientFullName}`)} className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center" aria-label="Message"><MessageSquarePlus size={14} /></button>
-                    <button onClick={() => toast(`Appel vers ${c.clientPhone}…`)} className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center" aria-label="Appeler"><Phone size={14} /></button>
+                    <a 
+                      href={`mailto:${c.clientEmail}`} 
+                      className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" 
+                      aria-label="Email"
+                      onClick={() => toast.info(`Ouverture de la messagerie pour ${c.clientFullName}`)}
+                    >
+                      <MessageSquarePlus size={14} />
+                    </a>
+                    <a 
+                      href={`tel:${c.clientPhone}`} 
+                      className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" 
+                      aria-label="Appeler"
+                      onClick={() => toast.info(`Appel vers ${c.clientPhone}…`)}
+                    >
+                      <Phone size={14} />
+                    </a>
                   </div>
                 </div>
               ))
