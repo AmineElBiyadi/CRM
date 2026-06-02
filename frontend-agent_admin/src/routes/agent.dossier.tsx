@@ -7,6 +7,7 @@ import {
   logInteraction as apiLogInteraction,
   updateDossier as apiUpdateDossier,
   updateDealStage as apiUpdateDealStage,
+  dismissStageSuggestion as apiDismissStageSuggestion,
   type InteractionType,
   type CreateInteractionRequest,
   type UpdateDossierRequest,
@@ -156,11 +157,14 @@ function DossierPage() {
     onSuccess: () => {
       toast.success("Interaction loggée avec succès");
       queryClient.invalidateQueries({ queryKey: ["interactions", id] });
-      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
       setLogging(false);
       setNewDesc("");
       setNewDurationHrs(0);
       setNewDurationMins(0);
+      // Donner 2 secondes à l'IA pour traiter avant de rafraîchir le dossier (pour la suggestion d'étape)
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+      }, 2000);
     },
     onError: () => {
       toast.error("Erreur lors de la journalisation");
@@ -258,6 +262,16 @@ function DossierPage() {
     },
     onError: (e: any) => {
       toast.error("Échec du rafraîchissement du résumé : " + e.message);
+    }
+  });
+
+  const dismissSuggestionMutation = useMutation({
+    mutationFn: apiDismissStageSuggestion,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: (e: any) => {
+      toast.error("Erreur lors du rejet de la suggestion : " + e.message);
     }
   });
 
@@ -621,6 +635,50 @@ function DossierPage() {
 
       {/* Center — activity */}
       <div className="col-span-12 lg:col-span-6 space-y-5">
+        {/* AI Stage Suggestion Banner */}
+        {dossier.aiStageSuggestion && dossier.aiStageSuggestion !== dossier.stage && (
+          <NeuCard size="sm" className="bg-white border-2 border-[#CFDECA] shadow-xl overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-4 text-[#CFDECA] opacity-30 group-hover:opacity-50 transition-opacity">
+              <Sparkles size={80} />
+            </div>
+            <div className="p-4 relative z-10">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#CFDECA] text-eerie flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Sparkles size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#CFDECA]">Suggestion IA</span>
+                  </div>
+                  <h3 className="text-base font-bold text-eerie mt-0.5">
+                    Passer à l'étape <span className="px-2 py-0.5 bg-[#CFDECA] text-eerie rounded-lg ml-1">{dossier.aiStageSuggestion}</span> ?
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed font-medium">
+                    "{dossier.aiStageSuggestionReason}"
+                  </p>
+                  <div className="flex gap-3 mt-5">
+                    <button
+                      onClick={() => stageMutation.mutate({ id: id!, stage: dossier.aiStageSuggestion! })}
+                      disabled={stageMutation.isPending}
+                      className="px-6 py-2.5 bg-[#CFDECA] text-eerie text-xs font-bold uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
+                    >
+                      {stageMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                      Confirmer le changement
+                    </button>
+                    <button
+                      onClick={() => dismissSuggestionMutation.mutate(id!)}
+                      disabled={dismissSuggestionMutation.isPending}
+                      className="px-6 py-2.5 bg-alice/50 text-muted-foreground text-xs font-bold uppercase tracking-widest rounded-xl hover:text-eerie hover:bg-[#CFDECA]/30 transition-all"
+                    >
+                      Ignorer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </NeuCard>
+        )}
+
         {/* Pipeline Status Bar */}
         <NeuCard size="sm" className="p-1 px-1.5 md:p-1.5">
           <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-1">

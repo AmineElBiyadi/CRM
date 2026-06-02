@@ -46,4 +46,9 @@ public class DealController {
             @RequestHeader("X-Agent-Id") UUID agentId) {
         return dealService.updateDealStage(dealId, stage, agentId);
     }
+
+    @PatchMapping("/{id}/dismiss-suggestion")
+    public DossierDetailDto dismissSuggestion(@PathVariable("id") UUID dealId) {
+        return dealService.dismissSuggestion(dealId);
+    }
 }

@@ -26,6 +26,8 @@ public class DossierDetailDto {
     private String aiScoreExplanation;
     private String aiRecommendedAction;
     private String aiSummary;
+    private DealStage aiStageSuggestion;
+    private String aiStageSuggestionReason;
     private Boolean isUrgent;
     
     // Buyer Specifics
