@@ -99,6 +99,8 @@ export interface DossierDetail {
   aiScoreExplanation: string;
   aiRecommendedAction: string;
   aiSummary: string;
+  aiStageSuggestion?: DealStage;
+  aiStageSuggestionReason?: string;
   isUrgent: boolean;
   budgetMin: number;
   budgetMax: number;
@@ -177,4 +179,9 @@ export const updateDealStage = async (idDeal: string, stage: DealStage): Promise
 
 export const confirmDossier = async (id: string, data: any): Promise<void> => {
   await api.patch(`/api/dossiers/${id}/confirm`, data);
+};
+
+export const dismissStageSuggestion = async (idDeal: string): Promise<DossierDetail> => {
+  const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/dismiss-suggestion`);
+  return response.data;
 };

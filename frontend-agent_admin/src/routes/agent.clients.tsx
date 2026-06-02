@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge, StageBadge } from "@/components/ui/design-bits";
-import { Search, LayoutGrid, List, Plus, X, Check, Users, FolderOpen, ChevronRight, ArrowRight, Clock, AlertCircle } from "lucide-react";
+import { Search, LayoutGrid, List, Plus, X, Check, Users, FolderOpen, ChevronRight, ArrowRight, Clock, AlertCircle, Mail, Phone, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useClientIdentities, useCreateClientIdentity, useConfirmClient } from "@/hooks/useClients";
 import { checkClientExistence, fetchClientDossiers, type ClientIdentityDto, type DossierListItem } from "@/api/clientsApi";
@@ -14,6 +14,117 @@ import { useQuery } from "@tanstack/react-query";
 export const Route = createFileRoute("/agent/clients")({
   component: ClientsPage,
 });
+
+// ─────────────────────────────────────────────
+// Client Card Component
+// ─────────────────────────────────────────────
+function ClientCard({ 
+  client, 
+  onClick, 
+  onConfirm 
+}: { 
+  client: ClientIdentityDto; 
+  onClick: () => void;
+  onConfirm: (e: React.MouseEvent, c: ClientIdentityDto) => void;
+}) {
+  return (
+    <NeuCard 
+      className={`p-6 group hover:translate-y-[-4px] transition-all cursor-pointer relative overflow-hidden flex flex-col h-full ${
+        client.newClient ? 'border-amber-200 bg-amber-50/30 ring-1 ring-amber-100' : ''
+      }`}
+      onClick={onClick}
+    >
+      {/* Top Section: Avatar & Basic Info */}
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="relative shrink-0">
+            <Avatar name={`${client.firstName} ${client.lastName}`} size={64} className="ring-4 ring-white shadow-lg" />
+            {client.newClient && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 border-2 border-white"></span>
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h3 className="font-bold text-lg text-eerie truncate group-hover:text-primary transition-colors">
+                {client.firstName} {client.lastName}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+              <span className="truncate">{client.email}</span>
+            </div>
+          </div>
+        </div>
+
+        {client.newClient && (
+          <button
+            onClick={(e) => onConfirm(e, client)}
+            className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 text-ghost text-[10px] font-black uppercase tracking-tighter hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20 active:scale-95"
+          >
+            Confirmer
+          </button>
+        )}
+      </div>
+
+      {/* Middle Section: Contact Quick Actions */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <a 
+          href={`tel:${client.phone}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-2 p-2.5 rounded-xl neu-sm hover:neu-pressable transition-all group/btn"
+        >
+          <div className="w-7 h-7 rounded-lg bg-honeydew/30 flex items-center justify-center text-eerie group-hover/btn:bg-honeydew transition-colors">
+            <Phone size={14} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-1">Appeler</div>
+            <div className="text-[11px] font-bold truncate">{client.phone || "N/A"}</div>
+          </div>
+        </a>
+        <a 
+          href={`mailto:${client.email}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-2 p-2.5 rounded-xl neu-sm hover:neu-pressable transition-all group/btn"
+        >
+          <div className="w-7 h-7 rounded-lg bg-alice/30 flex items-center justify-center text-eerie group-hover/btn:bg-alice transition-colors">
+            <Mail size={14} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-1">Email</div>
+            <div className="text-[11px] font-bold truncate">Envoyer</div>
+          </div>
+        </a>
+      </div>
+
+      {/* Bottom Section: Stats & Source */}
+      <div className="mt-auto pt-4 border-t border-border/40 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Dossiers</span>
+            <div className="flex items-center gap-1.5 font-bold text-sm">
+              <FolderOpen size={14} className="text-primary/60" />
+              <span>{client.dossierCount}</span>
+            </div>
+          </div>
+          <div className="h-6 w-px bg-border/40" />
+          <div className="flex flex-col">
+            <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Source</span>
+            <SoftBadge tone="info" className="text-[9px] py-0.5 px-2 font-black">{client.source?.toUpperCase() || "DIRECT"}</SoftBadge>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-all">
+          Gérer <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+        </div>
+      </div>
+      
+      {/* Decorative background element */}
+      <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
+    </NeuCard>
+  );
+}
 
 // ─────────────────────────────────────────────
 // Client Dossiers Drawer
@@ -320,146 +431,126 @@ function ClientsPage() {
           </p>
         </NeuCard>
       ) : view === "grid" ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((c) => (
-            <NeuCard 
+            <ClientCard 
               key={c.idClient} 
-              className={`p-6 pl-8 group hover:translate-y-[-2px] transition-all cursor-pointer relative overflow-hidden ${c.newClient ? 'border-amber-200 bg-amber-50/30 ring-1 ring-amber-100' : ''}`}
+              client={c} 
               onClick={() => setSelectedClient(c)}
-            >
-              <div className="flex items-center gap-5 mb-4">
-                <Avatar name={`${c.firstName} ${c.lastName}`} size={56} className="ml-1" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-lg truncate group-hover:text-eerie transition-colors">
-                      {c.firstName} {c.lastName}
-                    </div>
-                    {c.newClient && (
-                      <span className="bg-amber-500 text-ghost text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground font-medium">{c.email}</div>
-                </div>
-                {c.newClient && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmingClient(c);
-                      setForm({
-                        firstName: c.firstName,
-                        lastName: c.lastName,
-                        email: c.email,
-                        phone: c.phone || "",
-                        source: c.source || "Saisie manuelle"
-                      });
-                      setCreating(true);
-                    }}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 text-ghost text-xs font-bold hover:bg-amber-600 transition-colors shadow-sm"
-                  >
-                    Confirmer
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3 py-2 border-y border-border/50">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Téléphone</div>
-                  <div className="text-xs font-semibold">{c.phone}</div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Source</div>
-                  <div className="text-xs font-semibold truncate">{c.source}</div>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <FolderOpen size={13} />
-                  <span>
-                    {c.dossierCount} dossier{c.dossierCount > 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground group-hover:text-eerie transition-colors">
-                  Voir dossiers <ChevronRight size={13} />
-                </div>
-              </div>
-            </NeuCard>
+              onConfirm={(e, client) => {
+                e.stopPropagation();
+                setConfirmingClient(client);
+                setForm({
+                  firstName: client.firstName,
+                  lastName: client.lastName,
+                  email: client.email,
+                  phone: client.phone || "",
+                  source: client.source || "Saisie manuelle"
+                });
+                setCreating(true);
+              }}
+            />
           ))}
         </div>
       ) : (
-        <NeuCard className="overflow-x-auto p-0 soft-scroll">
-          <table className="w-full text-sm min-w-[800px]">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground border-b border-border">
-                <th className="p-4">Client</th>
-                <th className="p-4">Coordonnées</th>
-                <th className="p-4">Source</th>
-                <th className="p-4 text-center">Dossiers</th>
-                <th className="p-4">Date de création</th>
-                <th className="p-4" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr 
-                  key={c.idClient} 
-                  onClick={() => setSelectedClient(c)}
-                  className={`border-b border-border/50 hover:bg-alice/5 transition-colors cursor-pointer group ${c.newClient ? 'bg-amber-50/20' : ''}`}
-                >
-                  <td className="p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={`${c.firstName} ${c.lastName}`} size={36} />
-                        <span className="font-bold">{c.firstName} {c.lastName}</span>
-                        {c.newClient && (
-                          <span className="bg-amber-500 text-ghost text-[8px] font-black px-1 py-0.5 rounded-sm uppercase">
-                            NEW
-                          </span>
-                        )}
-                      </div>
-                      {c.newClient && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmingClient(c);
-                            setForm({
-                              firstName: c.firstName,
-                              lastName: c.lastName,
-                              email: c.email,
-                              phone: c.phone || "",
-                              source: c.source || "Saisie manuelle"
-                            });
-                            setCreating(true);
-                          }}
-                          className="px-2 py-1 rounded bg-amber-500 text-ghost text-[10px] font-bold hover:bg-amber-600 transition-colors"
-                        >
-                          Confirmer
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{c.email}</span>
-                      <span className="text-xs text-muted-foreground">{c.phone}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <SoftBadge tone="info">{c.source}</SoftBadge>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="neu-inset px-2.5 py-1 rounded-lg font-bold text-xs">{c.dossierCount}</span>
-                  </td>
-                  <td className="p-4 text-muted-foreground text-xs">
-                    {format(new Date(c.createdAt), "dd/MM/yyyy HH:mm")}
-                  </td>
-                  <td className="p-4">
-                    <ChevronRight size={16} className="text-muted-foreground" />
-                  </td>
+        <NeuCard className="overflow-hidden p-0 border-none bg-white/40 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[900px]">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground font-black border-b border-border/40">
+                  <th className="p-6">Client</th>
+                  <th className="p-6">Coordonnées</th>
+                  <th className="p-6">Source</th>
+                  <th className="p-6 text-center">Dossiers</th>
+                  <th className="p-6">Création</th>
+                  <th className="p-6" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {filtered.map((c) => (
+                  <tr 
+                    key={c.idClient} 
+                    onClick={() => setSelectedClient(c)}
+                    className={`hover:bg-alice/40 transition-all cursor-pointer group ${c.newClient ? 'bg-amber-50/30' : ''}`}
+                  >
+                    <td className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <Avatar name={`${c.firstName} ${c.lastName}`} size={40} />
+                          {c.newClient && (
+                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 border border-white"></span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-eerie text-base group-hover:text-primary transition-colors">
+                            {c.firstName} {c.lastName}
+                          </span>
+                          {c.newClient && (
+                            <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">Nouveau prospect</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-muted-foreground group-hover:text-eerie transition-colors">
+                          <Mail size={12} className="opacity-60" />
+                          <span className="font-medium text-xs">{c.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground group-hover:text-eerie transition-colors">
+                          <Phone size={12} className="opacity-60" />
+                          <span className="text-xs">{c.phone || "Non renseigné"}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <SoftBadge tone="info" className="text-[10px] py-1 px-3 font-bold uppercase">{c.source}</SoftBadge>
+                    </td>
+                    <td className="p-6 text-center">
+                      <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl neu-inset font-bold text-xs text-primary">
+                        {c.dossierCount}
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-eerie">{format(new Date(c.createdAt), "dd MMM yyyy", { locale: fr })}</span>
+                        <span className="text-[10px] text-muted-foreground">{format(new Date(c.createdAt), "HH:mm")}</span>
+                      </div>
+                    </td>
+                    <td className="p-6 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        {c.newClient && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmingClient(c);
+                              setForm({
+                                firstName: c.firstName,
+                                lastName: c.lastName,
+                                email: c.email,
+                                phone: c.phone || "",
+                                source: c.source || "Saisie manuelle"
+                              });
+                              setCreating(true);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500 text-ghost text-[10px] font-black uppercase tracking-tighter hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/10"
+                          >
+                            Confirmer
+                          </button>
+                        )}
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:bg-primary/5 transition-all">
+                          <ChevronRight size={18} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </NeuCard>
       )}
 

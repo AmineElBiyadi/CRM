@@ -1,8 +1,8 @@
-import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
-import { Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
+import { Bell, Search, Menu, X, LogOut, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export interface NavItem {
@@ -47,10 +47,17 @@ function initialNotifs(space: AppShellProps["space"]): Notif[] {
 
 export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }: AppShellProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState(() => initialNotifs(space));
   const unread = notifs.filter((n) => !n.read).length;
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    toast.success("Déconnexion réussie");
+    navigate({ to: "/" });
+  };
 
   useEffect(() => {
     setNotifOpen(false);
@@ -94,16 +101,17 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       <div className="mt-auto space-y-3">
         <div className="neu-sm p-3 flex items-center gap-3">
           <Avatar name={user.name} size={36} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold truncate">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{user.role}</div>
+            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
           </div>
         </div>
-        <div className="flex gap-2 text-xs">
-          <Link to="/design-system" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
-            Design
-          </Link>
-        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable transition-all text-xs font-bold text-red-500"
+        >
+          <LogOut size={16} /> Déconnexion
+        </button>
       </div>
     </>
   );

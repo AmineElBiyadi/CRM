@@ -218,6 +218,8 @@ public class DealService {
                     .aiScoreExplanation(deal.getAiScoreExplanation())
                     .aiRecommendedAction(deal.getAiRecommendedAction())
                     .aiSummary(deal.getAiSummary())
+                    .aiStageSuggestion(deal.getAiStageSuggestion())
+                    .aiStageSuggestionReason(deal.getAiStageSuggestionReason())
                     .isUrgent(deal.getIsUrgent())
                     .lastInteractionAt(deal.getLastInteractionAt());
         } else {
@@ -394,6 +396,19 @@ public class DealService {
                 .build());
         
         return getDossierDetail(deal.getIdDeal());
+    }
+
+    
+    @Transactional
+    public DossierDetailDto dismissSuggestion(UUID dealId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+        
+        deal.setAiStageSuggestion(null);
+        deal.setAiStageSuggestionReason(null);
+        dealRepository.save(deal);
+        
+        return getDossierDetail(dealId);
     }
 
     private DossierSummaryDto mapToSummaryDto(Deal deal) {
