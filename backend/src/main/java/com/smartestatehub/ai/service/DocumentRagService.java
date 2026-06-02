@@ -1,5 +1,6 @@
 package com.smartestatehub.ai.service;
 
+import com.smartestatehub.ai.dto.ChatResponse;
 import com.smartestatehub.ai.dto.DocumentQueryRequest;
 import com.smartestatehub.ai.model.DocumentEmbedding;
 import com.smartestatehub.ai.repository.DocumentEmbeddingRepository;
@@ -92,7 +93,7 @@ public class DocumentRagService {
     /**
      * Recherche les informations pertinentes et génère une réponse via GPT-OSS-20B
      */
-    public String askQuestion(DocumentQueryRequest request) {
+    public ChatResponse askQuestion(DocumentQueryRequest request) {
         log.info("Question reçue pour le deal {} : {}", request.getDealId(), request.getQuery());
 
         // 1. Vectoriser la question
@@ -106,17 +107,30 @@ public class DocumentRagService {
                 5
         );
 
-        // 3. Construction du contexte
+        // 3. Construction du contexte et liste des sources
         String context = similarChunks.stream()
                 .map(DocumentEmbedding::getChunkText)
                 .collect(Collectors.joining("\n---\n"));
 
+        List<String> sources = similarChunks.stream()
+                .map(chunk -> {
+                    String type = chunk.getDocument().getDocumentType() != null ? chunk.getDocument().getDocumentType().name() : "DOCUMENT";
+                    return type;
+                })
+                .distinct()
+                .collect(Collectors.toList());
+
         // 4. Appel au LLM (GPT-OSS-20B via NVIDIA NIM)
-        return chatClient.prompt()
+        String answer = chatClient.prompt()
                 .system(s -> s.text("Tu es un assistant immobilier expert. Utilise UNIQUEMENT le contexte suivant pour répondre. Si l'info n'y est pas, dis que tu ne sais pas. \n\nCONTEXTE :\n" + context))
                 .user(request.getQuery())
                 .call()
                 .content();
+
+        return ChatResponse.builder()
+                .answer(answer)
+                .sources(sources)
+                .build();
     }
 
     private String extractTextFromUrl(String fileUrl) throws Exception {

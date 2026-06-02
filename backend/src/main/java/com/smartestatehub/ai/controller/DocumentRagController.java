@@ -1,5 +1,6 @@
 package com.smartestatehub.ai.controller;
 
+import com.smartestatehub.ai.dto.ChatResponse;
 import com.smartestatehub.ai.dto.DocumentQueryRequest;
 import com.smartestatehub.ai.service.DocumentRagService;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +26,9 @@ public class DocumentRagController {
      * Endpoint pour poser une question sur les documents d'un dossier spécifique.
      */
     @PostMapping("/chat")
-    public ResponseEntity<Map<String, String>> chatWithDocuments(@RequestBody DocumentQueryRequest request) {
-        String answer = documentRagService.askQuestion(request);
-        return ResponseEntity.ok(Map.of("answer", answer));
+    public ResponseEntity<ChatResponse> chatWithDocuments(@RequestBody DocumentQueryRequest request) {
+        ChatResponse response = documentRagService.askQuestion(request);
+        return ResponseEntity.ok(response);
     }
 
     /**

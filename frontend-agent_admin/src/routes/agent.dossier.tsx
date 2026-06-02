@@ -40,6 +40,7 @@ import { ContractForm, ContractStatusTracker } from "@/components/contract/Contr
 // @ts-ignore
 import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
 import { refreshLeadScore, refreshInteractionSummary } from "@/api/aiApi";
+import { RagChatWidget } from "@/components/ai/RagChatWidget";
 
 type DossierSearch = {
   id?: string;
@@ -1387,6 +1388,8 @@ function DossierPage() {
           <SoftBadge tone="warn" className="mb-3">Priorité {dossier.isUrgent ? 'Urgente' : 'Standard'}</SoftBadge>
           <p className="text-sm font-medium">{dossier.aiRecommendedAction || "Aucune action recommandée pour le moment."}</p>
         </NeuCard>
+
+        <RagChatWidget dealId={id!} />
 
         <NeuCard>
           <h3 className="font-semibold flex items-center gap-2 text-sm mb-4">
