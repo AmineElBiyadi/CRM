@@ -18,11 +18,16 @@ export const refreshInteractionSummary = async (dealId: string): Promise<string>
   return response.data;
 };
 
-/**
- * Récupère le statut de l'IA pour un dossier.
- */
 export const getAiStatus = async (dealId: string): Promise<string> => {
   const response = await api.get(`/api/ai/scoring/${dealId}/status`);
+  return response.data;
+};
+
+/**
+ * Récupère les 3 meilleures recommandations IA pour un dossier acheteur.
+ */
+export const getAiRecommendations = async (dealId: string) => {
+  const response = await api.get(`/api/properties/recommend?dealId=${dealId}`);
   return response.data;
 };
 
