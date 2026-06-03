@@ -8,4 +8,9 @@ export const login = async (credentials: any) => {
   return response.data;
 };
 
+export const changePassword = async (passwords: { oldPassword: string; newPassword: string }) => {
+  const response = await api.post('/api/auth/change-password', passwords);
+  return response.data;
+};
+
 export default api;
