@@ -28,8 +28,8 @@ public class DealAssignment {
     @Column(name = "unassigned_at")
     private LocalDateTime unassignedAt;
 
-    @Column(name = "reson")
-    private String reson;
+    @Column(name = "reason")
+    private String reason;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_deal", nullable = false)

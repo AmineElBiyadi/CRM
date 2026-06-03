@@ -4,6 +4,8 @@ import java.util.UUID;
 
 public record AdminAgentDto(
         UUID id,
+        String firstName,
+        String lastName,
         String name,
         String email,
         String phone,

@@ -71,4 +71,44 @@ public interface DealRepository extends JpaRepository<Deal, UUID> {
 
     @Query("SELECT AVG(d.aiLeadScore) FROM Deal d WHERE d.clientFolder.assignedAgent.idUser = :agentId AND d.deletedAt IS NULL")
     Double avgLeadScoreByAgent(@Param("agentId") UUID agentId);
+
+    @Query("""
+            SELECT d FROM Deal d
+            JOIN FETCH d.clientFolder cf
+            JOIN FETCH cf.client
+            LEFT JOIN FETCH cf.assignedAgent
+            WHERE d.deletedAt IS NULL
+            ORDER BY d.aiLeadScore DESC, d.lastInteractionAt DESC
+            """)
+    List<Deal> findAllPipelineDeals();
+
+    @Query("""
+            SELECT d FROM Deal d
+            JOIN FETCH d.clientFolder cf
+            JOIN FETCH cf.client
+            LEFT JOIN FETCH cf.assignedAgent
+            WHERE d.deletedAt IS NULL
+              AND cf.assignedAgent.idUser = :agentId
+            ORDER BY d.aiLeadScore DESC, d.lastInteractionAt DESC
+            """)
+    List<Deal> findPipelineDealsByAgent(@Param("agentId") UUID agentId);
+
+    @Query("""
+            SELECT c.source, COUNT(d)
+            FROM Deal d
+            JOIN d.clientFolder cf
+            JOIN cf.client c
+            WHERE d.deletedAt IS NULL
+            GROUP BY c.source
+            """)
+    List<Object[]> countDealsGroupedByClientSource();
+
+    @Query("""
+            SELECT d FROM Deal d
+            WHERE d.deletedAt IS NULL AND d.stage = :stage
+            """)
+    List<Deal> findByDeletedAtIsNullAndStage(@Param("stage") DealStage stage);
+
+    @Query("SELECT MIN(d.createdAt) FROM Deal d WHERE d.deletedAt IS NULL")
+    LocalDateTime findEarliestDealCreatedAt();
 }

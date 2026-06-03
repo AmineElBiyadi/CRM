@@ -45,6 +45,8 @@ public class DossierDetailDto {
     private Integer propertyFloor;
     private java.util.List<String> propertyImageUrls;
     
+    private UUID assignedAgentId;
     private String assignedAgentName;
     private LocalDateTime lastInteractionAt;
+    private java.util.List<AssignmentHistoryDto> assignmentHistory;
 }
