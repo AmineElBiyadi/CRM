@@ -1,25 +1,6 @@
-import axios from 'axios';
-import { getCsrfToken } from '@/lib/csrf';
+import apiClient from '@/lib/api-client';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
-  config.headers['X-Agent-Id'] = devAgentId;
-
-  const csrfToken = getCsrfToken();
-  if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
-    config.headers['X-CSRF-Token'] = csrfToken;
-  }
-
-  return config;
-});
+const api = apiClient;
 
 /**
  * Force le recalcul du score du lead par l'IA.
