@@ -37,14 +37,14 @@ public class PropertySyncScheduler {
     private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family", "farm", "commercial");
 
     /**
-     * Trigger a sync on startup to ensure the DB has data immediately.
-     * DÉSACTIVÉ (Synchronisation initiale effectuée).
+     * DÉSACTIVÉ : On ne déclenche plus la synchronisation au démarrage du backend.
+     * La synchronisation se fera uniquement via le @Scheduled toutes les 12 heures.
      */
-    //@PostConstruct
-    public void init() {
-        log.info("Initialisation : Lancement de la première synchronisation des propriétés (Zillow)...");
-        new Thread(this::syncPropertiesFromExternalApi).start();
-    }
+    // @PostConstruct
+    // public void init() {
+    //     log.info("Initialisation : Lancement de la première synchronisation des propriétés (Zillow)...");
+    //     new Thread(this::syncPropertiesFromExternalApi).start();
+    // }
 
     /**
      * Executes every 12 hours (0 0 0/12 * * ?) to keep the DB updated with latest properties
