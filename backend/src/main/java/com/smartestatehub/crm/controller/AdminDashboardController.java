@@ -120,8 +120,10 @@ public class AdminDashboardController {
     @PatchMapping("/dossiers/{id}/stage")
     public ResponseEntity<DossierDetailDto> updateDealStage(
             @PathVariable UUID id,
-            @RequestParam com.smartestatehub.crm.model.DealStage stage
+            @RequestParam com.smartestatehub.crm.model.DealStage stage,
+            Principal principal
     ) {
-        return ResponseEntity.ok(adminDashboardService.updateDealStage(id, stage));
+        String email = principal != null ? principal.getName() : null;
+        return ResponseEntity.ok(adminDashboardService.updateDealStage(id, stage, email));
     }
 }

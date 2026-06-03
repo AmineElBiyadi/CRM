@@ -625,8 +625,10 @@ public class AdminDashboardService {
     }
 
     @Transactional
-    public DossierDetailDto updateDealStage(UUID id, DealStage stage) {
-        return dealService.updateDealStage(id, stage);
+    public DossierDetailDto updateDealStage(UUID id, DealStage stage, String userEmail) {
+        InternalUser user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userEmail));
+        return dealService.updateDealStage(id, stage, user.getIdUser());
     }
 
     private static class AgentPerformanceCandidate {
