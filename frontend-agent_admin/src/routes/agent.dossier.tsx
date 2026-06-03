@@ -2,12 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
+  api,
   fetchDossierDetail, 
   fetchInteractions, 
   logInteraction as apiLogInteraction,
   updateDossier as apiUpdateDossier,
   updateDealStage as apiUpdateDealStage,
   dismissStageSuggestion as apiDismissStageSuggestion,
+  fetchPropertyTypes,
   type InteractionType,
   type CreateInteractionRequest,
   type UpdateDossierRequest,
@@ -46,18 +48,16 @@ type DossierSearch = {
   id?: string;
 };
 
-export const Route = createFileRoute("/agent/dossier")({
-  validateSearch: (search: Record<string, unknown>): DossierSearch => {
-    return {
-      id: search.id as string | undefined,
-    };
-  },
-  component: DossierPage,
-});
-
 const tabs = ["Interactions", "Propriétés", "Rendez-vous", "Contrats"] as const;
 
-function DossierPage() {
+export const Route = createFileRoute("/agent/dossier")({
+  validateSearch: (search: Record<string, unknown>): DossierSearch => ({
+    id: search.id as string | undefined,
+  }),
+  component: AgentDossierPage,
+});
+
+function AgentDossierPage() {
   const { id } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -131,7 +131,7 @@ function DossierPage() {
 
   const { data: propertyTypes } = useQuery({
     queryKey: ["property-types"],
-    queryFn: () => fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/property-types`).then(res => res.json()),
+    queryFn: fetchPropertyTypes,
   });
 
   const { data: interactions, isLoading: loadingInteractions } = useQuery({
@@ -289,10 +289,7 @@ function DossierPage() {
       const [contractsList, props, documents] = await Promise.all([
         getContractsByDeal(id),
         getPropertiesByDeal(id),
-        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/deal/${id}`, { 
-          credentials: 'include', 
-          cache: 'no-store' 
-        }).then(res => res.json())
+        api.get(`/api/documents/deal/${id}`).then(res => res.data)
       ]);
       setContracts(contractsList || []);
       setLinkedProperties(props || []);
@@ -341,13 +338,8 @@ function DossierPage() {
       const uploadedUrl = cloudData.secure_url;
 
       // 2. Save only the URL in our Backend
-      const resBackend = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/save-info?dealId=${id}&type=${newDocType}&url=${encodeURIComponent(uploadedUrl)}`, {
-        method: "POST",
-        credentials: "include"
-      });
+      await api.post(`/api/documents/save-info?dealId=${id}&type=${newDocType}&url=${encodeURIComponent(uploadedUrl)}`);
 
-      if (!resBackend.ok) throw new Error(await resBackend.text());
-      
       toast.success("Document versionné avec succès");
       fetchDossierData();
     } catch (e: any) {
@@ -361,11 +353,7 @@ function DossierPage() {
   const handleRequestDocument = async () => {
     if (!id || !newDocType) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/request?dealId=${id}&type=${newDocType}`, {
-        method: "POST",
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await api.post(`/api/documents/request?dealId=${id}&type=${newDocType}`);
       toast.success("Demande de document enregistrée");
       fetchDossierData();
     } catch (e: any) {
@@ -376,11 +364,7 @@ function DossierPage() {
   const handleDeleteDocument = async (docId: string) => {
     if (!confirm("Voulez-vous vraiment supprimer ce document ?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/${docId}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await api.delete(`/api/documents/${docId}`);
       toast.success("Document supprimé");
       fetchDossierData();
     } catch (e: any) {

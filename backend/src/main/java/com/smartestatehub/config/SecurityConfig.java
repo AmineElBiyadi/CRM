@@ -1,7 +1,14 @@
 package com.smartestatehub.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartestatehub.auth.filter.CsrfFilter;
+import com.smartestatehub.auth.filter.JwtAuthenticationFilter;
+import com.smartestatehub.shared.dto.ApiErrorResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -9,50 +16,63 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final CsrfFilter csrfFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CorsConfigurationSource corsConfigurationSource;
-
-    public SecurityConfig(CorsConfigurationSource corsConfigurationSource) {
-        this.corsConfigurationSource = corsConfigurationSource;
-    }
+    private final ObjectMapper objectMapper;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/api/**") // Apply only to API routes
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/agent/**").permitAll()
-                        .requestMatchers("/api/agents/**").permitAll()
-                        .requestMatchers("/api/dossiers/**").permitAll()
-                        .requestMatchers("/api/properties/**").permitAll()
-                        .requestMatchers("/api/property-types/**").permitAll()
-                        .requestMatchers("/api/contracts/**").permitAll()
-                        .requestMatchers("/api/documents/**").permitAll()
-                        .requestMatchers("/api/deals/**").permitAll()
-                        .requestMatchers("/api/clients/**").permitAll()
-                        .requestMatchers("/api/meetings/**").permitAll()
-                        .requestMatchers("/api/interactions/**").permitAll()
-                        .requestMatchers("/api/pipeline/**").permitAll()
-                        .requestMatchers("/api/dashboard/**").permitAll()
-                        .requestMatchers("/api/public/client-portal/**").permitAll()
-                        .requestMatchers("/api/client/**").permitAll()
-                        .requestMatchers("/api/offers/**").permitAll()
-                        .requestMatchers("/api/ai/**").permitAll()
-                        .anyRequest().authenticated());
-
-        // TODO: Brancher le JwtAuthenticationFilter ici quand TokenService sera
-        // implémenté
-        // http.addFilterBefore(jwtAuthenticationFilter,
-        // UsernamePasswordAuthenticationFilter.class);
+            .csrf(AbstractHttpConfigurer::disable)
+            .anonymous(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    writeError(response, 401, ApiErrorResponse.of(
+                            "UNAUTHORIZED",
+                            "Session expirée ou non connecté.",
+                            "Connectez-vous pour accéder à cette ressource."
+                    ));
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    writeError(response, 403, ApiErrorResponse.of(
+                            "FORBIDDEN",
+                            "Accès refusé.",
+                            "Cette section est réservée aux administrateurs. Utilisez un compte admin ou demandez les droits à votre responsable."
+                    ));
+                })
+            )
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                .requestMatchers("/uploads/**").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/me").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/notifications/**").hasAnyRole("AGENT", "ADMIN")
+                .requestMatchers(
+                    "/api/agent/**",
+                    "/api/crm/**",
+                    "/api/documents/**",
+                    "/api/properties/**",
+                    "/api/property-types/**",
+                    "/api/contracts/**",
+                    "/api/offers/**"
+                ).hasAnyRole("AGENT", "ADMIN")
+                .requestMatchers("/api/client/**").hasRole("CLIENT")
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(csrfFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -60,5 +80,15 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    private void writeError(
+            jakarta.servlet.http.HttpServletResponse response,
+            int status,
+            ApiErrorResponse body
+    ) throws java.io.IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

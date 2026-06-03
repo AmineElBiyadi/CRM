@@ -7,8 +7,10 @@ import com.smartestatehub.crm.dto.CreateDossierRequest;
 import com.smartestatehub.crm.dto.DossierDetailDto;
 import com.smartestatehub.crm.dto.DossierSummaryDto;
 import com.smartestatehub.crm.dto.UpdateDossierRequest;
+import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
+import java.time.LocalDateTime;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -193,7 +195,12 @@ public class DealService {
                 });
         
         System.out.println("Found as ClientFolder ID");
-        return mapToDetailDto(null, folder);
+        // Check if the folder has an active deal — use it to get the correct stage
+        Optional<Deal> activeDeal = folder.getDeals() == null ? Optional.empty() :
+                folder.getDeals().stream()
+                        .filter(d -> d.getDeletedAt() == null)
+                        .findFirst();
+        return mapToDetailDto(activeDeal.orElse(null), folder);
     }
 
     private DossierDetailDto mapToDetailDto(Deal deal, ClientFolder folder) {
@@ -210,7 +217,9 @@ public class DealService {
                 .clientPhone(client.getPhone())
                 .clientSource(client.getSource())
                 .clientType(folder.getClientType())
-                .assignedAgentName(agentName);
+                .assignedAgentId(agent != null ? agent.getIdUser() : null)
+                .assignedAgentName(agentName)
+                .assignmentHistory(mapAssignmentsToDto(deal));
 
         if (deal != null) {
             builder.stage(deal.getStage())
@@ -301,6 +310,21 @@ public class DealService {
                 .build();
     }
 
+    private List<AssignmentHistoryDto> mapAssignmentsToDto(Deal deal) {
+        if (deal == null || deal.getAssignments() == null) return List.of();
+        return deal.getAssignments().stream()
+                .<AssignmentHistoryDto>map(a -> AssignmentHistoryDto.builder()
+                        .idAssignment(a.getIdDealAssignment())
+                        .agentId(a.getUser().getIdUser())
+                        .agentName(a.getUser().getFirstName() + " " + a.getUser().getLastName())
+                        .assignedAt(a.getAssignedAt())
+                        .unassignedAt(a.getUnassignedAt())
+                        .reason(a.getReason())
+                        .build())
+                .sorted((a, b) -> b.getAssignedAt().compareTo(a.getAssignedAt()))
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public DossierDetailDto updateDossier(UUID id, UpdateDossierRequest request) {
         Optional<Deal> dealOpt = dealRepository.findById(id);
@@ -313,6 +337,11 @@ public class DealService {
         } else {
             folder = clientFolderRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Dossier/Folder not found: " + id));
+            // Look for active deal in folder
+            deal = folder.getDeals() == null ? null : folder.getDeals().stream()
+                    .filter(d -> d.getDeletedAt() == null)
+                    .findFirst()
+                    .orElse(null);
         }
 
         // Update Folder Type if changed
@@ -326,11 +355,11 @@ public class DealService {
                 buyer = BuyerFolder.builder().clientFolder(folder).idProfile(folder.getIdProfile()).build();
                 folder.setBuyerFolder(buyer);
             }
-            buyer.setBudgetMin(request.getBudgetMin());
-            buyer.setBudgetMax(request.getBudgetMax());
-            buyer.setPreferredSizeM2(request.getPreferredSizeM2());
-            buyer.setPreferredArea(request.getPreferredArea());
-            buyer.setPreferredFloor(request.getPreferredFloor() != null ? request.getPreferredFloor() : -1);
+            if (request.getBudgetMin() != null) buyer.setBudgetMin(request.getBudgetMin());
+            if (request.getBudgetMax() != null) buyer.setBudgetMax(request.getBudgetMax());
+            if (request.getPreferredSizeM2() != null) buyer.setPreferredSizeM2(request.getPreferredSizeM2());
+            if (request.getPreferredArea() != null) buyer.setPreferredArea(request.getPreferredArea());
+            if (request.getPreferredFloor() != null) buyer.setPreferredFloor(request.getPreferredFloor());
 
             if (request.getPropertySpecificType() != null) {
                 PropertyType pType = propertyTypeRepository.findAll().stream()
@@ -349,18 +378,18 @@ public class DealService {
             Property property;
             if (seller.getProperties() == null || seller.getProperties().isEmpty()) {
                 property = Property.builder().sellerFolder(seller).isAvailable(true).build();
-                seller.setProperties(new java.util.ArrayList<>(List.of(property)));
+                seller.setProperties(new java.util.ArrayList<>(java.util.List.of(property)));
             } else {
                 property = seller.getProperties().get(0);
             }
 
-            property.setTitle(request.getPropertyTitle());
-            property.setAddress(request.getAddress());
-            property.setCity(request.getCity());
-            property.setPrice(request.getAskingPrice());
-            property.setSurfaceM2(request.getPropertySurfaceM2());
-            property.setNumRooms(request.getNumRooms());
-            property.setFloor(request.getPropertyFloor());
+            if (request.getPropertyTitle() != null) property.setTitle(request.getPropertyTitle());
+            if (request.getAddress() != null) property.setAddress(request.getAddress());
+            if (request.getCity() != null) property.setCity(request.getCity());
+            if (request.getAskingPrice() != null) property.setPrice(request.getAskingPrice());
+            if (request.getPropertySurfaceM2() != null) property.setSurfaceM2(request.getPropertySurfaceM2());
+            if (request.getNumRooms() != null) property.setNumRooms(request.getNumRooms());
+            if (request.getPropertyFloor() != null) property.setFloor(request.getPropertyFloor());
 
             if (request.getPropertySpecificType() != null) {
                 PropertyType pType = propertyTypeRepository.findAll().stream()
@@ -368,6 +397,39 @@ public class DealService {
                         .findFirst()
                         .orElse(null);
                 property.setPropertyType(pType);
+            }
+        }
+
+        // Handle Agent Reassignment
+        if (request.getAssignedAgentId() != null) {
+            InternalUser currentAgent = folder.getAssignedAgent();
+            if (currentAgent == null || !currentAgent.getIdUser().equals(request.getAssignedAgentId())) {
+                InternalUser newAgent = userRepository.findById(request.getAssignedAgentId())
+                        .orElseThrow(() -> new RuntimeException("New agent not found: " + request.getAssignedAgentId()));
+                
+                // 1. Close current assignment if exists
+                if (deal != null && deal.getAssignments() != null) {
+                    deal.getAssignments().stream()
+                            .filter(a -> a.getUnassignedAt() == null)
+                            .forEach(a -> {
+                                a.setUnassignedAt(LocalDateTime.now());
+                                dealAssignmentRepository.save(a);
+                            });
+                }
+
+                // 2. Create new assignment
+                if (deal != null) {
+                    String reason = request.getReassignReason() != null ? request.getReassignReason() : "Réaffectation par l'administrateur";
+                    DealAssignment newAssignment = DealAssignment.builder()
+                            .deal(deal)
+                            .user(newAgent)
+                            .reason(reason)
+                            .build();
+                    dealAssignmentRepository.save(newAssignment);
+                }
+
+                // 3. Update folder
+                folder.setAssignedAgent(newAgent);
             }
         }
 
@@ -394,7 +456,7 @@ public class DealService {
                 .toStage(newStage)
                 .user(user)
                 .build());
-        
+
         return getDossierDetail(deal.getIdDeal());
     }
 

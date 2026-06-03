@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as ClientRouteImport } from './routes/client'
 import { Route as IndexRouteImport } from './routes/index'
@@ -27,6 +28,11 @@ import { Route as ClientDossiersIdRouteImport } from './routes/client.dossiers.$
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientRoute = ClientRouteImport.update({
@@ -98,6 +104,7 @@ const ClientDossiersIdRoute = ClientDossiersIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
+  '/login': typeof LoginRoute
   '/design-system': typeof DesignSystemRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
+  '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
   '/design-system': typeof DesignSystemRoute
+  '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/'
     | '/client'
     | '/design-system'
+    | '/login'
     | '/client/assistant'
     | '/client/chronologie'
     | '/client/contrats'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/design-system'
+    | '/login'
     | '/client/assistant'
     | '/client/chronologie'
     | '/client/contrats'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/'
     | '/client'
     | '/design-system'
+    | '/login'
     | '/client/assistant'
     | '/client/chronologie'
     | '/client/contrats'
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientRoute: typeof ClientRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       path: '/design-system'
       fullPath: '/design-system'
       preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client': {
@@ -345,6 +365,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientRoute: ClientRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
