@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@1,400;1,700;1,900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -99,6 +99,9 @@
   * {
     border-color: var(--border);
     box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
   }
   html, body {
     font-family: 'Inter', system-ui, sans-serif;

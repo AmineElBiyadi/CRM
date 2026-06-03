@@ -64,6 +64,22 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
     }
   }, [usesLiveNotifications]);
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await apiLogout();
+      toast.success("Vous êtes déconnecté.");
+    } catch {
+      clearUser();
+      toast.error("Session locale effacée.");
+    } finally {
+      localStorage.removeItem("token");
+      setLoggingOut(false);
+      setOpen(false);
+      navigate({ to: "/login" });
+    }
+  };
+
   useEffect(() => {
     setNotifOpen(false);
   }, [location.pathname]);
@@ -95,21 +111,6 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       setNotifs((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
     } catch {
       toast.error("Impossible de mettre à jour la notification.");
-    }
-  }
-
-  async function handleLogout() {
-    setLoggingOut(true);
-    try {
-      await apiLogout();
-      toast.success("Vous êtes déconnecté.");
-    } catch {
-      clearUser();
-      toast.error("Session locale effacée.");
-    } finally {
-      setLoggingOut(false);
-      setOpen(false);
-      navigate({ to: "/login" });
     }
   }
 
@@ -151,26 +152,24 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       <div className="mt-auto space-y-3">
         <div className="neu-sm p-3 flex items-center gap-3">
           <Avatar name={user.name} size={36} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold truncate">{user.name}</div>
-            <div className="text-xs text-muted-foreground">{user.role}</div>
+            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
           </div>
         </div>
         <div className="flex gap-2 text-xs">
           <Link to="/design-system" className="flex-1 text-center py-2 rounded-lg neu-sm hover:neu-pressable transition-all">
             Design
           </Link>
-          {space === "admin" && (
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg neu-sm hover:neu-pressable transition-all text-muted-foreground hover:text-eerie disabled:opacity-60"
-            >
-              <LogOut size={14} />
-              {loggingOut ? "…" : "Déconnexion"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg neu-sm hover:neu-pressable transition-all text-muted-foreground hover:text-eerie disabled:opacity-60"
+          >
+            <LogOut size={14} />
+            {loggingOut ? "…" : "Déconnexion"}
+          </button>
         </div>
       </div>
     </>

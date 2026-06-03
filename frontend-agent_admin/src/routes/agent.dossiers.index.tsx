@@ -1,15 +1,77 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchDossiers, type DossierSummary } from "@/api/dossiersApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { LeadScore, SoftBadge, StageBadge } from "@/components/ui/design-bits";
-import { Sparkles, Plus, AlertCircle, Clock, ChevronRight } from "lucide-react";
+import { Sparkles, Plus, AlertCircle, Clock, ChevronRight, Search, Filter, X, ChevronDown } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/agent/dossiers/")({
   component: DossiersListing,
 });
+
+function NeuSelect({ 
+  value, 
+  onChange, 
+  options, 
+  placeholder 
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  options: { label: string; value: string }[];
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  return (
+    <div className="relative min-w-[160px]" ref={containerRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all ${
+          isOpen ? "neu-inset text-primary" : "neu-sm text-eerie hover:neu-pressable"
+        }`}
+      >
+        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        <ChevronDown size={14} className={`ml-2 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 z-50 animate-in fade-in zoom-in duration-200 origin-top">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors ${
+                value === opt.value 
+                  ? "bg-eerie text-ghost" 
+                  : "text-muted-foreground hover:bg-alice/50 hover:text-eerie"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DossiersListing() {
   const { data: rawDossiers, isLoading, isError } = useQuery({
@@ -17,21 +79,84 @@ function DossiersListing() {
     queryFn: fetchDossiers,
   });
 
+  // États pour les filtres
+  const [searchTerm, setSearchTerm] = useState("");
+  const [clientType, setClientType] = useState<string>("ALL");
+  const [stage, setStage] = useState<string>("ALL");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [isHighScoring, setIsHighScoring] = useState(false);
+  const [isNew, setIsNew] = useState(false);
+  const [isInactive, setIsInactive] = useState(false);
+
   const dossiers = useMemo(() => {
      if (!rawDossiers) return [];
-     return [...rawDossiers].sort((a, b) => {
-        // 1. New dossiers first
+     
+     let filtered = [...rawDossiers];
+
+     // 1. Recherche textuelle
+     if (searchTerm) {
+       const term = searchTerm.toLowerCase();
+       filtered = filtered.filter(d => 
+         d.clientFullName.toLowerCase().includes(term)
+       );
+     }
+
+     // 2. Type de client
+     if (clientType !== "ALL") {
+       filtered = filtered.filter(d => d.clientType === clientType);
+     }
+
+     // 3. Étape du pipeline
+     if (stage !== "ALL") {
+       filtered = filtered.filter(d => d.stage === stage);
+     }
+
+     // 4. Urgence IA
+     if (isUrgent) {
+       filtered = filtered.filter(d => d.isUrgent);
+     }
+
+     // 5. Score élevé (> 80)
+     if (isHighScoring) {
+       filtered = filtered.filter(d => (d.aiLeadScore || 0) > 80);
+     }
+
+     // 6. À confirmer (New)
+     if (isNew) {
+       filtered = filtered.filter(d => d.newDossier);
+     }
+
+     // 7. Inactifs (> 7 jours)
+     if (isInactive) {
+       const sevenDaysAgo = new Date();
+       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+       filtered = filtered.filter(d => {
+         if (!d.lastInteractionAt) return true;
+         return new Date(d.lastInteractionAt) < sevenDaysAgo;
+       });
+     }
+
+     // Tri
+     return filtered.sort((a, b) => {
         if (a.newDossier && !b.newDossier) return -1;
         if (!a.newDossier && b.newDossier) return 1;
-        
-        // 2. Urgent dossiers next
         if (a.isUrgent && !b.isUrgent) return -1;
         if (!a.isUrgent && b.isUrgent) return 1;
-
-        // 3. Then sort by createdAt descending
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-   }, [rawDossiers]);
+   }, [rawDossiers, searchTerm, clientType, stage, isUrgent, isHighScoring, isNew, isInactive]);
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setClientType("ALL");
+    setStage("ALL");
+    setIsUrgent(false);
+    setIsHighScoring(false);
+    setIsNew(false);
+    setIsInactive(false);
+  };
+
+  const hasActiveFilters = searchTerm || clientType !== "ALL" || stage !== "ALL" || isUrgent || isHighScoring || isNew || isInactive;
 
   if (isLoading) return <div className="p-8 text-center">Chargement des dossiers...</div>;
   if (isError) return <div className="p-8 text-center text-red-500">Erreur lors du chargement des dossiers.</div>;
@@ -51,10 +176,109 @@ function DossiersListing() {
         </Link>
       </div>
 
+      {/* Barre de filtrage intelligente */}
+      <NeuCard className="p-4 md:p-6 space-y-4 bg-alice/10 border-dashed border-2">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Recherche textuelle */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+            <input 
+              type="text"
+              placeholder="Rechercher par nom, email ou téléphone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 neu-inset rounded-xl bg-transparent focus:outline-none text-sm"
+            />
+          </div>
+
+          {/* Filtres Dropdowns */}
+          <div className="flex flex-wrap gap-3">
+            <NeuSelect 
+              value={clientType}
+              onChange={setClientType}
+              placeholder="Tous les types"
+              options={[
+                { label: "Tous les types", value: "ALL" },
+                { label: "Acheteurs", value: "BUYER" },
+                { label: "Vendeurs", value: "SELLER" },
+              ]}
+            />
+
+            <NeuSelect 
+              value={stage}
+              onChange={setStage}
+              placeholder="Toutes les étapes"
+              options={[
+                { label: "Toutes les étapes", value: "ALL" },
+                { label: "COLD", value: "COLD" },
+                { label: "WARM", value: "WARM" },
+                { label: "HOT", value: "HOT" },
+                { label: "NEGOTIATION", value: "NEGOTIATION" },
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Filtres IA et Quick Toggles */}
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border/40">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setIsUrgent(!isUrgent)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${
+                isUrgent ? "bg-red-500 text-ghost shadow-lg shadow-red-500/20" : "neu-sm text-muted-foreground hover:text-red-500"
+              }`}
+            >
+              <AlertCircle size={14} /> Urgence IA
+            </button>
+            <button
+              onClick={() => setIsHighScoring(!isHighScoring)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${
+                isHighScoring ? "bg-vanilla text-eerie shadow-lg" : "neu-sm text-muted-foreground hover:text-eerie"
+              }`}
+            >
+              <Sparkles size={14} /> Score &gt; 80
+            </button>
+            <button
+              onClick={() => setIsNew(!isNew)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${
+                isNew ? "bg-amber-500 text-ghost shadow-lg shadow-amber-500/20" : "neu-sm text-muted-foreground hover:text-amber-500"
+              }`}
+            >
+              <Plus size={14} /> À confirmer
+            </button>
+            <button
+              onClick={() => setIsInactive(!isInactive)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all ${
+                isInactive ? "bg-eerie text-ghost shadow-lg" : "neu-sm text-muted-foreground hover:text-eerie"
+              }`}
+            >
+              <Clock size={14} /> Inactifs (+7j)
+            </button>
+          </div>
+
+          {hasActiveFilters && (
+            <button 
+              onClick={resetFilters}
+              className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-red-500 transition-colors"
+            >
+              <X size={14} /> Réinitialiser
+            </button>
+          )}
+        </div>
+      </NeuCard>
+
       <div className="grid grid-cols-1 gap-4">
         {dossiers?.length === 0 ? (
-          <NeuCard className="py-12 text-center text-muted-foreground">
-            Aucun dossier actif pour le moment.
+          <NeuCard className="py-12 text-center text-muted-foreground bg-white/30 border-dashed border-2">
+            <div className="flex flex-col items-center gap-2">
+              <Filter size={32} className="opacity-20 mb-2" />
+              <p>Aucun dossier ne correspond à vos filtres.</p>
+              {hasActiveFilters && (
+                <button onClick={resetFilters} className="text-primary text-xs font-bold underline mt-2">
+                  Effacer tous les filtres
+                </button>
+              )}
+            </div>
           </NeuCard>
         ) : (
           dossiers?.map((dossier) => (
@@ -125,7 +349,7 @@ function DossierRow({ dossier }: { dossier: DossierSummary }) {
           ) : (
             <Link 
               to="/agent/dossier" 
-              search={{ id: dossier.idDeal! }}
+              search={{ id: dossier.idDeal ?? undefined }}
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-bold group-hover:bg-alice/10"
             >
               Détails <ChevronRight size={16} />

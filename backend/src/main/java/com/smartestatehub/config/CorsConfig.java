@@ -37,6 +37,7 @@ public class CorsConfig implements WebMvcConfigurer {
                 "Authorization",
                 "Content-Type",
                 "X-Agent-Id",
+                "X-Client-Id",
                 "X-CSRF-Token",
                 "Accept",
                 "Origin"

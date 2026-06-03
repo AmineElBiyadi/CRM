@@ -56,13 +56,16 @@ public class OfferService {
                 offerRepository.save(offer);
 
                 Property releasedProp = offer.getProperty();
-                releasedProp.setAvailable(true);
-                releasedProp.setUnavailableReason(null);
-                releasedProp.setUnavailableAt(null);
-                propertyRepository.save(releasedProp);
-                
-                log.info("L'offre {} a été rejetée car une autre offre a été acceptée. La propriété {} est de nouveau disponible.", 
-                        offer.getIdOffer(), releasedProp.getIdProperty());
+                // Si la propriété n'est pas déjà vendue ailleurs
+                if (releasedProp.getUnavailableReason() != PropertyUnavailableReason.SOLD) {
+                    releasedProp.setAvailable(true);
+                    releasedProp.setUnavailableReason(null);
+                    releasedProp.setUnavailableAt(null);
+                    propertyRepository.save(releasedProp);
+                    
+                    log.info("L'offre {} a été rejetée car une autre offre a été acceptée. La propriété {} est de nouveau disponible.", 
+                            offer.getIdOffer(), releasedProp.getIdProperty());
+                }
             }
         }
     }

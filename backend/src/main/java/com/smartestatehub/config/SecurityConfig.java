@@ -55,20 +55,30 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
                 .requestMatchers("/uploads/**").permitAll()
-                .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/me").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/notifications/**").hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers(
                     "/api/agent/**",
+                    "/api/agents/**",
                     "/api/crm/**",
                     "/api/documents/**",
                     "/api/properties/**",
                     "/api/property-types/**",
                     "/api/contracts/**",
-                    "/api/offers/**"
+                    "/api/offers/**",
+                    "/api/dossiers/**",
+                    "/api/deals/**",
+                    "/api/clients/**",
+                    "/api/meetings/**",
+                    "/api/interactions/**",
+                    "/api/pipeline/**",
+                    "/api/dashboard/**",
+                    "/api/ai/**"
                 ).hasAnyRole("AGENT", "ADMIN")
-                .requestMatchers("/api/client/**").hasRole("CLIENT")
+                .requestMatchers("/api/public/client-portal/**").permitAll()
+                .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "AGENT", "ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

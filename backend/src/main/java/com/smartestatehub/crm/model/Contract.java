@@ -29,6 +29,15 @@ public class Contract {
     @Column(name = "deposit_amount")
     private Double depositAmount;
 
+    @Column(name = "deposit_date")
+    private LocalDateTime depositDate;
+
+    @Column(name = "key_handover_date")
+    private LocalDateTime keyHandoverDate;
+
+    @Column(name = "internal_notes", length = 2000)
+    private String internalNotes;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @JdbcType(PostgreSQLEnumJdbcType.class)
