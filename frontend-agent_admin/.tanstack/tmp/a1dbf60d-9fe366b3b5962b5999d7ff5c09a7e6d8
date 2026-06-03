@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -23,18 +22,12 @@ import { Route as AgentDossierRouteImport } from './routes/agent.dossier'
 import { Route as AgentClientsRouteImport } from './routes/agent.clients'
 import { Route as AgentAgendaRouteImport } from './routes/agent.agenda'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
-import { Route as AdminDossierRouteImport } from './routes/admin.dossier'
 import { Route as AdminAutomationsRouteImport } from './routes/admin.automations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAgentsRouteImport } from './routes/admin.agents'
 import { Route as AgentDossiersIndexRouteImport } from './routes/agent.dossiers.index'
 import { Route as AgentDossiersCreateRouteImport } from './routes/agent.dossiers.create'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
@@ -100,11 +93,6 @@ const AdminPipelineRoute = AdminPipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminDossierRoute = AdminDossierRouteImport.update({
-  id: '/dossier',
-  path: '/dossier',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminAutomationsRoute = AdminAutomationsRouteImport.update({
   id: '/automations',
   path: '/automations',
@@ -136,11 +124,9 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/design-system': typeof DesignSystemRoute
-  '/login': typeof LoginRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/automations': typeof AdminAutomationsRoute
-  '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
@@ -156,11 +142,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
-  '/login': typeof LoginRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/automations': typeof AdminAutomationsRoute
-  '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
@@ -178,11 +162,9 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/design-system': typeof DesignSystemRoute
-  '/login': typeof LoginRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/automations': typeof AdminAutomationsRoute
-  '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
@@ -202,11 +184,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/design-system'
-    | '/login'
     | '/admin/agents'
     | '/admin/analytics'
     | '/admin/automations'
-    | '/admin/dossier'
     | '/admin/pipeline'
     | '/agent/agenda'
     | '/agent/clients'
@@ -222,11 +202,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/design-system'
-    | '/login'
     | '/admin/agents'
     | '/admin/analytics'
     | '/admin/automations'
-    | '/admin/dossier'
     | '/admin/pipeline'
     | '/agent/agenda'
     | '/agent/clients'
@@ -243,11 +221,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/design-system'
-    | '/login'
     | '/admin/agents'
     | '/admin/analytics'
     | '/admin/automations'
-    | '/admin/dossier'
     | '/admin/pipeline'
     | '/agent/agenda'
     | '/agent/clients'
@@ -266,18 +242,10 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
-  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/design-system': {
       id: '/design-system'
       path: '/design-system'
@@ -369,13 +337,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPipelineRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/dossier': {
-      id: '/admin/dossier'
-      path: '/dossier'
-      fullPath: '/admin/dossier'
-      preLoaderRoute: typeof AdminDossierRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/automations': {
       id: '/admin/automations'
       path: '/automations'
@@ -418,7 +379,6 @@ interface AdminRouteChildren {
   AdminAgentsRoute: typeof AdminAgentsRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAutomationsRoute: typeof AdminAutomationsRoute
-  AdminDossierRoute: typeof AdminDossierRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -427,7 +387,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAgentsRoute: AdminAgentsRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAutomationsRoute: AdminAutomationsRoute,
-  AdminDossierRoute: AdminDossierRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -475,7 +434,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
-  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

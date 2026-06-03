@@ -1,21 +1,6 @@
-import axios from 'axios';
-import { getAxiosBaseURL } from '@/lib/api-base';
-import { csrfHeadersForMethod } from '@/lib/csrf';
+import apiClient from '@/lib/api-client';
 
-const api = axios.create({
-  baseURL: getAxiosBaseURL(),
-  withCredentials: true,
-});
-
-api.interceptors.request.use((config) => {
-  const method = (config.method ?? 'GET').toUpperCase();
-  const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
-
-  Object.assign(config.headers, csrfHeadersForMethod(method));
-  config.headers['X-Agent-Id'] = devAgentId;
-  
-  return config;
-});
+const api = apiClient;
 
 import { type ClientIdentityDto } from './clientsApi';
 
@@ -45,12 +30,16 @@ export interface AgentKpiDto {
   pendingContracts: number;
   avgLeadScore: number;
   monthlyScore: number;
+  totalClosings: number;
 }
 
 export interface AgentDashboardDto {
   agentFirstName: string;
   agentFullName: string;
   agentRole: string;
+  agentEmail: string;
+  agentPhone: string;
+  agentCreatedAt: string;
   kpis: AgentKpiDto;
   todayMeetings: MeetingDto[];
   priorities: DealPriorityDto[];

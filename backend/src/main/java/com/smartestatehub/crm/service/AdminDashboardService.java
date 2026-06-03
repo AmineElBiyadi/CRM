@@ -625,8 +625,14 @@ public class AdminDashboardService {
     }
 
     @Transactional
-    public DossierDetailDto updateDealStage(UUID id, DealStage stage) {
-        return dealService.updateDealStage(id, stage, null);
+    public DossierDetailDto updateDealStage(UUID id, DealStage stage, String adminEmail) {
+        UUID adminId = null;
+        if (adminEmail != null) {
+            adminId = userRepository.findByEmail(adminEmail)
+                    .map(InternalUser::getIdUser)
+                    .orElse(null);
+        }
+        return dealService.updateDealStage(id, stage, adminId);
     }
 
     private static class AgentPerformanceCandidate {

@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge, StageBadge } from "@/components/ui/design-bits";
-import { Search, LayoutGrid, List, Plus, X, Check, Users, FolderOpen, ChevronRight, ArrowRight, Clock, AlertCircle, Mail, Phone, ExternalLink } from "lucide-react";
+import { Search, LayoutGrid, List, Plus, X, Check, Users, FolderOpen, ChevronRight, ArrowRight, Clock, AlertCircle, Mail, Phone, ExternalLink, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useClientIdentities, useCreateClientIdentity, useConfirmClient } from "@/hooks/useClients";
 import { checkClientExistence, fetchClientDossiers, type ClientIdentityDto, type DossierListItem } from "@/api/clientsApi";
@@ -303,6 +303,9 @@ function ClientDossierDrawer({
 function ClientsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
+
   const [creating, setCreating] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientIdentityDto | null>(null);
   const [form, setForm] = useState({
@@ -319,6 +322,11 @@ function ClientsPage() {
   const confirmClientMutation = useConfirmClient();
 
   const [confirmingClient, setConfirmingClient] = useState<ClientIdentityDto | null>(null);
+
+  // Reset pagination when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query]);
 
   const resetForm = () => {
     setCreating(false);
@@ -382,8 +390,14 @@ function ClientsPage() {
     );
   }, [identities, query]);
 
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
   return (
-    <div className="space-y-6 max-w-[1400px] relative">
+    <div className="space-y-6 max-w-[1400px] relative pb-12">
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Mes clients</h1>
@@ -432,7 +446,7 @@ function ClientsPage() {
         </NeuCard>
       ) : view === "grid" ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((c) => (
+          {paginatedData.map((c) => (
             <ClientCard 
               key={c.idClient} 
               client={c} 
@@ -453,105 +467,144 @@ function ClientsPage() {
           ))}
         </div>
       ) : (
-        <NeuCard className="overflow-hidden p-0 border-none bg-white/40 backdrop-blur-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground font-black border-b border-border/40">
-                  <th className="p-6">Client</th>
-                  <th className="p-6">Coordonnées</th>
-                  <th className="p-6">Source</th>
-                  <th className="p-6 text-center">Dossiers</th>
-                  <th className="p-6">Création</th>
-                  <th className="p-6" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {filtered.map((c) => (
-                  <tr 
-                    key={c.idClient} 
-                    onClick={() => setSelectedClient(c)}
-                    className={`hover:bg-alice/40 transition-all cursor-pointer group ${c.newClient ? 'bg-amber-50/30' : ''}`}
-                  >
-                    <td className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <Avatar name={`${c.firstName} ${c.lastName}`} size={40} />
-                          {c.newClient && (
-                            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 border border-white"></span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-eerie text-base group-hover:text-primary transition-colors">
-                            {c.firstName} {c.lastName}
-                          </span>
-                          {c.newClient && (
-                            <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">Nouveau prospect</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-muted-foreground group-hover:text-eerie transition-colors">
-                          <Mail size={12} className="opacity-60" />
-                          <span className="font-medium text-xs">{c.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-muted-foreground group-hover:text-eerie transition-colors">
-                          <Phone size={12} className="opacity-60" />
-                          <span className="text-xs">{c.phone || "Non renseigné"}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <SoftBadge tone="info" className="text-[10px] py-1 px-3 font-bold uppercase">{c.source}</SoftBadge>
-                    </td>
-                    <td className="p-6 text-center">
-                      <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl neu-inset font-bold text-xs text-primary">
-                        {c.dossierCount}
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-eerie">{format(new Date(c.createdAt), "dd MMM yyyy", { locale: fr })}</span>
-                        <span className="text-[10px] text-muted-foreground">{format(new Date(c.createdAt), "HH:mm")}</span>
-                      </div>
-                    </td>
-                    <td className="p-6 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        {c.newClient && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmingClient(c);
-                              setForm({
-                                firstName: c.firstName,
-                                lastName: c.lastName,
-                                email: c.email,
-                                phone: c.phone || "",
-                                source: c.source || "Saisie manuelle"
-                              });
-                              setCreating(true);
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-amber-500 text-ghost text-[10px] font-black uppercase tracking-tighter hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/10"
-                          >
-                            Confirmer
-                          </button>
-                        )}
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:bg-primary/5 transition-all">
-                          <ChevronRight size={18} />
-                        </div>
-                      </div>
-                    </td>
+        <div className="space-y-6">
+          <NeuCard className="overflow-hidden p-0 border-none bg-white/40 backdrop-blur-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[900px]">
+                <thead>
+                  <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground font-black border-b border-border/40">
+                    <th className="p-6">Client</th>
+                    <th className="p-6">Coordonnées</th>
+                    <th className="p-6">Source</th>
+                    <th className="p-6 text-center">Dossiers</th>
+                    <th className="p-6">Création</th>
+                    <th className="p-6" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {paginatedData.map((c) => (
+                    <tr 
+                      key={c.idClient} 
+                      onClick={() => setSelectedClient(c)}
+                      className={`hover:bg-alice/40 transition-all cursor-pointer group ${c.newClient ? 'bg-amber-50/30' : ''}`}
+                    >
+                      <td className="p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <Avatar name={`${c.firstName} ${c.lastName}`} size={40} />
+                            {c.newClient && (
+                              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500 border border-white"></span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-eerie text-base group-hover:text-primary transition-colors">
+                              {c.firstName} {c.lastName}
+                            </span>
+                            {c.newClient && (
+                              <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">Nouveau prospect</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-muted-foreground group-hover:text-eerie transition-colors">
+                            <Mail size={12} className="opacity-60" />
+                            <span className="font-medium text-xs">{c.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-muted-foreground group-hover:text-eerie transition-colors">
+                            <Phone size={12} className="opacity-60" />
+                            <span className="text-xs">{c.phone || "Non renseigné"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <SoftBadge tone="info" className="text-[10px] py-1 px-3 font-bold uppercase">{c.source}</SoftBadge>
+                      </td>
+                      <td className="p-6 text-center">
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl neu-inset font-bold text-xs text-primary">
+                          {c.dossierCount}
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-eerie">{format(new Date(c.createdAt), "dd MMM yyyy", { locale: fr })}</span>
+                          <span className="text-[10px] text-muted-foreground">{format(new Date(c.createdAt), "HH:mm")}</span>
+                        </div>
+                      </td>
+                      <td className="p-6 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          {c.newClient && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmingClient(c);
+                                setForm({
+                                  firstName: c.firstName,
+                                  lastName: c.lastName,
+                                  email: c.email,
+                                  phone: c.phone || "",
+                                  source: c.source || "Saisie manuelle"
+                                });
+                                setCreating(true);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-amber-500 text-ghost text-[10px] font-black uppercase tracking-tighter hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/10"
+                            >
+                              Confirmer
+                            </button>
+                          )}
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground group-hover:text-primary group-hover:bg-primary/5 transition-all">
+                            <ChevronRight size={18} />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </NeuCard>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none hover:neu-pressable transition-all"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          
+          <div className="flex items-center gap-2">
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-10 h-10 rounded-xl text-xs font-bold transition-all ${
+                  currentPage === i + 1 
+                    ? "neu-inset text-eerie" 
+                    : "neu-sm text-muted-foreground hover:text-eerie"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
           </div>
-        </NeuCard>
+
+          <button
+             disabled={currentPage === totalPages}
+             onClick={() => setCurrentPage(p => p + 1)}
+             className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none hover:neu-pressable transition-all"
+           >
+             <ChevronRight size={18} />
+           </button>
+        </div>
       )}
 
       {/* FAB */}
