@@ -14,11 +14,11 @@ public interface DocumentEmbeddingRepository extends JpaRepository<DocumentEmbed
 
     /**
      * Recherche de similarité cosinus native via pgvector.
-     * On filtre par dealId pour ne chercher que dans les documents d'un client spécifique.
+     * On cherche dans les documents du dossier spécifique ET dans la base de connaissances plateforme.
      */
     @Query(value = "SELECT de.* FROM document_embeddings de " +
            "JOIN documents d ON de.id_document = d.id_document " +
-           "WHERE d.id_deal = :dealId " +
+           "WHERE (d.id_deal = :dealId OR d.is_platform_document = true) " +
            "ORDER BY de.embedding <=> cast(:queryEmbedding as vector) " +
            "LIMIT :limit", nativeQuery = true)
     List<DocumentEmbedding> findSimilarChunks(

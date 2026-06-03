@@ -34,6 +34,14 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.saveDocumentInfo(dealId, url, type));
     }
 
+    @PostMapping("/platform")
+    public ResponseEntity<DocumentDto> savePlatformDocument(
+            @RequestParam("url") String url,
+            @RequestParam("type") DocumentType type) {
+        
+        return ResponseEntity.ok(documentService.savePlatformDocument(url, type));
+    }
+
     @PostMapping("/request")
     public ResponseEntity<DocumentDto> requestDocument(
             @RequestParam("dealId") UUID dealId,

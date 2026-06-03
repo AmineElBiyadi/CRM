@@ -114,6 +114,9 @@ public class DocumentRagService {
 
         List<String> sources = similarChunks.stream()
                 .map(chunk -> {
+                    if (Boolean.TRUE.equals(chunk.getDocument().getIsPlatformDocument())) {
+                        return "Base de connaissances (Plateforme)";
+                    }
                     String type = chunk.getDocument().getDocumentType() != null ? chunk.getDocument().getDocumentType().name() : "DOCUMENT";
                     return type;
                 })
