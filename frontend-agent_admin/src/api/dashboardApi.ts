@@ -1,16 +1,17 @@
 import axios from 'axios';
+import { getAxiosBaseURL } from '@/lib/api-base';
+import { csrfHeadersForMethod } from '@/lib/csrf';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  baseURL: getAxiosBaseURL(),
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  
+  const method = (config.method ?? 'GET').toUpperCase();
   const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
+
+  Object.assign(config.headers, csrfHeadersForMethod(method));
   config.headers['X-Agent-Id'] = devAgentId;
   
   return config;

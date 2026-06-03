@@ -40,10 +40,6 @@ public class Document {
     @Builder.Default
     private Boolean isEmbedded = false;
 
-    @Column(name = "is_platform_document")
-    @Builder.Default
-    private Boolean isPlatformDocument = false;
-
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -52,7 +48,7 @@ public class Document {
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_deal", nullable = true)
+    @JoinColumn(name = "id_deal", nullable = false)
     private Deal deal;
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)

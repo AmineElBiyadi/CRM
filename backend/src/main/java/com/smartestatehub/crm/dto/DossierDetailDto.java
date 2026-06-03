@@ -26,6 +26,8 @@ public class DossierDetailDto {
     private String aiScoreExplanation;
     private String aiRecommendedAction;
     private String aiSummary;
+    private DealStage aiStageSuggestion;
+    private String aiStageSuggestionReason;
     private Boolean isUrgent;
     
     // Buyer Specifics
@@ -46,6 +48,7 @@ public class DossierDetailDto {
     private Integer propertyFloor;
     private List<String> propertyImageUrls;
     
+    private UUID assignedAgentId;
     private String assignedAgentName;
     private String assignedAgentPhone;
     private LocalDateTime lastInteractionAt;
@@ -60,4 +63,5 @@ public class DossierDetailDto {
     private List<MeetingDto> meetings;
     private List<ContractDto.Response> contracts;
     private List<DocumentDto> documents;
+    private java.util.List<AssignmentHistoryDto> assignmentHistory;
 }

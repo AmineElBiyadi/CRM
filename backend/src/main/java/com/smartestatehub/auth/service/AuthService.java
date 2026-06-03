@@ -1,0 +1,144 @@
+package com.smartestatehub.auth.service;
+
+import com.smartestatehub.auth.dto.LoginRequest;
+import com.smartestatehub.auth.dto.UserInfoResponse;
+import com.smartestatehub.auth.model.InternalUser;
+import com.smartestatehub.auth.model.RefreshToken;
+import com.smartestatehub.auth.repository.RefreshTokenRepository;
+import com.smartestatehub.auth.repository.UserRepository;
+import com.smartestatehub.auth.support.AuthCookies;
+import com.smartestatehub.auth.support.TokenHasher;
+import com.smartestatehub.config.JwtConfig;
+import com.smartestatehub.shared.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final JwtConfig jwtConfig;
+    private final TokenHasher tokenHasher;
+    private final AuthCookies authCookies;
+
+    @Transactional
+    public UserInfoResponse login(LoginRequest request, HttpServletResponse response) {
+        InternalUser user = authenticate(request.getEmail(), request.getPassword());
+        boolean rememberMe = Boolean.TRUE.equals(request.getRememberMe());
+
+        refreshTokenRepository.revokeAllForUser(user.getIdUser());
+        issueSession(user, rememberMe, response);
+
+        return toUserInfo(user);
+    }
+
+    @Transactional
+    public UserInfoResponse refresh(HttpServletRequest request, HttpServletResponse response) {
+        String rawRefresh = authCookies.readCookie(request, AuthCookies.REFRESH_TOKEN)
+                .orElseThrow(() -> new BadCredentialsException("Session expirée."));
+
+        String hash = tokenHasher.hash(rawRefresh);
+        RefreshToken stored = refreshTokenRepository.findByTokenHashAndRevokedFalse(hash)
+                .orElseThrow(() -> new BadCredentialsException("Session expirée."));
+
+        if (stored.getExpiresAt().isBefore(LocalDateTime.now())) {
+            revoke(stored);
+            throw new BadCredentialsException("Session expirée.");
+        }
+
+        InternalUser user = stored.getInternalUser();
+        if (user.getDeletedAt() != null) {
+            revoke(stored);
+            throw new BadCredentialsException("Ce compte a été désactivé.");
+        }
+
+        boolean rememberMe = stored.isRememberMe();
+        revoke(stored);
+
+        issueSession(user, rememberMe, response);
+        return toUserInfo(user);
+    }
+
+    @Transactional
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        authCookies.readCookie(request, AuthCookies.REFRESH_TOKEN).ifPresent(raw -> {
+            String hash = tokenHasher.hash(raw);
+            refreshTokenRepository.findByTokenHashAndRevokedFalse(hash).ifPresent(this::revoke);
+        });
+        authCookies.clearAuthCookies(response);
+    }
+
+    public UserInfoResponse me(String email) {
+        InternalUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Utilisateur introuvable."));
+        if (user.getDeletedAt() != null) {
+            throw new BadCredentialsException("Ce compte a été désactivé.");
+        }
+        return toUserInfo(user);
+    }
+
+    private InternalUser authenticate(String email, String password) {
+        InternalUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Email ou mot de passe incorrect."));
+
+        if (user.getDeletedAt() != null) {
+            throw new BadCredentialsException("Ce compte a été désactivé.");
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new BadCredentialsException("Email ou mot de passe incorrect.");
+        }
+
+        return user;
+    }
+
+    private void issueSession(InternalUser user, boolean rememberMe, HttpServletResponse response) {
+        String role = user.getRole().name();
+        String accessToken = jwtUtil.generateToken(user.getEmail(), role);
+
+        String rawRefresh = tokenHasher.generateOpaqueToken();
+        long refreshSeconds = rememberMe
+                ? jwtConfig.getRefreshExpiration() / 1000
+                : 8 * 3600L;
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .internalUser(user)
+                .tokenHash(tokenHasher.hash(rawRefresh))
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshSeconds))
+                .rememberMe(rememberMe)
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(refreshToken);
+
+        authCookies.setAccessToken(response, accessToken);
+        authCookies.setRefreshToken(response, rawRefresh, rememberMe);
+        authCookies.setCsrfToken(response);
+    }
+
+    private void revoke(RefreshToken token) {
+        token.setRevoked(true);
+        token.setRevokedAt(LocalDateTime.now());
+        refreshTokenRepository.save(token);
+    }
+
+    private UserInfoResponse toUserInfo(InternalUser user) {
+        return UserInfoResponse.builder()
+                .role(user.getRole().name())
+                .userId(user.getIdUser())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .build();
+    }
+}

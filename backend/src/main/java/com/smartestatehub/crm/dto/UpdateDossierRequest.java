@@ -8,12 +8,16 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+import java.util.UUID;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class UpdateDossierRequest {
     private ClientType type;
+    private UUID assignedAgentId;
+    private String reassignReason;
     
     // Buyer Specifics
     private Double budgetMin;

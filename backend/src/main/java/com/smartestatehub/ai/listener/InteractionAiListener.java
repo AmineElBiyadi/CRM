@@ -2,6 +2,7 @@ package com.smartestatehub.ai.listener;
 
 import com.smartestatehub.ai.service.InteractionSummaryService;
 import com.smartestatehub.ai.service.LeadScoringService;
+import com.smartestatehub.ai.service.StageSuggestionService;
 import com.smartestatehub.crm.event.InteractionCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ public class InteractionAiListener {
 
     private final InteractionSummaryService summaryService;
     private final LeadScoringService leadScoringService;
+    private final StageSuggestionService stageSuggestionService;
 
     @Async
     @EventListener
@@ -31,6 +33,7 @@ public class InteractionAiListener {
         try {
             summaryService.updateSummary(dealId);
             leadScoringService.calculateScore(dealId);
+            stageSuggestionService.suggestStageUpdate(dealId);
         } catch (Exception e) {
             log.error("IA (Interaction): Erreur pour le deal {}: {}", dealId, e.getMessage());
         }

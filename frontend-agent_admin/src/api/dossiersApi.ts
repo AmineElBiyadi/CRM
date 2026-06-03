@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { getCsrfToken } from '@/lib/csrf';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
 });
 
@@ -11,6 +12,12 @@ api.interceptors.request.use((config) => {
   }
   const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
   config.headers['X-Agent-Id'] = devAgentId;
+
+  const csrfToken = getCsrfToken();
+  if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+
   return config;
 });
 
@@ -52,6 +59,7 @@ export interface CreateDossierRequest {
   numRooms?: number;
   propertyFloor?: number;
   propertyImageUrls?: string[];
+  assignedAgentId?: string;
 }
 
 export interface UpdateDossierRequest {
@@ -72,6 +80,8 @@ export interface UpdateDossierRequest {
   numRooms?: number;
   propertyFloor?: number;
   propertyImageUrls?: string[];
+  assignedAgentId?: string;
+  reassignReason?: string;
 }
 
 export interface PropertyType {
@@ -84,6 +94,23 @@ export const fetchPropertyTypes = async (): Promise<PropertyType[]> => {
   const response = await api.get<PropertyType[]>('/api/property-types');
   return response.data;
 };
+
+export interface AssignmentHistory {
+  idAssignment: string;
+  agentId: string;
+  agentName: string;
+  assignedAt: string;
+  unassignedAt: string | null;
+  reason: string;
+}
+
+export interface AdminAgent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
 
 export interface DossierDetail {
   idDeal: string | null;
@@ -99,6 +126,8 @@ export interface DossierDetail {
   aiScoreExplanation: string;
   aiRecommendedAction: string;
   aiSummary: string;
+  aiStageSuggestion?: DealStage;
+  aiStageSuggestionReason?: string;
   isUrgent: boolean;
   budgetMin: number;
   budgetMax: number;
@@ -106,8 +135,10 @@ export interface DossierDetail {
   preferredSizeM2: number;
   preferredFloor: number;
   propertyType: string;
+  assignedAgentId: string;
   assignedAgentName: string;
   lastInteractionAt: string;
+  assignmentHistory: AssignmentHistory[];
   // Seller Specifics
   propertyTitle?: string;
   address?: string;
@@ -177,4 +208,14 @@ export const updateDealStage = async (idDeal: string, stage: DealStage): Promise
 
 export const confirmDossier = async (id: string, data: any): Promise<void> => {
   await api.patch(`/api/dossiers/${id}/confirm`, data);
+};
+
+export const dismissStageSuggestion = async (idDeal: string): Promise<DossierDetail> => {
+  const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/dismiss-suggestion`);
+  return response.data;
+};
+
+export const fetchAdminAgents = async (): Promise<AdminAgent[]> => {
+  const response = await api.get<AdminAgent[]>('/api/admin/dashboard/agents');
+  return response.data;
 };

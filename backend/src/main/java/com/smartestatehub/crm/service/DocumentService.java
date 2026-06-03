@@ -68,34 +68,12 @@ public class DocumentService {
                     .filePath(cloudinaryUrl)
                     .confirmedReceived(true)
                     .isEmbedded(false)
-                    .isPlatformDocument(false)
                     .build();
         }
 
         Document savedDoc = documentRepository.save(doc);
         
         // Publier l'événement pour déclencher le RAG en arrière-plan
-        eventPublisher.publishEvent(new DocumentUploadedEvent(this, savedDoc));
-
-        return toDto(savedDoc);
-    }
-
-    @Transactional
-    public DocumentDto savePlatformDocument(String cloudinaryUrl, DocumentType type) {
-        log.info("Enregistrement d'un document plateforme : type {}", type);
-
-        Document doc = Document.builder()
-                .deal(null)
-                .documentType(type)
-                .filePath(cloudinaryUrl)
-                .confirmedReceived(true)
-                .isEmbedded(false)
-                .isPlatformDocument(true)
-                .build();
-
-        Document savedDoc = documentRepository.save(doc);
-        
-        // Déclencher l'indexation RAG
         eventPublisher.publishEvent(new DocumentUploadedEvent(this, savedDoc));
 
         return toDto(savedDoc);
