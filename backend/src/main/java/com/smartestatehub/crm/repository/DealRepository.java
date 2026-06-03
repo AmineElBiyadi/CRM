@@ -29,4 +29,6 @@ public interface DealRepository extends JpaRepository<Deal, UUID> {
            "AND d.deletedAt IS NULL " +
            "AND CAST(d.stage AS string) NOT IN ('CLOSED', 'LOST')")
     Double avgLeadScoreByAgent(@Param("agentId") UUID agentId);
+
+    long countByClientFolder_AssignedAgent_IdUserAndStageAndDeletedAtIsNull(UUID agentId, DealStage stage);
 }

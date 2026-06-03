@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAgentDashboard } from "@/hooks/useDashboard";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export const Route = createFileRoute("/agent/profile")({
   component: AgentProfile,
@@ -23,13 +25,15 @@ function AgentProfile() {
   });
 
   const agent = {
-    name: data?.agentFullName || "Sara El Idrissi",
-    role: data?.agentRole || "Commercial Senior",
-    email: "sara.idrissi@rawabet.ma",
-    phone: "+212 6 61 23 45 67",
-    since: "Janvier 2024",
-    performance: "Top 5%",
-    deals: 24
+    name: data?.agentFullName || "Agent",
+    role: data?.agentRole || "Agent",
+    email: data?.agentEmail || "chargement...",
+    phone: data?.agentPhone || "non renseigné",
+    since: data?.agentCreatedAt 
+      ? format(new Date(data.agentCreatedAt), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
+      : "en cours de chargement...",
+    performance: data?.kpis?.monthlyScore ? `${data.kpis.monthlyScore}%` : "0%",
+    deals: data?.kpis?.totalClosings || 0
   };
 
   const handlePasswordChange = (e: FormEvent<HTMLFormElement>) => {
@@ -52,130 +56,147 @@ function AgentProfile() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row gap-8 items-start">
-        {/* Profile Card */}
-        <div className="w-full md:w-1/3 space-y-6">
-          <NeuCard className="p-8 text-center flex flex-col items-center gap-4">
-            <div className="relative">
-              <Avatar name={agent.name} size={100} className="ring-4 ring-vanilla/20" />
-              <div className="absolute -bottom-2 -right-2 bg-vanilla p-2 rounded-full shadow-lg">
-                <Star size={16} className="text-eerie" fill="currentColor" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{agent.name}</h1>
-              <p className="text-muted-foreground">{agent.role}</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <SoftBadge tone="info">{agent.performance}</SoftBadge>
-              <SoftBadge tone="success">{agent.deals} Closings</SoftBadge>
-            </div>
-          </NeuCard>
-
-          <NeuCard className="p-6 space-y-4">
-            <h3 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider text-muted-foreground">
-              <User size={16} /> Informations
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Mail size={16} className="text-muted-foreground" />
-                <span>{agent.email}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Phone size={16} className="text-muted-foreground" />
-                <span>{agent.phone}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Shield size={16} className="text-muted-foreground" />
-                <span>Agent Certifié Rawabet</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Clock size={16} className="text-muted-foreground" />
-                <span>Membre depuis {agent.since}</span>
-              </div>
-            </div>
-          </NeuCard>
-        </div>
-
-        {/* Settings & Insights */}
-        <div className="flex-1 space-y-8">
-          {/* Security Section */}
-          <NeuCard className="p-8 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Lock size={20} className="text-vanilla" /> Sécurité
-              </h2>
-            </div>
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Mot de passe actuel</label>
-                  <input 
-                    type="password" 
-                    className="w-full p-3 rounded-xl neu-inset bg-transparent focus:outline-none"
-                    value={passwords.current}
-                    onChange={e => handleInputChange(e, 'current')}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Nouveau mot de passe</label>
-                  <input 
-                    type="password" 
-                    className="w-full p-3 rounded-xl neu-inset bg-transparent focus:outline-none"
-                    value={passwords.new}
-                    onChange={e => handleInputChange(e, 'new')}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground ml-1">Confirmer le mot de passe</label>
-                  <input 
-                    type="password" 
-                    className="w-full p-3 rounded-xl neu-inset bg-transparent focus:outline-none"
-                    value={passwords.confirm}
-                    onChange={e => handleInputChange(e, 'confirm')}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="pt-2">
-                <button 
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-eerie text-white font-bold hover:opacity-90 transition-all disabled:opacity-50"
-                >
-                  <Save size={18} /> {loading ? "Mise à jour..." : "Sauvegarder les modifications"}
-                </button>
-              </div>
-            </form>
-          </NeuCard>
-
-          {/* AI Insights / Suggestions */}
-          <div className="grid grid-cols-1 gap-6">
-            <NeuCard className="p-6 bg-vanilla/5 border-vanilla/20">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-vanilla/20 text-vanilla">
-                  <TrendingUp size={20} />
-                </div>
-                <h3 className="font-bold">Objectif Trimestriel</h3>
-              </div>
-              <div className="space-y-4">
-                <div className="flex justify-between text-xs font-bold">
-                  <span>PROGRESSION DES VENTES</span>
-                  <span className="text-vanilla">85%</span>
-                </div>
-                <div className="h-3 w-full bg-ghost/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-vanilla w-[85%] rounded-full shadow-[0_0_10px_rgba(234,179,8,0.3)]" />
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
-                  <Zap size={14} className="text-vanilla" />
-                  <span>Plus que 2 closings pour atteindre votre bonus de performance !</span>
-                </div>
-              </div>
-            </NeuCard>
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Hero Header Card */}
+      <NeuCard className="p-8 md:p-10 flex flex-col md:flex-row items-center md:items-start gap-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-vanilla/5 rounded-full -mr-16 -mt-16" />
+        
+        <div className="relative">
+          <Avatar name={agent.name} size={120} className="ring-4 ring-vanilla/20 shadow-xl" />
+          <div className="absolute -bottom-2 -right-2 bg-vanilla p-2.5 rounded-full shadow-lg border-2 border-white/10">
+            <Star size={20} className="text-eerie" fill="currentColor" />
           </div>
         </div>
+
+        <div className="flex-1 text-center md:text-left space-y-4">
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight">{agent.name}</h1>
+            <p className="text-lg text-muted-foreground font-medium flex items-center justify-center md:justify-start gap-2">
+              <Award size={20} className="text-vanilla" /> {agent.role}
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap justify-center md:justify-start gap-3">
+            <SoftBadge tone="info" className="px-4 py-1.5 text-sm font-bold uppercase tracking-wider">
+              <TrendingUp size={14} className="mr-2 inline" /> Performance: {agent.performance}
+            </SoftBadge>
+            <SoftBadge tone="success" className="px-4 py-1.5 text-sm font-bold uppercase tracking-wider">
+              <Zap size={14} className="mr-2 inline" /> {agent.deals} Closings
+            </SoftBadge>
+          </div>
+        </div>
+      </NeuCard>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Account Details Card */}
+        <NeuCard className="p-8 space-y-6 flex flex-col h-full">
+          <div className="flex items-center justify-between border-b border-vanilla/10 pb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <User size={22} className="text-vanilla" /> Informations du compte
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Email Professionnel</label>
+              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent group transition-colors">
+                <Mail size={18} className="text-vanilla/70" />
+                <span className="text-sm font-medium truncate">{agent.email}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Téléphone</label>
+              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
+                <Phone size={18} className="text-vanilla/70" />
+                <span className="text-sm font-medium">{agent.phone}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Statut</label>
+              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
+                <Shield size={18} className="text-vanilla/70" />
+                <span className="text-sm font-medium">Agent Certifié Rawabet</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ancienneté</label>
+              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
+                <Clock size={18} className="text-vanilla/70" />
+                <span className="text-sm font-medium">Membre depuis {agent.since}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 mt-auto">
+            <p className="text-xs text-muted-foreground italic leading-relaxed bg-vanilla/5 p-4 rounded-xl border border-vanilla/10">
+              Note: Ces informations sont gérées par l'administration. Pour toute modification, veuillez contacter le support technique.
+            </p>
+          </div>
+        </NeuCard>
+
+        {/* Security Section */}
+        <NeuCard className="p-8 space-y-6">
+          <div className="flex items-center justify-between border-b border-vanilla/10 pb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Lock size={22} className="text-vanilla" /> Sécurité & Accès
+            </h2>
+          </div>
+
+          <form onSubmit={handlePasswordChange} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Mot de passe actuel</label>
+              <input 
+                type="password" 
+                className="w-full p-3.5 rounded-xl neu-inset bg-transparent focus:outline-none focus:ring-2 focus:ring-vanilla/20 transition-all"
+                value={passwords.current}
+                onChange={e => handleInputChange(e, 'current')}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Nouveau</label>
+                <input 
+                  type="password" 
+                  className="w-full p-3.5 rounded-xl neu-inset bg-transparent focus:outline-none focus:ring-2 focus:ring-vanilla/20 transition-all"
+                  value={passwords.new}
+                  onChange={e => handleInputChange(e, 'new')}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Confirmation</label>
+                <input 
+                  type="password" 
+                  className="w-full p-3.5 rounded-xl neu-inset bg-transparent focus:outline-none focus:ring-2 focus:ring-vanilla/20 transition-all"
+                  value={passwords.confirm}
+                  onChange={e => handleInputChange(e, 'confirm')}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 flex flex-col sm:flex-row gap-4">
+              <button 
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-eerie text-white font-black uppercase tracking-widest text-xs hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
+              >
+                <Save size={18} /> {loading ? "Mise à jour..." : "Sauvegarder"}
+              </button>
+              <button 
+                type="button"
+                onClick={() => toast.info("Un lien de réinitialisation a été envoyé à votre adresse email.")}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-vanilla/10 text-vanilla font-black uppercase tracking-widest text-xs hover:bg-vanilla/20 transition-all border border-vanilla/20 shadow-sm"
+              >
+                <Shield size={18} /> Mot de passe oublié ?
+              </button>
+            </div>
+          </form>
+        </NeuCard>
       </div>
     </div>
   );

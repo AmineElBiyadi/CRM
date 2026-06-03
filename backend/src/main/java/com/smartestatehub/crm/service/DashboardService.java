@@ -46,6 +46,9 @@ public class DashboardService {
         String agentFirstName = agent != null ? agent.getFirstName() : "Agent";
         String agentFullName = agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Agent";
         String agentRole = (agent != null && agent.getRole() != null) ? agent.getRole().name() : "AGENT";
+        String agentEmail = agent != null ? agent.getEmail() : "";
+        String agentPhone = agent != null ? agent.getPhone() : "";
+        LocalDateTime agentCreatedAt = agent != null ? agent.getCreatedAt() : LocalDateTime.now();
 
         // 2. Calcul des KPIs
         // Clients actifs (non CLOSED et non LOST)
@@ -60,6 +63,10 @@ public class DashboardService {
         // Contrats en attente (statut SENT)
         long pendingContracts = contractRepository.countByDeal_ClientFolder_AssignedAgent_IdUserAndStatusAndDeletedAtIsNull(
                 agentId, ContractStatus.SENT);
+
+        // Total Closings (Ventes réussies)
+        long totalClosings = dealRepository.countByClientFolder_AssignedAgent_IdUserAndStageAndDeletedAtIsNull(
+                agentId, DealStage.CLOSED);
 
         // Score moyen leads
         Double avgScore = dealRepository.avgLeadScoreByAgent(agentId);
@@ -76,7 +83,7 @@ public class DashboardService {
             monthlyScore = (int) Math.round((double) wonThisMonth / totalManagedThisMonth * 100);
         }
 
-        AgentKpiDto kpis = new AgentKpiDto(activeClients, weekMeetings, pendingContracts, avgLeadScore, monthlyScore);
+        AgentKpiDto kpis = new AgentKpiDto(activeClients, weekMeetings, pendingContracts, avgLeadScore, monthlyScore, totalClosings);
 
         // 3. Réunions d'aujourd'hui (timeline + checklist)
         List<MeetingDto> todayMeetings = meetingService.getTodayMeetings(agentId);
@@ -97,6 +104,9 @@ public class DashboardService {
                 agentFirstName,
                 agentFullName,
                 agentRole,
+                agentEmail,
+                agentPhone,
+                agentCreatedAt,
                 kpis,
                 todayMeetings, // Planning
                 priorities,    // Priorités
