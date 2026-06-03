@@ -56,23 +56,19 @@ public class PropertySyncScheduler {
         log.info("Démarrage de la synchronisation automatique des propriétés depuis les APIs...");
 
         for (String city : CITIES_TO_SYNC) {
-            // 1. Realty in US (DÉSACTIVÉ TEMPORAIREMENT - QUOTA MAX)
-            /*
+            // 1. Realty in US (RÉACTIVÉ - NOUVELLE CLÉ)
             for (String propertyType : TYPES_TO_SYNC) {
                 try {
+                    log.info("Synchronisation RealtyInUS pour {} ({})", city, propertyType);
                     PropertyDto.SearchResponse response = propertyApiClient.searchProperties(
                             city, propertyType, null, null, null, null, 1);
                     if (response != null && response.getResults() != null) {
                         saveExternalProperties(response.getResults(), propertyType);
                     }
-                    
-                    // Ajouter un délai de 2 secondes entre les appels pour éviter le "Too Many Requests" (HTTP 429)
-                    Thread.sleep(2000); 
                 } catch (Exception e) {
                     log.error("Erreur sync RealtyInUS pour {} : {}", city, e.getMessage());
                 }
             }
-            */
 
             // 2. Zillow (Commercial & Land)
             try {
