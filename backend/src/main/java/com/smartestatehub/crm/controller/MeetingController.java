@@ -21,17 +21,13 @@ public class MeetingController {
     @PostMapping
     public ResponseEntity<MeetingDto> createMeeting(
             @RequestBody CreateMeetingRequest request,
-            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
-            Principal principal) {
-        UUID agentId = resolveAgentId(devAgentId, principal);
+            @RequestHeader("X-Agent-Id") UUID agentId) {
         return ResponseEntity.ok(meetingService.createMeeting(request, agentId));
     }
 
     @GetMapping("/week")
     public ResponseEntity<List<MeetingDto>> getWeekMeetings(
-            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
-            Principal principal) {
-        UUID agentId = resolveAgentId(devAgentId, principal);
+            @RequestHeader("X-Agent-Id") UUID agentId) {
         return ResponseEntity.ok(meetingService.getWeekMeetings(agentId));
     }
 
@@ -39,9 +35,7 @@ public class MeetingController {
     public ResponseEntity<List<MeetingDto>> getMonthMeetings(
             @RequestParam int year,
             @RequestParam int month,
-            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
-            Principal principal) {
-        UUID agentId = resolveAgentId(devAgentId, principal);
+            @RequestHeader("X-Agent-Id") UUID agentId) {
         return ResponseEntity.ok(meetingService.getMonthMeetings(agentId, year, month));
     }
 
@@ -54,31 +48,15 @@ public class MeetingController {
     public ResponseEntity<MeetingDto> updateStatus(
             @PathVariable UUID meetingId,
             @RequestBody com.smartestatehub.crm.dto.UpdateMeetingStatusRequest request,
-            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
-            Principal principal) {
-        UUID agentId = resolveAgentId(devAgentId, principal);
+            @RequestHeader("X-Agent-Id") UUID agentId) {
         return ResponseEntity.ok(meetingService.updateMeetingStatus(meetingId, request, agentId));
     }
 
     @DeleteMapping("/{meetingId}")
     public ResponseEntity<Void> deleteMeeting(
             @PathVariable UUID meetingId,
-            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
-            Principal principal) {
-        UUID agentId = resolveAgentId(devAgentId, principal);
+            @RequestHeader("X-Agent-Id") UUID agentId) {
         meetingService.deleteMeeting(meetingId, agentId);
         return ResponseEntity.ok().build();
-    }
-
-    private UUID resolveAgentId(String devAgentId, Principal principal) {
-        if (devAgentId != null && !devAgentId.isBlank()) {
-            return UUID.fromString(devAgentId);
-        }
-        if (principal != null) {
-            try {
-                return UUID.fromString(principal.getName());
-            } catch (Exception ignored) {}
-        }
-        return UUID.fromString("8366d183-2fb7-44a1-8f16-2ec3ca78a320");
     }
 }

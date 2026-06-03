@@ -18,26 +18,9 @@ public class DashboardController {
 
     @GetMapping
     public ResponseEntity<AgentDashboardDto> getAgentDashboard(
-            @RequestHeader(value = "X-Agent-Id", required = false) String devAgentId,
-            Principal principal) {
+            @RequestHeader("X-Agent-Id") UUID agentId) {
         
-        UUID agentId = resolveAgentId(devAgentId, principal);
         AgentDashboardDto dashboard = dashboardService.getAgentDashboard(agentId);
         return ResponseEntity.ok(dashboard);
-    }
-
-    private UUID resolveAgentId(String devAgentId, Principal principal) {
-        try {
-            if (devAgentId != null && !devAgentId.isBlank()) {
-                return UUID.fromString(devAgentId);
-            }
-            if (principal != null) {
-                return UUID.fromString(principal.getName());
-            }
-        } catch (Exception e) {
-            // Fallback if conversion fails
-        }
-        // Fallback agent ID (Sarah Laroui - seeded in DatabaseSeeder)
-        return UUID.fromString("8366d183-2fb7-44a1-8f16-2ec3ca78a320");
     }
 }
