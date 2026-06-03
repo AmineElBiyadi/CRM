@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDossiers, type DossierSummary } from "@/api/dossiersApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { LeadScore, SoftBadge, StageBadge } from "@/components/ui/design-bits";
-import { Sparkles, Plus, AlertCircle, Clock, ChevronRight, Search, Filter, X, ChevronDown } from "lucide-react";
+import { Sparkles, Plus, AlertCircle, Clock, ChevronRight, Search, Filter, X, ChevronDown, ChevronLeft } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/agent/dossiers/")({
@@ -88,6 +88,15 @@ function DossiersListing() {
   const [isNew, setIsNew] = useState(false);
   const [isInactive, setIsInactive] = useState(false);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 4;
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, clientType, stage, isUrgent, isHighScoring, isNew, isInactive]);
+
   const dossiers = useMemo(() => {
      if (!rawDossiers) return [];
      
@@ -146,6 +155,12 @@ function DossiersListing() {
       });
    }, [rawDossiers, searchTerm, clientType, stage, isUrgent, isHighScoring, isNew, isInactive]);
 
+  const totalPages = Math.ceil(dossiers.length / ITEMS_PER_PAGE);
+  const paginatedDossiers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return dossiers.slice(start, start + ITEMS_PER_PAGE);
+  }, [dossiers, currentPage]);
+
   const resetFilters = () => {
     setSearchTerm("");
     setClientType("ALL");
@@ -162,7 +177,7 @@ function DossiersListing() {
   if (isError) return <div className="p-8 text-center text-red-500">Erreur lors du chargement des dossiers.</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-eerie">Espace Dossiers</h1>
@@ -281,11 +296,48 @@ function DossiersListing() {
             </div>
           </NeuCard>
         ) : (
-          dossiers?.map((dossier) => (
+          paginatedDossiers.map((dossier) => (
             <DossierRow key={dossier.idDeal || dossier.idProfile} dossier={dossier} />
           ))
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none hover:neu-pressable transition-all"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          
+          <div className="flex items-center gap-2">
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-10 h-10 rounded-xl text-xs font-bold transition-all ${
+                  currentPage === i + 1 
+                    ? "neu-inset text-eerie" 
+                    : "neu-sm text-muted-foreground hover:text-eerie"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => p + 1)}
+            className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none hover:neu-pressable transition-all"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

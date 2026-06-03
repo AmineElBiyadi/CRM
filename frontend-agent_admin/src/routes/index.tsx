@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { NeuCard } from "@/components/ui/neu-card";
-import { Shield, UserCog, User, ArrowRight, Sparkles } from "lucide-react";
+import { Shield, UserCog, User, ArrowRight, Sparkles, Building2 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SmartEstateHub — CRM immobilier nouvelle génération" },
+      { title: "Rawabet Hub — CRM immobilier nouvelle génération" },
       { name: "description", content: "Plateforme CRM 3-en-1 pour directeurs d'agence, agents commerciaux et clients : pipeline, IA, automatisations." },
     ],
   }),
@@ -28,11 +28,11 @@ function Landing() {
       <div className="relative max-w-6xl mx-auto px-6 py-16">
         <header className="flex items-center justify-between mb-20">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl neu-sm flex items-center justify-center bg-vanilla">
-              <Sparkles size={20} className="text-eerie" strokeWidth={1.8} />
+            <div className="w-12 h-12 rounded-2xl neu-sm flex items-center justify-center bg-eerie text-white">
+              <Building2 size={24} />
             </div>
             <div>
-              <div className="font-bold text-lg">SmartEstateHub</div>
+              <div className="font-bold text-lg">Rawabet Hub</div>
               <div className="text-xs text-muted-foreground">CRM immobilier</div>
             </div>
           </div>
