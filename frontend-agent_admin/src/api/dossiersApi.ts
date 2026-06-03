@@ -1,25 +1,6 @@
-import axios from 'axios';
-import { getCsrfToken } from '@/lib/csrf';
+import apiClient from '@/lib/api-client';
 
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  const devAgentId = localStorage.getItem('dev_agent_id') || '3c865aae-edcf-4d93-b434-92e69b2230aa';
-  config.headers['X-Agent-Id'] = devAgentId;
-
-  const csrfToken = getCsrfToken();
-  if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
-    config.headers['X-CSRF-Token'] = csrfToken;
-  }
-
-  return config;
-});
+export const api = apiClient;
 
 export type ClientType = 'BUYER' | 'SELLER';
 export type DealStage = 'COLD' | 'WARM' | 'HOT' | 'NEGOTIATION' | 'CLOSED' | 'LOST';
