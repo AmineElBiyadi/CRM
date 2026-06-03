@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
-import { Bell, Search, Menu, X, LogOut, type LucideIcon } from "lucide-react";
+import { Bell, Search, Menu, X, LogOut, Building2, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { apiLogout, clearUser } from "@/lib/auth";
 import {
@@ -115,11 +115,11 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const SidebarContent = (
     <>
       <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center neu-sm", accent)}>
-          <span className="font-bold text-eerie">S</span>
+        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center neu-sm bg-eerie text-white")}>
+          <Building2 size={20} />
         </div>
         <div>
-          <div className="font-bold leading-tight">SmartEstate</div>
+          <div className="font-bold leading-tight">Rawabet</div>
           <div className="text-xs text-muted-foreground">{spaceLabel}</div>
         </div>
       </div>
@@ -148,13 +148,26 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       </nav>
 
       <div className="mt-auto space-y-3">
-        <div className="neu-sm p-3 flex items-center gap-3">
-          <Avatar name={user.name} size={36} />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-semibold truncate">{user.name}</div>
-            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
+        {space === "agent" ? (
+          <Link 
+            to="/agent/profile"
+            className="neu-sm p-3 flex items-center gap-3 hover:neu-pressable transition-all group"
+          >
+            <Avatar name={user.name} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold truncate group-hover:text-eerie transition-colors">{user.name}</div>
+              <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
+            </div>
+          </Link>
+        ) : (
+          <div className="neu-sm p-3 flex items-center gap-3">
+            <Avatar name={user.name} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold truncate">{user.name}</div>
+              <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
+            </div>
           </div>
-        </div>
+        )}
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable transition-all text-xs font-bold text-red-500"

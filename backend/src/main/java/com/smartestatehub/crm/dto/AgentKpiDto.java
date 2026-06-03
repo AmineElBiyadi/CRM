@@ -5,5 +5,6 @@ public record AgentKpiDto(
     long weekMeetings,
     long pendingContracts,
     int avgLeadScore,
-    int monthlyScore
+    int monthlyScore,
+    long totalClosings
 ) {}

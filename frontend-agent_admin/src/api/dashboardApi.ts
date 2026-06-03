@@ -45,12 +45,16 @@ export interface AgentKpiDto {
   pendingContracts: number;
   avgLeadScore: number;
   monthlyScore: number;
+  totalClosings: number;
 }
 
 export interface AgentDashboardDto {
   agentFirstName: string;
   agentFullName: string;
   agentRole: string;
+  agentEmail: string;
+  agentPhone: string;
+  agentCreatedAt: string;
   kpis: AgentKpiDto;
   todayMeetings: MeetingDto[];
   priorities: DealPriorityDto[];

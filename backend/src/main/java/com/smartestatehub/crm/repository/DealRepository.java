@@ -116,4 +116,6 @@ public interface DealRepository extends JpaRepository<Deal, UUID> {
 
     @Query("SELECT MIN(d.createdAt) FROM Deal d WHERE d.deletedAt IS NULL")
     LocalDateTime findEarliestDealCreatedAt();
+
+    long countByClientFolder_AssignedAgent_IdUserAndStageAndDeletedAtIsNull(UUID agentId, DealStage stage);
 }
