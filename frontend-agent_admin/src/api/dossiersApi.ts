@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getCsrfToken } from '@/lib/csrf';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
 });
 
@@ -24,32 +24,6 @@ api.interceptors.request.use((config) => {
 export type ClientType = 'BUYER' | 'SELLER';
 export type DealStage = 'COLD' | 'WARM' | 'HOT' | 'NEGOTIATION' | 'CLOSED' | 'LOST';
 export type InteractionType = 'CALL' | 'VISIT' | 'EMAIL' | 'MEETING' | 'NOTE' | 'SYSTEM';
-export type MeetingType = 'PROPERTY_VISIT' | 'PHONE_CALL' | 'OFFICE_APPOINTMENT' | 'CONTRACT_SIGNING';
-
-export interface MeetingItem {
-  idMeeting: string;
-  idDeal: string;
-  scheduledAt: string; // ISO-8601
-  clientFullName: string;
-  type: string; // French label
-  status: 'SCHEDULED' | 'PENDING' | 'IN_PROGRESS' | 'RESCHEDULED' | 'POSTPONED' | 'CANCELED' | 'COMPLETED' | 'MISSED' | 'DRAFT';
-  notes: string | null;
-  propertyAddress: string | null;
-}
-
-export interface CreateMeetingDto {
-  idDeal: string;
-  type: MeetingType;
-  scheduledAt: string; // ISO-8601
-  notes?: string;
-  propertyAddress?: string;
-  status?: MeetingItem['status'];
-}
-
-export interface UpdateMeetingStatusDto {
-  newStatus?: MeetingItem['status'];
-  newScheduledAt?: string; // ISO-8601
-}
 
 export interface DossierSummary {
   idDeal: string | null;
@@ -152,6 +126,8 @@ export interface DossierDetail {
   aiScoreExplanation: string;
   aiRecommendedAction: string;
   aiSummary: string;
+  aiStageSuggestion?: DealStage;
+  aiStageSuggestionReason?: string;
   isUrgent: boolean;
   budgetMin: number;
   budgetMax: number;
@@ -225,27 +201,6 @@ export const logInteraction = async (request: CreateInteractionRequest): Promise
   return response.data;
 };
 
-export const fetchDealMeetings = async (idDeal: string): Promise<MeetingItem[]> => {
-  const response = await api.get<MeetingItem[]>(`/api/agent/meetings/deal/${idDeal}`);
-  return response.data;
-};
-
-export const fetchWeekMeetings = async (): Promise<MeetingItem[]> => {
-  const response = await api.get<MeetingItem[]>('/api/agent/meetings/week');
-  return response.data;
-};
-
-export const fetchMonthMeetings = async (year: number, month: number): Promise<MeetingItem[]> => {
-  const response = await api.get<MeetingItem[]>(`/api/agent/meetings/month?year=${year}&month=${month}`);
-  return response.data;
-};
-
-
-export const createMeeting = async (request: CreateMeetingDto): Promise<MeetingItem> => {
-  const response = await api.post<MeetingItem>('/api/agent/meetings', request);
-  return response.data;
-};
-
 export const updateDealStage = async (idDeal: string, stage: DealStage): Promise<DossierDetail> => {
   const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/stage?stage=${stage}`);
   return response.data;
@@ -255,13 +210,9 @@ export const confirmDossier = async (id: string, data: any): Promise<void> => {
   await api.patch(`/api/dossiers/${id}/confirm`, data);
 };
 
-export const updateMeetingStatus = async (meetingId: string, request: UpdateMeetingStatusDto): Promise<MeetingItem> => {
-  const response = await api.patch<MeetingItem>(`/api/agent/meetings/${meetingId}/status`, request);
+export const dismissStageSuggestion = async (idDeal: string): Promise<DossierDetail> => {
+  const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/dismiss-suggestion`);
   return response.data;
-};
-
-export const deleteMeeting = async (meetingId: string): Promise<void> => {
-  await api.delete(`/api/agent/meetings/${meetingId}`);
 };
 
 export const fetchAdminAgents = async (): Promise<AdminAgent[]> => {

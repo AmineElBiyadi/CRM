@@ -12,6 +12,7 @@ import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.DealStage;
 import com.smartestatehub.crm.repository.ContractRepository;
 import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.crm.repository.DealStageUpdateRepository;
 import com.smartestatehub.crm.repository.MeetingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -34,6 +35,7 @@ public class DashboardService {
     private final DealRepository dealRepository;
     private final ContractRepository contractRepository;
     private final MeetingRepository meetingRepository;
+    private final DealStageUpdateRepository stageUpdateRepository;
     private final MeetingService meetingService;
     private final ClientService clientService;
 
@@ -63,8 +65,16 @@ public class DashboardService {
         Double avgScore = dealRepository.avgLeadScoreByAgent(agentId);
         int avgLeadScore = avgScore != null ? (int) Math.round(avgScore) : 0;
         
-        // Score mensuel (exemple : basé sur l'activité ou fixé à 87 pour la démo mais récupéré du backend)
-        int monthlyScore = 87; 
+        // 3. Score mensuel (Taux de conversion : CLOS / (Actifs + CLOS + LOST ce mois))
+        LocalDateTime monthStart = LocalDate.now().with(TemporalAdjusters.firstDayOfMonth()).atStartOfDay();
+        long wonThisMonth = stageUpdateRepository.countUniqueDealsByStageSince(agentId, "CLOSED", monthStart);
+        long lostThisMonth = stageUpdateRepository.countUniqueDealsByStageSince(agentId, "LOST", monthStart);
+        
+        long totalManagedThisMonth = activeClients + wonThisMonth + lostThisMonth;
+        int monthlyScore = 0;
+        if (totalManagedThisMonth > 0) {
+            monthlyScore = (int) Math.round((double) wonThisMonth / totalManagedThisMonth * 100);
+        }
 
         AgentKpiDto kpis = new AgentKpiDto(activeClients, weekMeetings, pendingContracts, avgLeadScore, monthlyScore);
 

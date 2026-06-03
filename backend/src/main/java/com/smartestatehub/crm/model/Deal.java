@@ -46,6 +46,14 @@ public class Deal {
     @Column(nullable = false, columnDefinition = "deal_stage")
     private DealStage stage = DealStage.COLD;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "ai_stage_suggestion", columnDefinition = "deal_stage")
+    private DealStage aiStageSuggestion;
+
+    @Column(name = "ai_stage_suggestion_reason", columnDefinition = "TEXT")
+    private String aiStageSuggestionReason;
+
     @Column(name = "last_interaction_at")
     private LocalDateTime lastInteractionAt;
 
@@ -81,4 +89,7 @@ public class Deal {
 
     @OneToMany(mappedBy = "deal", cascade = CascadeType.ALL)
     private List<DealAssignment> assignments;
+
+    @OneToMany(mappedBy = "deal", cascade = CascadeType.ALL)
+    private List<Document> documents;
 }

@@ -2,26 +2,29 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState, useEffect, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
+  api,
   fetchDossierDetail, 
   fetchInteractions, 
   logInteraction as apiLogInteraction,
-  fetchDealMeetings,
   fetchPropertyTypes,
-  createMeeting as apiCreateMeeting,
   updateDossier as apiUpdateDossier,
   updateDealStage as apiUpdateDealStage,
-  updateMeetingStatus as apiUpdateMeetingStatus,
-  deleteMeeting as apiDeleteMeeting,
   type InteractionType,
   type CreateInteractionRequest,
   type UpdateDossierRequest,
-  type MeetingType,
-  type CreateMeetingDto,
   type DealStage,
-  type MeetingItem,
-  type UpdateMeetingStatusDto,
   type AssignmentHistory
 } from "@/api/dossiersApi";
+import {
+  fetchDealMeetings,
+  createMeeting as apiCreateMeeting,
+  updateMeetingStatus as apiUpdateMeetingStatus,
+  deleteMeeting as apiDeleteMeeting,
+  type MeetingType,
+  type CreateMeetingDto,
+  type MeetingItem,
+  type UpdateMeetingStatusDto
+} from "@/api/meetingApi";
 // @ts-ignore
 import { getPropertiesByDeal } from "@/api/propertyApi";
 // @ts-ignore
@@ -257,10 +260,7 @@ export function DossierDetailPage({
       const [contractsList, props, documents] = await Promise.all([
         getContractsByDeal(id),
         getPropertiesByDeal(id),
-        fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/deal/${id}`, { 
-          credentials: 'include', 
-          cache: 'no-store' 
-        }).then(res => res.json())
+        api.get(`/api/documents/deal/${id}`).then(res => res.data)
       ]);
       setContracts(contractsList || []);
       setLinkedProperties(props || []);
@@ -287,12 +287,11 @@ export function DossierDetailPage({
     formData.append("type", newDocType);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/upload`, {
-        method: "POST",
-        body: formData,
-        credentials: "include"
+      await api.post('/api/documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      if (!res.ok) throw new Error(await res.text());
       toast.success("Document uploadé");
       fetchDossierData();
     } catch (e: any) {
@@ -306,11 +305,7 @@ export function DossierDetailPage({
   const handleRequestDocument = async () => {
     if (!id || !newDocType) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/request?dealId=${id}&type=${newDocType}`, {
-        method: "POST",
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await api.post(`/api/documents/request?dealId=${id}&type=${newDocType}`);
       toast.success("Demande de document enregistrée");
       fetchDossierData();
     } catch (e: any) {
@@ -321,11 +316,7 @@ export function DossierDetailPage({
   const handleDeleteDocument = async (docId: string) => {
     if (!confirm("Voulez-vous vraiment supprimer ce document ?")) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8081"}/api/documents/${docId}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await api.delete(`/api/documents/${docId}`);
       toast.success("Document supprimé");
       fetchDossierData();
     } catch (e: any) {

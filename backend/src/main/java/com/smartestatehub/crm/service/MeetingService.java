@@ -2,6 +2,7 @@ package com.smartestatehub.crm.service;
 
 import com.smartestatehub.crm.dto.CreateMeetingRequest;
 import com.smartestatehub.crm.dto.MeetingDto;
+import com.smartestatehub.crm.dto.UpdateMeetingStatusRequest;
 import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.Meeting;
 import com.smartestatehub.crm.model.MeetingStatus;
@@ -115,16 +116,18 @@ public class MeetingService {
                 ? meeting.getScheduledAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                 : null;
 
-        return new MeetingDto(
-            meeting.getIdMeeting(),
-            idDeal,
-            formattedTime,
-            clientName,
-            mapTypeToFrench(meeting.getType()),
-            meeting.getStatus() != null ? meeting.getStatus().name() : "PENDING",
-            meeting.getNotesLogged(),
-            meeting.getPropertyAddress()
-        );
+        return MeetingDto.builder()
+            .idMeeting(meeting.getIdMeeting())
+            .idDeal(idDeal)
+            .scheduledAt(formattedTime)
+            .clientFullName(clientName)
+            .type(mapTypeToFrench(meeting.getType()))
+            .status(meeting.getStatus() != null ? meeting.getStatus().name() : "PENDING")
+            .notesLogged(meeting.getNotesLogged())
+            .propertyAddress(meeting.getPropertyAddress())
+            .reminder1hSent(meeting.isReminder1hSent())
+            .reminder24hSent(meeting.isReminder24hSent())
+            .build();
     }
 
     private String mapTypeToFrench(MeetingType type) {

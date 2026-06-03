@@ -2,6 +2,11 @@ package com.smartestatehub.crm.service;
 
 import com.smartestatehub.auth.model.InternalUser;
 import com.smartestatehub.auth.repository.UserRepository;
+import com.smartestatehub.crm.dto.ContractDto;
+import com.smartestatehub.crm.dto.CreateDossierRequest;
+import com.smartestatehub.crm.dto.DossierDetailDto;
+import com.smartestatehub.crm.dto.DossierSummaryDto;
+import com.smartestatehub.crm.dto.UpdateDossierRequest;
 import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
@@ -25,6 +30,8 @@ public class DealService {
     private final UserRepository userRepository;
     private final ClientFolderRepository clientFolderRepository;
     private final PropertyTypeRepository propertyTypeRepository;
+    private final ContractRepository contractRepository;
+    private final DealStageUpdateRepository dealStageUpdateRepository;
     private final DealAssignmentRepository dealAssignmentRepository;
 
 
@@ -140,13 +147,29 @@ public class DealService {
         Deal deal = Deal.builder()
                 .clientFolder(folder)
                 .stage(DealStage.COLD)
-                .aiLeadScore((int) (Math.random() * 20) + 50) // Mock initial score 50-70
-                .aiRecommendedAction("Analyser les besoins et proposer une première sélection.")
-                .aiSummary("Nouveau dossier " + request.getType() + " créé.")
+                .aiLeadScore(0)
+                .aiRecommendedAction("En attente de la première interaction pour analyse.")
+                .aiSummary("Nouveau dossier créé. En attente d'interactions.")
                 .isUrgent(false)
                 .build();
         
         deal = dealRepository.save(deal);
+
+        // Journaliser le premier stage
+        dealStageUpdateRepository.save(DealStageUpdate.builder()
+                .deal(deal)
+                .fromStage(null)
+                .toStage(DealStage.COLD)
+                .user(agent)
+                .build());
+
+        // Journaliser la première affectation
+        dealAssignmentRepository.save(DealAssignment.builder()
+                .deal(deal)
+                .user(agent)
+                .assignedAt(java.time.LocalDateTime.now())
+                .reason("Création du dossier")
+                .build());
 
         return mapToSummaryDto(deal);
     }
@@ -204,6 +227,8 @@ public class DealService {
                     .aiScoreExplanation(deal.getAiScoreExplanation())
                     .aiRecommendedAction(deal.getAiRecommendedAction())
                     .aiSummary(deal.getAiSummary())
+                    .aiStageSuggestion(deal.getAiStageSuggestion())
+                    .aiStageSuggestionReason(deal.getAiStageSuggestionReason())
                     .isUrgent(deal.getIsUrgent())
                     .lastInteractionAt(deal.getLastInteractionAt());
         } else {
@@ -218,9 +243,9 @@ public class DealService {
             BuyerFolder buyer = folder.getBuyerFolder();
             builder.budgetMin(buyer.getBudgetMin())
                     .budgetMax(buyer.getBudgetMax())
-                    .preferredArea(buyer.getPreferredArea())
                     .preferredSizeM2(buyer.getPreferredSizeM2())
                     .preferredFloor(buyer.getPreferredFloor())
+                    .preferredArea(buyer.getPreferredArea())
                     .propertyType(buyer.getPropertyType() != null ? buyer.getPropertyType().getSpecificType() : null);
         } else if (folder.getClientType() == ClientType.SELLER && folder.getSellerFolder() != null) {
             SellerFolder seller = folder.getSellerFolder();
@@ -243,7 +268,46 @@ public class DealService {
             }
         }
 
+        if (deal != null && deal.getDocuments() != null) {
+            builder.documents(deal.getDocuments().stream()
+                    .filter(doc -> doc.getDeletedAt() == null)
+                    .map(this::mapToDocumentDto)
+                    .collect(java.util.stream.Collectors.toList()));
+        }
+
+        if (deal != null) {
+            List<Contract> contracts = contractRepository.findByDealIdActive(deal.getIdDeal());
+            builder.contracts(contracts.stream()
+                    .map(this::mapToContractDto)
+                    .collect(java.util.stream.Collectors.toList()));
+        }
+
         return builder.build();
+    }
+
+    private ContractDto.Response mapToContractDto(Contract c) {
+        return ContractDto.Response.builder()
+                .idContract(c.getIdContract())
+                .agreedPrice(c.getAgreedPrice())
+                .depositAmount(c.getDepositAmount())
+                .status(c.getStatus())
+                .sentAt(c.getSentAt())
+                .signedAt(c.getSignedAt())
+                .aiRiskSummary(c.getAiRiskSummary())
+                .createdAt(c.getCreatedAt())
+                .pdfUrl(c.getPdfUrl())
+                .build();
+    }
+
+    private com.smartestatehub.crm.dto.DocumentDto mapToDocumentDto(Document d) {
+        return com.smartestatehub.crm.dto.DocumentDto.builder()
+                .idDocument(d.getIdDocument())
+                .documentType(d.getDocumentType().name())
+                .filePath(d.getFilePath())
+                .confirmedReceived(d.isConfirmedReceived())
+                .createdAt(d.getCreatedAt())
+                .dealId(d.getDeal().getIdDeal())
+                .build();
     }
 
     private List<AssignmentHistoryDto> mapAssignmentsToDto(Deal deal) {
@@ -374,27 +438,39 @@ public class DealService {
     }
 
     @Transactional
-    public DossierDetailDto updateDealStage(UUID id, DealStage newStage) {
-        // Try to find by deal ID first
-        Optional<Deal> dealOpt = dealRepository.findById(id);
-        Deal deal;
+    public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage, UUID userId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+        
+        InternalUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        if (dealOpt.isPresent()) {
-            deal = dealOpt.get();
-        } else {
-            // Fall back to ClientFolder (idProfile)
-            ClientFolder folder = clientFolderRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Dossier not found: " + id));
-            deal = folder.getDeals().stream()
-                    .filter(d -> d.getDeletedAt() == null)
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("No active deal found for folder: " + id));
-        }
-
+        DealStage oldStage = deal.getStage();
         deal.setStage(newStage);
         deal = dealRepository.save(deal);
 
+        // Journaliser le changement de stage
+        dealStageUpdateRepository.save(DealStageUpdate.builder()
+                .deal(deal)
+                .fromStage(oldStage)
+                .toStage(newStage)
+                .user(user)
+                .build());
+
         return getDossierDetail(deal.getIdDeal());
+    }
+
+    
+    @Transactional
+    public DossierDetailDto dismissSuggestion(UUID dealId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+        
+        deal.setAiStageSuggestion(null);
+        deal.setAiStageSuggestionReason(null);
+        dealRepository.save(deal);
+        
+        return getDossierDetail(dealId);
     }
 
     private DossierSummaryDto mapToSummaryDto(Deal deal) {

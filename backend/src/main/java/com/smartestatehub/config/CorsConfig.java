@@ -33,10 +33,13 @@ public class CorsConfig implements WebMvcConfigurer {
                 "http://localhost:3000"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+
+        // En-têtes autorisés (incluant X-Agent-Id et X-Client-Id pour les tests en dev)
         configuration.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
                 "X-Agent-Id",
+                "X-Client-Id",
                 "X-CSRF-Token",
                 "Accept",
                 "Origin"

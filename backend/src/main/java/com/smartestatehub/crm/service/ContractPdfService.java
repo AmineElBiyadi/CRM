@@ -34,8 +34,19 @@ public class ContractPdfService {
             renderer.createPDF(out);
             byte[] pdfBytes = out.toByteArray();
 
-            String publicId = "contract-" + contract.getIdContract().toString();
-            String url = cloudinaryService.upload(pdfBytes, publicId, "contracts", "raw");
+            String clientName = "Client";
+            if (contract.getDeal() != null && contract.getDeal().getClientFolder() != null && contract.getDeal().getClientFolder().getClient() != null) {
+                clientName = contract.getDeal().getClientFolder().getClient().getFirstName() + "_"
+                        + contract.getDeal().getClientFolder().getClient().getLastName();
+            }
+            // Nettoyage du nom pour éviter les caractères spéciaux
+            String cleanClientName = clientName.replaceAll("[^a-zA-Z0-9_-]", "_");
+            String publicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + ".pdf";
+            
+            // On utilise "image" pour que Cloudinary permette la visualisation directe du PDF.
+            // On s'assure que le publicId ne contient AUCUNE extension .pdf pour éviter le .pdf.pdf
+            String basePublicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+            String url = cloudinaryService.upload(pdfBytes, basePublicId, "contracts", "image");
             log.info("PDF contrat uploadé sur Cloudinary: {}", url);
             return url;
 
@@ -135,6 +146,12 @@ public class ContractPdfService {
                     </p>
                   </div>
                   """ : "") + """
+
+                  <div style="font-style: italic; font-size: 10px; color: #666; text-align: justify; margin: 20px 0;">
+                    En signant ce contrat, vous vous engagez formellement à en respecter l'intégralité des clauses.
+                    Toute inexécution ou manquement aux obligations stipulées dans le présent acte pourra entraîner
+                    des conséquences juridiques et financières importantes, conformément à la législation en vigueur.
+                  </div>
 
                   <div class="section" style="margin-top:50px;">
                     <table width="100%"><tr>

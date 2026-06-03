@@ -41,6 +41,12 @@ public class ContractService {
                 .orElseThrow(
                         () -> new IllegalArgumentException("Dossier client (Deal) non trouvé avec l'ID: " + dealId));
 
+        // Vérification : Un seul contrat par dossier
+        List<Contract> existingContracts = contractRepository.findByDealIdActive(dealId);
+        if (!existingContracts.isEmpty()) {
+            throw new IllegalStateException("Un contrat existe déjà pour ce dossier. Veuillez supprimer le brouillon existant ou archiver le contrat actuel avant d'en créer un nouveau.");
+        }
+
         // Récupérer l'offre ACCEPTED pour ce deal (on ne peut générer de contrat formel qu'avec une propriété acceptée)
         Double finalPrice = request.getAgreedPrice();
         String summary = request.getNotes() != null ? request.getNotes() : "Nouveau mandat de recherche.";
@@ -63,6 +69,9 @@ public class ContractService {
                 .deal(deal)
                 .agreedPrice(finalPrice)
                 .depositAmount(request.getDepositAmount())
+                .depositDate(request.getDepositDate())
+                .keyHandoverDate(request.getKeyHandoverDate())
+                .internalNotes(request.getInternalNotes())
                 .status(ContractStatus.DRAFT)
                 .aiRiskSummary(summary)
                 .build();
@@ -181,6 +190,74 @@ public class ContractService {
         return mapToResponse(saved);
     }
 
+    @Transactional
+    public void deleteContract(UUID contractId) {
+        log.info("Suppression du contrat ID: {}", contractId);
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new IllegalArgumentException("Contrat non trouvé avec l'ID: " + contractId));
+
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new IllegalStateException("Seuls les contrats au statut DRAFT peuvent être supprimés.");
+        }
+
+        contractRepository.delete(contract);
+    }
+
+    /**
+     * Met à jour les détails d'un contrat (uniquement au statut DRAFT).
+     */
+    @Transactional
+    public ContractDto.Response updateContract(UUID contractId, ContractDto.CreateRequest request) {
+        log.info("Mise à jour du contrat ID: {}", contractId);
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new IllegalArgumentException("Contrat non trouvé avec l'ID: " + contractId));
+
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new IllegalStateException("Seuls les contrats au statut DRAFT peuvent être modifiés.");
+        }
+
+        // Mise à jour des champs principaux
+        contract.setAgreedPrice(request.getAgreedPrice());
+        contract.setDepositAmount(request.getDepositAmount());
+        contract.setDepositDate(request.getDepositDate());
+        contract.setKeyHandoverDate(request.getKeyHandoverDate());
+        contract.setInternalNotes(request.getInternalNotes());
+
+        // Mise à jour des paiements (on remplace tout pour simplifier la logique de calendrier)
+        if (contract.getPayments() != null) {
+            contract.getPayments().clear();
+        } else {
+            contract.setPayments(new ArrayList<>());
+        }
+
+        if (request.getPayments() != null) {
+            for (ContractDto.PaymentRequest payReq : request.getPayments()) {
+                contract.getPayments().add(ContractPayment.builder()
+                        .contract(contract)
+                        .amount(payReq.getAmount())
+                        .dueDate(payReq.getDueDate())
+                        .paymentOrder(payReq.getPaymentOrder())
+                        .isPaid(false)
+                        .build());
+            }
+        }
+
+        Contract savedContract = contractRepository.save(contract);
+
+        // Régénérer le PDF après modification
+        try {
+            String pdfUrl = contractPdfService.generateAndUpload(savedContract);
+            if (pdfUrl != null) {
+                savedContract.setPdfUrl(pdfUrl);
+                savedContract = contractRepository.save(savedContract);
+            }
+        } catch (Exception e) {
+            log.warn("PDF non régénéré après mise à jour pour contrat {}: {}", savedContract.getIdContract(), e.getMessage());
+        }
+
+        return mapToResponse(savedContract);
+    }
+
     private ContractDto.Response mapToResponse(Contract contract) {
         List<ContractDto.PaymentResponse> paymentResponses = new ArrayList<>();
         if (contract.getPayments() != null) {
@@ -199,6 +276,9 @@ public class ContractService {
                 .idContract(contract.getIdContract())
                 .agreedPrice(contract.getAgreedPrice())
                 .depositAmount(contract.getDepositAmount())
+                .depositDate(contract.getDepositDate())
+                .keyHandoverDate(contract.getKeyHandoverDate())
+                .internalNotes(contract.getInternalNotes())
                 .status(contract.getStatus())
                 .sentAt(contract.getSentAt())
                 .signedAt(contract.getSignedAt())

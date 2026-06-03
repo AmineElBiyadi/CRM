@@ -31,17 +31,21 @@ public class PropertySyncScheduler {
     private final PropertyTypeRepository propertyTypeRepository;
     private final PropertyImageRepository propertyImageRepository;
 
-    private static final List<String> CITIES_TO_SYNC = Arrays.asList("New York", "Los Angeles", "Miami", "Chicago", "Houston");
+    private static final List<String> CITIES_TO_SYNC = Arrays.asList(
+        "New York", "Los Angeles", "Miami", "Chicago", "Houston", 
+        "Bronx", "Brooklyn", "Queens", "Staten Island", "Manhattan"
+    );
     private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family", "farm", "commercial");
 
     /**
-     * Trigger a sync after startup so the DB has data without blocking context initialization.
+     * DÉSACTIVÉ : On ne déclenche plus la synchronisation au démarrage du backend.
+     * La synchronisation se fera uniquement via le @Scheduled toutes les 12 heures.
      */
-    @EventListener(ApplicationReadyEvent.class)
-    public void onApplicationReady() {
-        log.info("Initialisation : Lancement de la première synchronisation des propriétés...");
-        new Thread(this::syncPropertiesFromExternalApi).start();
-    }
+    // @PostConstruct
+    // public void init() {
+    //     log.info("Initialisation : Lancement de la première synchronisation des propriétés (Zillow)...");
+    //     new Thread(this::syncPropertiesFromExternalApi).start();
+    // }
 
     /**
      * Executes every 12 hours (0 0 0/12 * * ?) to keep the DB updated with latest properties
@@ -50,35 +54,53 @@ public class PropertySyncScheduler {
     @Scheduled(cron = "0 0 0/12 * * ?")
     @Transactional
     public void syncPropertiesFromExternalApi() {
-        log.info("Démarrage de la synchronisation automatique des propriétés depuis l'API...");
+        log.info("Démarrage de la synchronisation automatique des propriétés depuis les APIs...");
 
         for (String city : CITIES_TO_SYNC) {
+            // 1. Realty in US (RÉACTIVÉ - NOUVELLE CLÉ)
             for (String propertyType : TYPES_TO_SYNC) {
                 try {
-                    log.info("Synchronisation API pour ville: {}, type: {}", city, propertyType);
+                    log.info("Synchronisation RealtyInUS pour {} ({})", city, propertyType);
                     PropertyDto.SearchResponse response = propertyApiClient.searchProperties(
                             city, propertyType, null, null, null, null, 1);
-
                     if (response != null && response.getResults() != null) {
                         saveExternalProperties(response.getResults(), propertyType);
                     }
                 } catch (Exception e) {
-                    log.error("Erreur lors de la synchronisation des propriétés pour {} ({}): {}", city, propertyType, e.getMessage());
+                    log.error("Erreur sync RealtyInUS pour {} : {}", city, e.getMessage());
                 }
+            }
+
+            // 2. Zillow (Commercial & Land)
+            try {
+                log.info("Synchronisation Zillow pour {} (Type: Land)", city);
+                PropertyDto.SearchResponse zillowLand = propertyApiClient.searchZillowProperties(city, "land", 1);
+                if (zillowLand != null && zillowLand.getResults() != null) {
+                    saveExternalProperties(zillowLand.getResults(), "land");
+                }
+
+                log.info("Synchronisation Zillow pour {} (Type: Commercial)", city);
+                PropertyDto.SearchResponse zillowComm = propertyApiClient.searchZillowProperties(city, "commercial", 1);
+                if (zillowComm != null && zillowComm.getResults() != null) {
+                    saveExternalProperties(zillowComm.getResults(), "commercial");
+                }
+            } catch (Exception e) {
+                log.error("Erreur sync Zillow pour {} : {}", city, e.getMessage());
             }
         }
         
-        log.info("Synchronisation automatique des propriétés terminée.");
+        log.info("Synchronisation automatique multisources terminée.");
     }
 
     private void saveExternalProperties(List<PropertyDto.ExternalResult> externalResults, String requestedApiType) {
         // Map API types to our general/specific types
         String generalType = "Residential Properties";
         String specificType = "House";
+        boolean isLand = "land".equalsIgnoreCase(requestedApiType);
 
         if ("condo".equalsIgnoreCase(requestedApiType) || "apartment".equalsIgnoreCase(requestedApiType)) {
             specificType = "Apartment / Flat";
-        } else if ("land".equalsIgnoreCase(requestedApiType)) {
+        } else if (isLand) {
             generalType = "Land";
             specificType = "Vacant Land";
         } else if ("multi_family".equalsIgnoreCase(requestedApiType)) {
@@ -113,8 +135,8 @@ public class PropertySyncScheduler {
                     .city(extProp.getCity())
                     .price(extProp.getPrice())
                     .surfaceM2(extProp.getSurfaceM2())
-                    .numRooms(extProp.getNumRooms())
-                    .floor(extProp.getFloor())
+                    .numRooms(isLand ? 0 : extProp.getNumRooms())
+                    .floor(isLand ? 0 : extProp.getFloor())
                     .latitude(extProp.getLatitude())
                     .longitude(extProp.getLongitude())
                     .listingUrl(extProp.getListingUrl())

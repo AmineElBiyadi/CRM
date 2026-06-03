@@ -74,4 +74,26 @@ public class ContractController {
         ContractDto.Response response = contractService.markPaymentAsPaid(contractId, paymentId);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * DELETE /api/contracts/{contractId}
+     * Supprime un contrat (uniquement s'il est au statut DRAFT).
+     */
+    @DeleteMapping("/{contractId}")
+    public ResponseEntity<Void> deleteContract(@PathVariable("contractId") UUID contractId) {
+        contractService.deleteContract(contractId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * PUT /api/contracts/{contractId}
+     * Modifie un contrat existant (uniquement s'il est au statut DRAFT).
+     */
+    @PutMapping("/{contractId}")
+    public ResponseEntity<ContractDto.Response> updateContract(
+            @PathVariable("contractId") UUID contractId,
+            @RequestBody ContractDto.CreateRequest request) {
+        ContractDto.Response response = contractService.updateContract(contractId, request);
+        return ResponseEntity.ok(response);
+    }
 }
