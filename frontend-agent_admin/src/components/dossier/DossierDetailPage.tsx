@@ -5,23 +5,25 @@ import {
   fetchDossierDetail, 
   fetchInteractions, 
   logInteraction as apiLogInteraction,
-  fetchDealMeetings,
   fetchPropertyTypes,
-  createMeeting as apiCreateMeeting,
   updateDossier as apiUpdateDossier,
   updateDealStage as apiUpdateDealStage,
-  updateMeetingStatus as apiUpdateMeetingStatus,
-  deleteMeeting as apiDeleteMeeting,
   type InteractionType,
   type CreateInteractionRequest,
   type UpdateDossierRequest,
-  type MeetingType,
-  type CreateMeetingDto,
   type DealStage,
-  type MeetingItem,
-  type UpdateMeetingStatusDto,
   type AssignmentHistory
 } from "@/api/dossiersApi";
+import {
+  fetchDealMeetings,
+  createMeeting as apiCreateMeeting,
+  updateMeetingStatus as apiUpdateMeetingStatus,
+  deleteMeeting as apiDeleteMeeting,
+  type MeetingType,
+  type CreateMeetingDto,
+  type MeetingItem,
+  type UpdateMeetingStatusDto,
+} from "@/api/meetingApi";
 // @ts-ignore
 import { getPropertiesByDeal } from "@/api/propertyApi";
 // @ts-ignore
