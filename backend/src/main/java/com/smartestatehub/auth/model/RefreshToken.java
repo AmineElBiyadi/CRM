@@ -36,6 +36,9 @@ public class RefreshToken {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "remember_me", nullable = false)
+    private boolean rememberMe;
+
     @Column(nullable = false)
     private boolean revoked;
 

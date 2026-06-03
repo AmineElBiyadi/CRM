@@ -10,11 +10,12 @@ import com.smartestatehub.crm.repository.PropertyRepository;
 import com.smartestatehub.crm.repository.PropertyTypeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -37,14 +38,14 @@ public class PropertySyncScheduler {
     private static final List<String> TYPES_TO_SYNC = Arrays.asList("single_family", "condo", "land", "multi_family", "farm", "commercial");
 
     /**
-     * Trigger a sync on startup to ensure the DB has data immediately.
-     * DÉSACTIVÉ (Synchronisation initiale effectuée).
+     * DÉSACTIVÉ : On ne déclenche plus la synchronisation au démarrage du backend.
+     * La synchronisation se fera uniquement via le @Scheduled toutes les 12 heures.
      */
-    //@PostConstruct
-    public void init() {
-        log.info("Initialisation : Lancement de la première synchronisation des propriétés (Zillow)...");
-        new Thread(this::syncPropertiesFromExternalApi).start();
-    }
+    // @PostConstruct
+    // public void init() {
+    //     log.info("Initialisation : Lancement de la première synchronisation des propriétés (Zillow)...");
+    //     new Thread(this::syncPropertiesFromExternalApi).start();
+    // }
 
     /**
      * Executes every 12 hours (0 0 0/12 * * ?) to keep the DB updated with latest properties
@@ -56,23 +57,19 @@ public class PropertySyncScheduler {
         log.info("Démarrage de la synchronisation automatique des propriétés depuis les APIs...");
 
         for (String city : CITIES_TO_SYNC) {
-            // 1. Realty in US (DÉSACTIVÉ TEMPORAIREMENT - QUOTA MAX)
-            /*
+            // 1. Realty in US (RÉACTIVÉ - NOUVELLE CLÉ)
             for (String propertyType : TYPES_TO_SYNC) {
                 try {
+                    log.info("Synchronisation RealtyInUS pour {} ({})", city, propertyType);
                     PropertyDto.SearchResponse response = propertyApiClient.searchProperties(
                             city, propertyType, null, null, null, null, 1);
                     if (response != null && response.getResults() != null) {
                         saveExternalProperties(response.getResults(), propertyType);
                     }
-                    
-                    // Ajouter un délai de 2 secondes entre les appels pour éviter le "Too Many Requests" (HTTP 429)
-                    Thread.sleep(2000); 
                 } catch (Exception e) {
                     log.error("Erreur sync RealtyInUS pour {} : {}", city, e.getMessage());
                 }
             }
-            */
 
             // 2. Zillow (Commercial & Land)
             try {
