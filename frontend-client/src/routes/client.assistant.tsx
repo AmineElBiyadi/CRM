@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, ArrowUp, FileText, Loader2 } from "lucide-react";
+import { Sparkles, ArrowUp, FileText, Loader2, Square } from "lucide-react";
 import { useClientData } from "@/hooks/use-client-data";
 import { ragApi } from "@/api/ragApi";
 
@@ -27,11 +27,12 @@ function ClientAssistant() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (data?.profile && messages.length === 0) {
       setMessages([
-        { role: "ai", text: `Bonjour M. ${data.profile.lastName} ! Je suis votre assistant SmartEstate. Posez-moi toutes vos questions sur vos dossiers, vos rendez-vous ou vos documents.` },
+        { role: "ai", text: `Bonjour M. ${data.profile.lastName} ! Je suis MURSHID, votre assistant SmartEstate expert. Posez-moi toutes vos questions sur vos dossiers, vos rendez-vous ou vos documents.` },
       ]);
     }
   }, [data, messages.length]);
@@ -42,6 +43,15 @@ function ClientAssistant() {
     }
   }, [messages, isLoading]);
 
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      setMessages((m) => [...m, { role: "ai", text: "Génération interrompue." }]);
+    }
+  };
+
   const send = async (text: string) => {
     if (!text.trim() || isLoading) return;
     
@@ -50,21 +60,35 @@ function ClientAssistant() {
     setInput("");
     setIsLoading(true);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      const response = await ragApi.askGlobalQuestion(text);
+      const history = messages.map(m => ({ 
+        role: m.role === "ai" ? "assistant" : "user", 
+        content: m.text 
+      }));
+      
+      const response = await ragApi.askGlobalQuestion(text, history);
+      if (controller.signal.aborted) return;
+
       const aiMsg: Msg = { 
         role: "ai", 
         text: response.answer,
         sources: response.sources 
       };
       setMessages((m) => [...m, aiMsg]);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error("AI Assistant Error:", error);
       setMessages((m) => [...m, { 
         role: "ai", 
         text: "Désolé, je rencontre une difficulté technique pour accéder à vos informations. Veuillez réessayer plus tard." 
       }]);
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsLoading(false);
     }
   };
@@ -76,8 +100,8 @@ function ClientAssistant() {
           <Sparkles size={24} className="text-eerie" />
         </div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-eerie">Assistant IA</h1>
-          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest opacity-60">Votre espace, à portée de question</p>
+          <h1 className="text-3xl font-black tracking-tight text-eerie uppercase tracking-[0.2em]">MURSHID</h1>
+          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest opacity-60">Votre expert IA personnel</p>
         </div>
       </div>
 
@@ -155,11 +179,15 @@ function ClientAssistant() {
             disabled={isLoading}
           />
           <button
-            onClick={() => send(input)}
-            disabled={isLoading || !input.trim()}
-            className="w-12 h-12 rounded-2xl bg-eerie text-white flex items-center justify-center hover:bg-black transition-all shadow-lg active:scale-90 disabled:opacity-50 shrink-0"
+            onClick={() => isLoading ? handleStop() : send(input)}
+            disabled={!isLoading && !input.trim()}
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-90 shrink-0 ${
+              isLoading 
+                ? "bg-red-50 text-red-500 hover:bg-red-100 border border-red-100" 
+                : "bg-eerie text-white hover:bg-black disabled:opacity-50"
+            }`}
           >
-            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowUp size={20} />}
+            {isLoading ? <Square size={18} fill="currentColor" /> : <ArrowUp size={20} />}
           </button>
         </div>
         <p className="text-[10px] text-center text-muted-foreground font-bold uppercase tracking-[0.2em] opacity-40">

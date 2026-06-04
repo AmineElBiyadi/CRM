@@ -30,6 +30,16 @@ export interface DocumentQueryRequest {
   query: string;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ClientQueryRequest {
+  query: string;
+  history: ChatMessage[];
+}
+
 export interface ChatResponse {
   answer: string;
   sources?: string[];
@@ -43,8 +53,8 @@ export const ragApi = {
     const { data } = await api.post<ChatResponse>('/api/rag/chat', { dealId, query });
     return data;
   },
-  askGlobalQuestion: async (query: string): Promise<ChatResponse> => {
-    const { data } = await api.post<ChatResponse>('/api/rag/chat-global', { query });
+  askGlobalQuestion: async (query: string, history: ChatMessage[] = []): Promise<ChatResponse> => {
+    const { data } = await api.post<ChatResponse>('/api/rag/chat-global', { query, history });
     return data;
   }
 };

@@ -267,6 +267,7 @@ public class ClientPortalService {
                 .collect(Collectors.toList()) : List.of());
 
         dto.setOffers(deal.getOffers() != null ? deal.getOffers().stream()
+                .filter(o -> o.getProperty() != null)
                 .map(this::mapToOfferDetailDto)
                 .collect(Collectors.toList()) : List.of());
 
@@ -282,7 +283,9 @@ public class ClientPortalService {
         // For properties, we can show those linked to offers or those visited
         Set<Property> dealProperties = new HashSet<>();
         if (deal.getOffers() != null) {
-            deal.getOffers().forEach(o -> dealProperties.add(o.getProperty()));
+            deal.getOffers().stream()
+                .filter(o -> o.getProperty() != null)
+                .forEach(o -> dealProperties.add(o.getProperty()));
         }
         // Also add properties from meetings if they were visits
         if (deal.getMeetings() != null) {
@@ -368,6 +371,7 @@ public class ClientPortalService {
 
     private OfferDetailDto mapToOfferDetailDto(Offer o) {
         Property p = o.getProperty();
+        if (p == null) return null; // skip offers with no linked local property
         return OfferDetailDto.builder()
                 .idOffer(o.getIdOffer())
                 .offerAmount(o.getOfferAmount())
@@ -421,9 +425,17 @@ public class ClientPortalService {
         DateTimeFormatter iso = DateTimeFormatter.ISO_DATE_TIME;
 
         for (Interaction i : interactions) {
+            String title = "Interaction";
+            try {
+                if (i.getType() != null) {
+                    title = i.getType().name();
+                }
+            } catch (Exception e) {
+                // handle potential proxy issues
+            }
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("INTERACTION")
-                    .title(i.getType() != null ? i.getType().name() : "Interaction")
+                    .title(title)
                     .description(i.getDescription())
                     .date(i.getOccurredAt() != null ? i.getOccurredAt().format(iso) : null)
                     .agentName(i.getUser() != null ? i.getUser().getFirstName() + " " + i.getUser().getLastName() : "Système")
@@ -431,9 +443,17 @@ public class ClientPortalService {
         }
 
         for (Meeting m : meetings) {
+            String titleSuffix = "Autre";
+            try {
+                if (m.getType() != null) {
+                    titleSuffix = m.getType().name();
+                }
+            } catch (Exception e) {
+                // handle potential proxy issues
+            }
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("MEETING")
-                    .title("Rendez-vous : " + (m.getType() != null ? m.getType().name() : "Autre"))
+                    .title("Rendez-vous : " + titleSuffix)
                     .description(m.getNotesLogged())
                     .date(m.getScheduledAt() != null ? m.getScheduledAt().format(iso) : null)
                     .status(m.getStatus() != null ? m.getStatus().name() : "PENDING")
@@ -441,10 +461,18 @@ public class ClientPortalService {
         }
 
         for (Document d : documents) {
+            String typeName = "Autre";
+            try {
+                if (d.getDocumentType() != null) {
+                    typeName = d.getDocumentType().name();
+                }
+            } catch (Exception e) {
+                // handle potential proxy issues
+            }
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("DOCUMENT")
                     .title("Document " + (d.isConfirmedReceived() ? "reçu" : "attendu"))
-                    .description(d.getDocumentType() != null ? d.getDocumentType().name() : "Autre")
+                    .description(typeName)
                     .date(d.getCreatedAt() != null ? d.getCreatedAt().format(iso) : null)
                     .build());
         }

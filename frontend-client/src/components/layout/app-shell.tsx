@@ -200,7 +200,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
           <Outlet />
         </main>
       </div>
-      {space === "client" && !location.pathname.includes("/client/assistant") && <RagChatWidget />}
+      {space === "client" && <RagChatWidget />}
     </div>
   );
 }

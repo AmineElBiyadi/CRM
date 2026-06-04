@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/app-shell";
-import { Home, FileText, Bot, Calendar, Folder } from "lucide-react";
+import { Home, FileText, Calendar, Folder } from "lucide-react";
 import { useClientData } from "@/hooks/use-client-data";
 
 const nav = [
@@ -8,7 +8,6 @@ const nav = [
   { to: "/client/dossiers", label: "Mes dossiers", icon: Folder },
   { to: "/client/documents", label: "Mes documents", icon: FileText },
   { to: "/client/rendez-vous", label: "Rendez-vous", icon: Calendar },
-  { to: "/client/assistant", label: "Assistant IA", icon: Bot },
 ];
 
 export const Route = createFileRoute("/client")({

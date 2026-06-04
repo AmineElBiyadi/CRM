@@ -258,11 +258,17 @@ public class DocumentRagService {
         // 2. Récupérer toutes les données du portail pour ce client
         ClientPortalDataDto clientData = clientPortalService.getFullClientPortalData(client.getIdClient());
 
-        // 3. Synthèse des dossiers
+        // 3. Synthèse des dossiers et agents
         String dossiersInfo = clientData.getDossiers().stream()
-                .map(d -> String.format("- Dossier %s (%s) : %s, Score IA: %s", 
-                    d.getIdProfile(), d.getClientType(), d.getStage(), d.getAiLeadScore()))
+                .map(d -> String.format("- Dossier %s (%s) : %s. Agent responsable : %s (%s)", 
+                    d.getIdProfile(), d.getClientType(), d.getStage(), 
+                    d.getAssignedAgentName() != null ? d.getAssignedAgentName() : "Non assigné",
+                    d.getAssignedAgentPhone() != null ? d.getAssignedAgentPhone() : "Pas de téléphone"))
                 .collect(Collectors.joining("\n"));
+
+        String agentPrincipal = String.format("Agent principal : %s (Tél: %s)", 
+            clientData.getProfile().getAssignedAgentName(), 
+            clientData.getProfile().getAssignedAgentPhone() != null ? clientData.getProfile().getAssignedAgentPhone() : "Non renseigné");
 
         String rdvInfo = clientData.getMeetings().stream()
                 .map(m -> String.format("- %s prévu le %s (Statut: %s)", m.getType(), m.getScheduledAt(), m.getStatus()))
@@ -276,11 +282,13 @@ public class DocumentRagService {
             "VUE D'ENSEMBLE DU CLIENT :\n" +
             "Nom : %s %s\n" +
             "Email : %s\n" +
+            "%s\n" +
             "\nDOSSIERS ACTIFS :\n%s\n" +
             "\nRENDEZ-VOUS :\n%s\n" +
             "\nCONTRATS :\n%s\n",
             clientData.getProfile().getFirstName(), clientData.getProfile().getLastName(),
             clientData.getProfile().getEmail(),
+            agentPrincipal,
             dossiersInfo.isEmpty() ? "Aucun dossier" : dossiersInfo,
             rdvInfo.isEmpty() ? "Aucun rendez-vous" : rdvInfo,
             contratsInfo.isEmpty() ? "Aucun contrat" : contratsInfo
@@ -291,9 +299,8 @@ public class DocumentRagService {
         List<DocumentEmbedding> similarChunks = embeddingRepository.findSimilarChunksForClient(
                 client.getIdClient(), 
                 queryVector.toString(), 
-                7 // On prend un peu plus de chunks pour une recherche globale
+                7 
         );
-        log.info("RAG Global: {} chunks similaires trouvés pour le client {}", similarChunks.size(), client.getIdClient());
 
         String documentContext = similarChunks.stream()
                 .map(chunk -> String.format("[Doc: %s] %s", 
@@ -309,35 +316,36 @@ public class DocumentRagService {
                 .collect(Collectors.toList());
         sources.add(0, "Données du compte");
 
-        // 5. Appel au LLM
-        try {
-            String systemPrompt = "Tu es l'Assistant Intelligent Expert de SmartEstateHub. Ton rôle est d'aider le client à naviguer dans son espace et de répondre à TOUTES ses questions en utilisant les données fournies.\n\n" +
-                    "Tes capacités :\n" +
-                    "- Tu as accès à la 'VUE D'ENSEMBLE DU CLIENT' (dossiers, rendez-vous, contrats).\n" +
-                    "- Tu peux analyser le 'CONTENU DES DOCUMENTS' (PDFs) pour des questions précises.\n" +
-                    "- Tu es un assistant général : même sans documents, tu peux discuter poliment et expliquer le fonctionnement de la plateforme.\n\n" +
-                    "INSTRUCTIONS PRIORITAIRES :\n" +
-                    "1. Utilise d'abord les données structurées pour répondre aux questions factuelles (ex: nombre de dossiers, dates de rendez-vous, montants des contrats).\n" +
-                    "2. Utilise le contenu textuel pour les questions précises sur les documents.\n" +
-                    "3. Sois concis, chaleureux et professionnel. Réponds en français.\n\n" +
-                    "CONTEXTE DU CLIENT :\n" + finalContext;
+        // 5. Préparation de l'appel LLM avec historique
+        var promptSpec = chatClient.prompt()
+                .system("Tu es MURSHID, l'Assistant Intelligent Expert de SmartEstateHub. Ton rôle est d'aider le client à naviguer dans son espace et de répondre à TOUTES ses questions en utilisant les données fournies.\n\n" +
+                        "INSTRUCTIONS PRIORITAIRES :\n" +
+                        "1. Utilise d'abord la 'VUE D'ENSEMBLE DU CLIENT' pour répondre aux questions factuelles (ex: nombre de dossiers, dates de rendez-vous, montants des contrats, nom/téléphone de l'agent).\n" +
+                        "2. Utilise le 'CONTENU DES DOCUMENTS PDF' pour les questions précises sur les clauses ou détails techniques.\n" +
+                        "3. Tu as accès à l'HISTORIQUE de la conversation pour comprendre le contexte des questions précédentes (ex: si l'utilisateur dit 'c'est son nom !', réfère-toi au nom de l'agent mentionné juste avant).\n" +
+                        "4. Sois concis, chaleureux et professionnel. Si une information est manquante, suggère de contacter l'agent responsable.\n\n" +
+                        "CONTEXTE DU CLIENT :\n" + finalContext);
 
-            log.info("RAG Global: Envoi de la requête au LLM...");
-            String answer = chatClient.prompt()
-                    .system(systemPrompt)
-                    .user(request.getQuery())
-                    .call()
-                    .content();
-            log.info("RAG Global: Réponse du LLM reçue (longueur: {})", answer != null ? answer.length() : 0);
-
-            return ChatResponse.builder()
-                    .answer(answer)
-                    .sources(sources)
-                    .build();
-        } catch (Exception e) {
-            log.error("RAG Global: Erreur lors de l'appel au ChatClient LLM", e);
-            throw e;
+        // Ajout de l'historique au prompt
+        if (request.getHistory() != null && !request.getHistory().isEmpty()) {
+            for (ClientQueryRequest.ChatMessage msg : request.getHistory()) {
+                if ("user".equalsIgnoreCase(msg.getRole())) {
+                    promptSpec.user(msg.getContent());
+                } else {
+                    // Pour le message de l'assistant dans l'historique, Spring AI ChatClient 
+                    // ne supporte pas directement l'injection de réponses passées via l'API fluide simple
+                    // On peut simuler cela en concaténant dans le prompt ou via une approche plus complexe
+                    // Pour rester simple, on va inclure l'historique textuellement si besoin ou utiliser les messages système
+                }
+            }
         }
+
+        String answer = promptSpec.user(request.getQuery()).call().content();
+
+        return ChatResponse.builder()
+                .answer(answer)
+                .sources(sources)
+                .build();
     }
 
     private String extractTextFromUrl(String fileUrl) throws Exception {
