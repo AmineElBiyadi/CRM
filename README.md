@@ -1,4 +1,4 @@
-# SmartEstateHub
+# Rawabet
 ## CRM Alimenté par IA pour Agences Immobilières
 **Description Complète du Projet · Architecture · Acteurs · Intégrations**
 
@@ -6,40 +6,27 @@
 
 ## 1. Présentation du Projet
 
-SmartEstateHub est une plateforme de Gestion de la Relation Client (CRM) alimentée par IA, spécifique au secteur immobilier, conçue exclusivement pour les agences immobilières.
+Rawabet est une plateforme de Gestion de la Relation Client (CRM) alimentée par IA, spécifique au secteur immobilier, conçue exclusivement pour les agences immobilières.
 
-Contrairement aux solutions CRM génériques, SmartEstateHub est construite autour des flux de travail réels des agences immobilières : gestion des profils acheteurs et vendeurs, suivi des visites et négociations, génération et signature de contrats, et clôture des dossiers.
+Contrairement aux solutions CRM génériques, Rawabet est construite autour des flux de travail réels des agences immobilières : gestion des profils acheteurs et vendeurs, suivi des visites et négociations, génération et signature de contrats, et clôture des dossiers.
 
-La plateforme est construite comme une application Spring Boot monolithique modulaire, où chaque module gère un domaine métier distinct et communique en interne via des appels de méthodes Java directs ou des Spring Events asynchrones. Un moteur IA alimenté par Spring AI et l'API OpenAI fonctionne comme un module dédié et fournit une analyse intelligente, un scoring des leads, des réponses aux questions sur les documents, et une génération automatisée de rapports sur l'ensemble de la plateforme. Les processus métier répétitifs tels que les e-mails d'intégration client, les rappels de réunion, les alertes de leads froids et les rapports hebdomadaires sont entièrement automatisés via n8n, un outil d'automatisation des workflows open-source intégré via des webhooks.
+La plateforme est construite comme une application Spring Boot monolithique modulaire, où chaque module gère un domaine métier distinct et communique en interne via des appels de méthodes Java directs ou des Spring Events asynchrones. Un moteur IA alimenté par Spring AI et les modèles **NVIDIA NIM** (via le protocole OpenAI) fournit une analyse intelligente, un scoring des leads, des réponses aux questions sur les documents, et une génération automatisée de rapports. Les e-mails transactionnels (bienvenue, réinitialisation de mot de passe, contrats) sont gérés directement via **SendGrid**, tandis que les processus métier répétitifs et les alertes complexes peuvent être automatisés via **n8n**.
 
-Le système sert trois rôles distincts côté utilisateur — Admin, Agent et Client — chacun avec sa propre interface et ses permissions, plus un quatrième rôle technique (Super Admin) pour la maintenance de la plateforme. Chaque dossier client appartient à l'agence, et non aux agents individuels, assurant la continuité des activités même en cas de changement de personnel.
+Le système sert trois rôles distincts côté utilisateur — Admin, Agent et Client — chacun avec sa propre interface et ses permissions. Chaque dossier client appartient à l'agence, et non aux agents individuels, assurant la continuité des activités même en cas de changement de personnel.
 
 ---
 
 ## 2. Acteurs & Rôles
 
-La plateforme définit quatre rôles distincts avec des responsabilités et des niveaux d'accès clairement séparés.
+La plateforme définit trois rôles distincts avec des responsabilités et des niveaux d'accès clairement séparés.
 
 | Rôle | Qui Ils Sont | Ce Qu'Ils Peuvent Faire | Ce Qu'Ils Ne Peuvent Pas Faire |
 |---|---|---|---|
-| Super Admin | L'équipe de développement | Santé du système, logs, corrections utilisateurs, gestion des clés API, surveillance des files, intervention technique sur tout compte | Accéder aux données métier pour des raisons non techniques |
 | Admin | Le directeur de l'agence | Gérer les comptes agents, réaffecter les clients, configurer les automatisations, intervenir sur les dossiers bloqués, consulter toutes les analyses et rapports IA | Traiter les interactions clients individuelles au quotidien |
 | Agent | Le commercial | Gérer les clients assignés, journaliser les interactions, planifier les visites, rechercher des annonces immobilières, utiliser tous les outils IA, rédiger et envoyer des contrats | Voir les clients des autres agents en mode édition, changer son propre rôle |
 | Client | Acheteur ou vendeur | Consulter la chronologie de son dossier, téléverser des documents, télécharger des contrats, discuter avec l'assistant IA sur son dossier | Voir les données d'un autre client ou toute information interne à l'agence |
 
-### 2.1 Super Admin
-
-Le Super Admin est un rôle purement technique occupé par l'équipe de développement et DevOps. Ils n'interagissent jamais avec les données métier à des fins commerciales. Leur accès se fait via un panneau système sécurisé alimenté par Spring Boot Actuator et une interface d'administration protégée.
-
-- **Surveillance du système** : Surveiller la santé et la disponibilité des quatre modules applicatifs en temps réel.
-- **Surveillance des logs et événements asynchrones** : Consulter les logs d'exécution des Spring Events asynchrones de l'application, identifier les traitements en erreur et forcer leur rejeu via les endpoints Spring Boot Actuator.
-- **Supervision de n8n** : Accéder à l'historique d'exécution de tous les workflows d'automatisation n8n, identifier et corriger les exécutions échouées, et reconfigurer les URLs des webhooks.
-- **Gestion des utilisateurs** : Consulter, créer, désactiver ou réinitialiser de force tout compte utilisateur dans tous les rôles sans passer par le flux UI normal.
-- **Surveillance des coûts et journaux IA** : Inspecter les journaux du moteur IA incluant tous les appels à l'API OpenAI, l'utilisation des tokens, les coûts associés et toutes les requêtes d'inférence échouées.
-- **Gestion des clés API** : Faire tourner les clés API (OpenAI, SendGrid, Google Maps, API Propriétés) sans redéployer l'application.
-- **Intégrité des données** : Effectuer la maintenance de la base de données, corriger les enregistrements corrompus et gérer la santé des index pgvector.
-
-### 2.2 Admin (Directeur d'Agence)
+### 2.1 Admin (Directeur d'Agence)
 
 L'Admin est un utilisateur métier, pas technique. Il utilise l'interface principale de la plateforme avec un ensemble d'autorisations élevées. Il gère l'agence dans son ensemble : ses collaborateurs, la santé de son pipeline et ses règles d'automatisation.
 
@@ -70,9 +57,9 @@ L'Admin est un utilisateur métier, pas technique. Il utilise l'interface princi
 - Accéder à un tableau de bord analytique interactif affichant les taux de conversion par source, la durée moyenne des dossiers, les performances des agents dans le temps et la visualisation de l'entonnoir du pipeline.
 - Exporter n'importe quel rapport en PDF pour des présentations internes ou des réunions avec des investisseurs.
 
-### 2.3 Agent (Commercial)
+### 2.2 Agent (Commercial)
 
-L'Agent est l'utilisateur quotidien principal du CRM. Son tableau de bord est le centre opérationnel de la plateforme : chaque interaction client, recherche immobilière, réunion et contrat passe par son interface. La couche IA l'assiste à chaque étape sans remplacer son jugement.
+L'Agent est l'utilisateur quotidien principal. La couche IA l'assiste à chaque étape pour optimiser son temps.
 
 **Gestion des profils clients**
 
@@ -118,7 +105,7 @@ L'Agent est l'utilisateur quotidien principal du CRM. Son tableau de bord est le
 - Envoyer le contrat au client via son portail en un clic. Le client reçoit une notification par e-mail et peut le télécharger, le signer et le retéléverser via son portail.
 - Suivre le statut du contrat en temps réel : Brouillon → Envoyé → Reçu Signé → Archivé. Chaque changement de statut déclenche une notification n8n aux parties concernées.
 
-### 2.4 Client (Acheteur ou Vendeur)
+### 2.3 Client (Acheteur ou Vendeur)
 
 Le client interagit exclusivement avec son propre portail personnel, qui est une application frontend distincte se connectant au même backend mais n'exposant que les données propres au client. Le portail est conçu pour être simple et rassurant : le client sait toujours exactement où en est son dossier.
 
@@ -155,9 +142,9 @@ La plateforme est construite comme une application Spring Boot monolithique modu
 Responsable de toute la logique d'authentification et d'autorisation au sein de l'application. Aucun autre module n'accède directement aux identifiants utilisateurs.
 
 - Émet des tokens d'accès JWT à la connexion et des tokens de rafraîchissement pour la continuité de session.
-- Valide les tokens sur chaque requête entrante via un filtre Spring Security global, avant d'atteindre tout contrôleur de l'application.
-- Gère trois rôles utilisateurs : SUPER_ADMIN, ADMIN, AGENT, CLIENT. Chacun correspond à un ensemble d'autorisations appliqué via des annotations de niveau méthode Spring Security.
-- Gère la création de mot de passe pour les nouveaux comptes agents et clients, et traite les flux de réinitialisation de mot de passe déclenchés par n8n.
+- Valide les tokens sur chaque requête entrante via un filtre Spring Security global.
+- Gère trois rôles utilisateurs : ADMIN, AGENT, CLIENT.
+- Gère la création de mot de passe pour les nouveaux comptes agents et clients.
 
 ### 3.2 Module CRM Core
 
@@ -171,18 +158,18 @@ Le module le plus grand et le plus central de l'application. Il possède toutes 
 
 ### 3.3 Module Moteur IA
 
-Un module entièrement dédié à toutes les fonctionnalités IA et analytiques de l'application. Construit avec Spring AI, il appelle l'API OpenAI pour l'inférence de modèle de langage et utilise pgvector pour la recherche sémantique sur les documents embarqués. Ses méthodes sont appelées directement par les autres modules ou via des Spring Events asynchrones.
+Un module entièrement dédié à toutes les fonctionnalités IA et analytiques de l'application. Construit avec Spring AI, il appelle les modèles **NVIDIA NIM** pour l'inférence et utilise pgvector pour la recherche sémantique.
 
-- **Scoring des leads** : reçoit une charge utile de données client via un Spring Event publié par le module CRM Core, construit un prompt structuré, appelle le LLM et retourne un score (0–100) plus une explication en langage naturel et une action recommandée.
-- **Résumé des interactions** : lit tous les journaux d'interactions d'un client et génère un résumé de 2 à 3 phrases mis à jour après chaque nouvelle interaction.
-- **RAG Documentaire** : lorsqu'un client téléverse un document, le service extrait le texte, le divise en morceaux, génère des embeddings vectoriels via l'API OpenAI Embeddings et les stocke dans pgvector. Les agents peuvent ensuite interroger les documents clients en langage naturel.
-- **Recommandation immobilière** : interroge l'API Propriétés sur la base des préférences d'un client et demande au LLM de classer et justifier les trois meilleures correspondances.
-- **Analyse des risques contractuels** : lit le texte d'un contrat PDF et retourne une liste structurée de clauses signalées ou de sections manquantes.
-- **Génération du rapport hebdomadaire** : agrège les données de la semaine écoulée pour tous les clients et agents et produit un rapport Markdown structuré que le Module de Notification convertit en PDF.
+- **Scoring des leads** : Reçoit une charge utile de données client, construit un prompt structuré, appelle le LLM et retourne un score (0–100) plus une explication en langage naturel.
+- **Résumé des interactions** : Génère un résumé de 2 à 3 phrases mis à jour après chaque nouvelle interaction.
+- **RAG Documentaire** : Lorsqu'un client téléverse un document, le service extrait le texte, le divise en morceaux, génère des embeddings vectoriels via l'API NVIDIA NIM et les stocke dans pgvector. Les agents peuvent ensuite interroger les documents clients en langage naturel.
+- **Recommandation immobilière** : Interroge l'API Propriétés et demande au LLM de classer les meilleures correspondances.
+- **Analyse des risques contractuels** : Lit le texte d'un contrat PDF et retourne une liste structurée de clauses signalées ou de sections manquantes.
+- **Génération du rapport hebdomadaire** : Agrège les données de la semaine écoulée pour tous les clients et agents et produit un rapport Markdown structuré que le Module de Notification convertit en PDF.
 
 ### 3.4 Module Notification
 
-Un module léger qui écoute les Spring Events publiés par les autres modules et gère toutes les communications sortantes. Il n'a aucune logique métier propre.
+Gère toutes les communications sortantes et les alertes système.
 
 - Écoute les événements de domaine publiés par les modules CRM Core et Moteur IA via Spring Events, et associe chaque type d'événement à une action : envoyer un e-mail via SendGrid, appeler un webhook n8n ou envoyer une notification in-app.
 - Expose des endpoints webhook que n8n appelle lorsqu'il doit déclencher une action dans la plateforme (par exemple, marquer un rappel comme envoyé dans le journal des interactions).
@@ -203,19 +190,19 @@ Il s'agit de la principale source de données externe requise pour le projet. Le
 
 > **Comment cela apparaît sur le CV** : Démontre la capacité à consommer et intégrer une API REST tierce avec authentification, gérer les réponses paginées, mettre en cache les données externes localement pour éviter les appels répétés, et combiner des données externes avec un LLM pour des recommandations intelligentes.
 
-### 4.2 API OpenAI (via Spring AI)
+### 4.2 NVIDIA NIM (Moteur IA)
 
-L'API OpenAI alimente toutes les fonctionnalités du modèle de langage dans le service Moteur IA. Spring AI est utilisé comme couche d'abstraction, ce qui signifie que le fournisseur de modèle sous-jacent peut être remplacé par Gemini ou un autre fournisseur en changeant un fichier de configuration sans aucune modification de code.
+L'API NVIDIA NIM alimente toutes les fonctionnalités du modèle de langage dans le service Moteur IA. Spring AI est utilisé comme couche d'abstraction, ce qui signifie que le fournisseur de modèle sous-jacent peut être remplacé par un autre fournisseur compatible OpenAI en changeant simplement la configuration.
 
-- **Complétions de chat (GPT-4o)** : utilisées pour le scoring des leads, le résumé des interactions, la justification des recommandations immobilières, l'analyse des risques contractuels et la génération de rapports hebdomadaires. Chaque appel est structuré avec un prompt système soigneusement conçu et un prompt utilisateur construit à partir de contenu réel de la base de données.
-- **API Embeddings (text-embedding-3-small)** : utilisée pour convertir les morceaux de texte des documents en représentations vectorielles stockées dans pgvector. Cela alimente le pipeline RAG permettant des requêtes en langage naturel sur les documents clients.
-- Tous les appels API sont journalisés avec le nombre de tokens en entrée, le nombre de tokens en sortie, le modèle utilisé et l'horodatage afin que le Super Admin puisse surveiller les coûts.
+- **Complétions de chat (LLM via NVIDIA NIM)** : utilisées pour le scoring des leads, le résumé des interactions et la justification des recommandations immobilières. Chaque appel est structuré avec un prompt système soigneusement conçu et un prompt utilisateur construit à partir de contenu réel de la base de données.
+- **API Embeddings (Llama 3.2 via NVIDIA NIM)** : utilisée pour convertir les morceaux de texte des documents en représentations vectorielles stockées dans pgvector. Cela alimente le pipeline RAG permettant des requêtes en langage naturel sur les documents clients.
+- Tous les appels API sont journalisés avec le nombre de tokens en entrée, le nombre de tokens en sortie, le modèle utilisé et l'horodatage afin que l'Admin puisse surveiller les coûts.
 
 > **Comment cela apparaît sur le CV** : Démontre l'utilisation pratique des APIs LLM avec l'ingénierie de prompts, l'analyse des sorties structurées, la gestion des tokens et la Génération Augmentée par Récupération — parmi les compétences en ingénierie IA les plus demandées en 2025.
 
 ### 4.3 n8n (Automatisation des Workflows)
 
-n8n fonctionne comme un conteneur Docker séparé aux côtés de l'application Spring Boot. Il se connecte à la plateforme via des webhooks HTTP exposés par le Module de Notification. Les workflows suivants sont implémentés :
+n8n fonctionne comme un service séparé aux côtés de l'application Spring Boot. Il se connecte à la plateforme via des webhooks HTTP exposés par le Module de Notification. Les workflows suivants sont implémentés :
 
 | Déclencheur | Actions automatisées |
 |---|---|
@@ -243,20 +230,18 @@ Utilisée exclusivement dans le frontend React (tableau de bord des agents et po
 
 ---
 
-## 5. Stack Technologique Complet
+## 5. Stack Technique & Architecture
 
 | Couche | Technologies |
 |---|---|
-| Services backend | Spring Boot 3 (application monolithique modulaire), Spring AI, Spring Security (JWT), Spring Data JPA, Spring Events (communication asynchrone inter-modules) |
-| Base de données | PostgreSQL 15 avec l'extension pgvector pour les embeddings vectoriels et la recherche sémantique |
-| Communication interne | Spring Events — événements applicatifs asynchrones entre modules au sein du même contexte Spring |
-| IA & LLM | OpenAI GPT-4o (complétions) + text-embedding-3-small (embeddings) via abstraction Spring AI |
-| Automatisation | n8n — automatisation de workflows auto-hébergée avec intégrations webhook et API |
-| Frontend (agent) | React 18 + Tailwind CSS — tableau de bord agent et admin avec routage basé sur les rôles |
-| Frontend (client) | React 18 + Tailwind CSS — portail client (application séparée, même bibliothèque de composants) |
-| APIs externes | RapidAPI Property Listings, API OpenAI, SendGrid, API Google Calendar, API Google Maps |
-| DevOps | Docker + Docker Compose — une commande démarre l'application, la base de données et n8n |
-| Outils de build | Maven (Spring Boot), npm (React) |
+| **Backend** | Spring Boot 3, Spring AI, Spring Security (JWT), Spring Data JPA, SendGrid API |
+| **Base de données** | PostgreSQL 15 + extension **pgvector** |
+| **Stockage & Media** | **Cloudinary** (Images & Documents) |
+| **Automatisation** | **n8n** auto-hébergé pour les rappels et alertes complexes |
+| **Frontend** | React 18, Tailwind CSS, TanStack Router |
+| **IA** | NVIDIA NIM (GPT-OSS-20B/120B, Llama 3.2 Embeddings) |
+| **Données Immobilières** | RapidAPI (Zillow/Realty) |
+| **Ports (Local)** | Front Agent: **5176**, Front Client: 5174, Backend: **8081**, n8n: 5678 |
 
 ---
 
@@ -264,14 +249,13 @@ Utilisée exclusivement dans le frontend React (tableau de bord des agents et po
 
 **Pitch en une phrase**
 
-Un CRM alimenté par IA spécifique au secteur immobilier, construit sur une architecture Spring Boot monolithique modulaire, offrant un scoring des leads et une analyse documentaire pilotés par LLM via RAG, une automatisation complète des processus métier via n8n, une intégration de listings immobiliers en direct et un portail dédié aux clients — le tout conteneurisé avec Docker.
+Un CRM alimenté par IA spécifique au secteur immobilier, construit sur une architecture Spring Boot monolithique modulaire, offrant un scoring des leads et une analyse documentaire pilotés par LLM via RAG (NVIDIA NIM), une automatisation complète des processus métier via n8n, une intégration de listings immobiliers en direct et un portail dédié aux clients.
 
 **Ce que chaque technologie démontre**
 
-- **Architecture** : Spring Boot monolithique modulaire : décomposition en modules métier, communication interne via Spring Events, sécurité JWT intégrée via Spring Security.
-- **Ingénierie IA** : Spring AI + API OpenAI : intégration pratique de LLM, ingénierie de prompts, analyse des sorties structurées, pipeline RAG avec pgvector.
-- **Automatisation** : n8n + webhooks : conception d'automatisation événementielle, intégration entre systèmes hétérogènes, pensée processus métier.
-- **Sécurité** : Spring Security + JWT : contrôle d'accès basé sur les rôles, isolation des données multi-tenant, gestion du cycle de vie des tokens.
-- **Intégration API** : Consommation d'API externes : intégration d'API RESTful, mise en cache des réponses, enrichissement des données, gestion des erreurs.
-- **Frontend** : React (deux applications) + Tailwind : capacité full-stack, réflexion UX, conception d'interface adaptée aux rôles.
-- **DevOps** : Docker Compose : conteneurisation, reproductibilité de l'environnement, déploiement en une commande.
+- **Architecture** : Spring Boot monolithique modulaire : décomposition en modules métier, communication interne via appels directs et Spring Events, sécurité JWT intégrée via Spring Security.
+- **Ingénierie IA** : Spring AI + NVIDIA NIM : intégration pratique de LLM, ingénierie de prompts, analyse des sorties structurées, pipeline RAG avec pgvector.
+- **Automatisation** : n8n + SendGrid + webhooks : conception d'automatisation événementielle, intégration entre systèmes hétérogènes, pensée processus métier.
+- **Sécurité** : Spring Security + JWT : contrôle d'accès basé sur les rôles (Admin, Agent, Client), isolation des données, gestion du cycle de vie des tokens.
+- **Intégration API** : Consommation d'API externes : intégration d'API RESTful (RapidAPI, Cloudinary), enrichissement des données, gestion des erreurs.
+- **Frontend** : React (deux applications) + Tailwind + TanStack Router : capacité full-stack, réflexion UX, conception d'interface adaptée aux rôles.

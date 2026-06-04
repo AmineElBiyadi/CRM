@@ -5,7 +5,7 @@ server:
 
 spring:
   application:
-    name: smartestatehub
+    name: rawabet
   config:
     import: 
       - optional:file:.env[.properties]
