@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
-import { Sparkles, Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Building2, Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiResetPassword } from "@/lib/auth";
 
@@ -83,10 +83,10 @@ function ResetPasswordPage() {
 
       <div className="relative w-full max-w-md">
         <div className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-12 h-12 rounded-2xl neu-sm flex items-center justify-center bg-vanilla">
-            <Sparkles size={20} className="text-eerie" strokeWidth={1.8} />
+          <div className="w-12 h-12 rounded-2xl neu-sm flex items-center justify-center bg-eerie text-white">
+            <Building2 size={20} />
           </div>
-          <div className="font-bold text-lg">SmartEstateHub</div>
+          <div className="font-bold text-lg">Rawabet</div>
         </div>
 
         <NeuCard size="lg" className="flex flex-col gap-6">
