@@ -152,7 +152,7 @@ public class AuthService {
         token.setTokenHash(tokenHasher.hash(rawToken));
         
         passwordResetTokenRepository.save(token);
-        emailService.sendPasswordResetEmail(email, rawToken);
+        emailService.sendPasswordResetEmail(email, rawToken, portal);
     }
 
     @Transactional

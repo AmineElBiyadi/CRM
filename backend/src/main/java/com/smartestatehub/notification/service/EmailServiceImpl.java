@@ -34,6 +34,12 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.sendgrid.from-email}")
     private String fromEmail;
 
+    @Value("${app.frontend.admin-url}")
+    private String adminUrl;
+
+    @Value("${app.frontend.client-url}")
+    private String clientUrl;
+
     // Template de base pour tous les emails
     private String wrapWithTemplate(String content) {
         return """
@@ -120,19 +126,23 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendPasswordResetEmail(String to, String token) {
+    public void sendPasswordResetEmail(String to, String token, String portal) {
+        String baseUrl = "CLIENT".equals(portal) ? clientUrl : adminUrl;
+        String resetLink = baseUrl + "/reset-password?token=" + token;
+
         String subject = "Réinitialisation de votre mot de passe — Rawabet";
         String content = """
                 <h2>Réinitialisation de mot de passe</h2>
-                <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Rawabet.</p>
-                <p>Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe :</p>
+                <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>Rawabet</strong>.</p>
+                <p>Veuillez cliquer sur le bouton ci-dessous pour continuer :</p>
                 <div class="button-container">
-                    <a href="http://localhost:5173/reset-password?token=%s" class="button">
+                    <a href="%s" class="button">
                         Réinitialiser mon mot de passe
                     </a>
                 </div>
-                <p style="font-size: 13px; color: #64748b;">Ce lien est valable pendant 2 heures. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email en toute sécurité.</p>
-                """.formatted(token);
+                <p style="font-size: 13px; color: #666;">Ce lien est valable pendant 2 heures. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
+                <p style="font-size: 11px; color: #999; word-break: break-all;">Si le bouton ne fonctionne pas, copiez ce lien : %s</p>
+                """.formatted(resetLink, resetLink);
 
         sendEmail(to, subject, wrapWithTemplate(content));
     }
