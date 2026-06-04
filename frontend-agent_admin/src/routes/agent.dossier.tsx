@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState, useEffect } from "react";
+import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   api,
@@ -42,7 +43,8 @@ import { toast } from "sonner";
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
 // @ts-ignore
 import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
-import { refreshLeadScore, refreshInteractionSummary } from "@/api/aiApi";
+import { refreshLeadScore, refreshInteractionSummary, getAiRecommendations } from "@/api/aiApi";
+import { linkPropertyToDeal as apiLinkProperty } from "@/api/propertyApi";
 
 type DossierSearch = {
   id?: string;
@@ -116,6 +118,8 @@ function AgentDossierPage() {
   const [reschedulingMeetingId, setReschedulingMeetingId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
+
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
 
   const floorOptions = [
     { value: -1, label: "Indifférent" },
@@ -275,6 +279,48 @@ function AgentDossierPage() {
     }
   });
 
+  const aiRecommendationMutation = useMutation({
+    mutationFn: (dealId: string) => getAiRecommendations(dealId),
+    onSuccess: (data) => {
+      setAiRecommendations(data);
+      if (data && data.length > 0) {
+        toast.success(`${data.length} recommandations trouvées !`);
+      } else {
+        toast.info("Aucune recommandation trouvée.");
+      }
+    },
+    onError: (e: any) => {
+      toast.error("Échec de la recommandation IA : " + e.message);
+    }
+  });
+
+  const linkPropertyMutation = useMutation({
+    mutationFn: ({ dealId, prop }: { dealId: string, prop: any }) => {
+      const linkRequest = {
+        externalId: prop.propertyId || prop.id,
+        title: prop.title,
+        address: prop.address || prop.title,
+        city: prop.city || dossier?.preferredArea || "",
+        price: prop.price,
+        surfaceM2: prop.sizeM2 || prop.surfaceM2,
+        numRooms: prop.beds || prop.numRooms,
+        listingUrl: prop.listingUrl,
+        propertyTypeSpecific: prop.type,
+        imageUrls: [prop.imageUrl]
+      };
+      return apiLinkProperty(dealId, linkRequest);
+    },
+    onSuccess: () => {
+      toast.success("Propriété liée au dossier !");
+      queryClient.invalidateQueries({ queryKey: ["deal-properties", id] });
+      fetchDossierData();
+      // On retire la propriété de la liste des recommandations pour éviter les doublons
+    },
+    onError: (e: any) => {
+      toast.error("Erreur lors de la liaison : " + e.message);
+    }
+  });
+
   /* documents */
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<any[]>([]);
@@ -328,13 +374,8 @@ function AgentDossierPage() {
       const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd";
       // On force "image" pour les PDF pour permettre la visualisation directe dans le navigateur
       const resourceType = extension === 'pdf' ? 'image' : 'auto';
-      const resCloud = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
-        method: "POST",
-        body: formData
-      });
-      
-      if (!resCloud.ok) throw new Error("Erreur lors de l'upload Cloudinary");
-      const cloudData = await resCloud.json();
+      const resCloud = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, formData);
+      const cloudData = resCloud.data;
       const uploadedUrl = cloudData.secure_url;
 
       // 2. Save only the URL in our Backend
@@ -434,6 +475,9 @@ function AgentDossierPage() {
     mutation.mutate(request);
   };
 
+  const [isReadOnly, setIsReadOnly] = useState(true);
+  const [openedViaDetails, setOpenedViaDetails] = useState(false);
+
   const handleOpenEdit = () => {
     if (!dossier) return;
     setEditForm({
@@ -452,6 +496,31 @@ function AgentDossierPage() {
       numRooms: dossier.numRooms || 0,
       propertyFloor: dossier.propertyFloor ?? -1,
     });
+    setIsReadOnly(true);
+    setOpenedViaDetails(true);
+    setEditingDossier(true);
+  };
+
+  const handleOpenDirectEdit = () => {
+    if (!dossier) return;
+    setEditForm({
+      type: dossier.clientType,
+      budgetMin: dossier.budgetMin,
+      budgetMax: dossier.budgetMax,
+      preferredArea: dossier.preferredArea,
+      preferredSizeM2: dossier.preferredSizeM2,
+      preferredFloor: dossier.preferredFloor ?? -1,
+      propertySpecificType: dossier.propertyType,
+      propertyTitle: dossier.propertyTitle || "",
+      address: dossier.address || "",
+      city: dossier.city || "",
+      askingPrice: dossier.askingPrice || 0,
+      propertySurfaceM2: dossier.propertySurfaceM2 || 0,
+      numRooms: dossier.numRooms || 0,
+      propertyFloor: dossier.propertyFloor ?? -1,
+    });
+    setIsReadOnly(false);
+    setOpenedViaDetails(false);
     setEditingDossier(true);
   };
 
@@ -542,7 +611,7 @@ function AgentDossierPage() {
       <div className="col-span-12 lg:col-span-3 space-y-5">
         <NeuCard className="text-center relative group">
           <button 
-            onClick={handleOpenEdit}
+            onClick={handleOpenDirectEdit}
             className="absolute top-4 right-4 p-2 rounded-xl neu-sm text-muted-foreground hover:text-eerie hover:bg-alice/50 transition-all opacity-0 group-hover:opacity-100"
             title="Modifier le dossier"
           >
@@ -571,7 +640,7 @@ function AgentDossierPage() {
             <div>
               <div className="text-xs text-muted-foreground">Budget</div>
               <div className="text-xl font-bold">
-                {(dossier.budgetMin || 0).toLocaleString()} - {(dossier.budgetMax || 0).toLocaleString()} MAD
+                {(dossier.budgetMin || 0).toLocaleString()} - {(dossier.budgetMax || 0).toLocaleString()} $
               </div>
             </div>
             <div>
@@ -589,7 +658,7 @@ function AgentDossierPage() {
               onClick={handleOpenEdit}
               className="w-full mt-4 py-2.5 rounded-xl neu-sm text-xs font-bold text-muted-foreground hover:text-eerie hover:bg-alice/50 transition-all flex items-center justify-center gap-2"
             >
-              <RotateCcw size={12} className="rotate-45" /> Modifier dossier
+              <FileText size={12} /> Détails du dossier
             </button>
           </div>
         </NeuCard>
@@ -805,7 +874,7 @@ function AgentDossierPage() {
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
                     rows={4}
-                    placeholder='Ex: "Le client souhaite visiter avant fin juillet, budget confirmé à 800 000 MAD, très intéressé par Hay Riad"'
+                    placeholder='Ex: "Le client souhaite visiter avant fin juillet, budget confirmé à 800 000 $, très intéressé par Hay Riad"'
                     className="w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm leading-relaxed"
                     title="Description de l'interaction"
                   />
@@ -876,11 +945,94 @@ function AgentDossierPage() {
                   <Building2 size={16} /> Rechercher biens
                 </Link>
                 <button
-                  onClick={() => toast.success("Données synchronisées avec la DB")}
-                  className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl bg-vanilla text-eerie text-sm font-medium hover:opacity-90"
+                  onClick={() => aiRecommendationMutation.mutate(id!)}
+                  disabled={aiRecommendationMutation.isPending}
+                  className={`flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${
+                    aiRecommendationMutation.isPending ? "bg-vanilla/50 cursor-wait" : "bg-vanilla text-eerie hover:opacity-90 active:scale-[0.98]"
+                  } text-sm font-medium shadow-md`}
                 >
-                  <Sparkles size={16} /> Recommandation IA
+                  {aiRecommendationMutation.isPending ? (
+                    <><Loader2 size={16} className="animate-spin" /> Analyse en cours...</>
+                  ) : (
+                    <><Sparkles size={16} /> {aiRecommendations.length > 0 ? `${aiRecommendations.length} recommandations trouvées` : "Demander une recommandation IA"}</>
+                  )}
                 </button>
+              </div>
+            )}
+
+            {/* AI Recommendations Section */}
+            {aiRecommendations.length > 0 && tab === "Propriétés" && (
+              <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <Sparkles size={18} className="text-primary" />
+                  <h3 className="font-bold text-eerie">Recommandations IA pour {dossier.clientName}</h3>
+                </div>
+                <div className="grid gap-4">
+                  {aiRecommendations.map((rec) => (
+                    <NeuCard key={rec.propertyId} className="border-2 border-primary/10 overflow-hidden">
+                      <div className="flex flex-col md:flex-row gap-5">
+                        <div className="w-full md:w-48 h-32 shrink-0 relative">
+                          <img 
+                            src={rec.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} 
+                            alt={rec.title} 
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                          <div className="absolute top-2 left-2 bg-eerie text-ghost text-[10px] font-black px-2 py-1 rounded-lg shadow-xl">
+                            TOP #{rec.rank}
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-base text-eerie">{rec.title}</h4>
+                              <p className="text-xs text-muted-foreground">{rec.type} · {rec.sizeM2}m² · {rec.beds} ch.</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-black text-primary text-lg">{rec.price?.toLocaleString()} $</div>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-alice/40 p-3 rounded-xl border border-alice relative">
+                             <div className="text-[10px] font-black uppercase tracking-widest text-eerie mb-1">Justification IA</div>
+      <p className="text-sm italic leading-relaxed text-eerie font-medium">
+                               "{rec.justification}"
+                             </p>
+                          </div>
+
+                          <div className="flex gap-3 pt-1">
+                            <button
+                              onClick={() => linkPropertyMutation.mutate({ dealId: id!, prop: rec })}
+                              disabled={linkPropertyMutation.isPending}
+                              className="flex-1 py-2 rounded-lg bg-eerie text-ghost text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                            >
+                              {linkPropertyMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                              Lier ce bien au dossier
+                            </button>
+                            {rec.title ? (
+                              <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rec.title)}`}
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 rounded-lg neu-sm text-xs font-bold hover:bg-alice/50 transition-all flex items-center justify-center gap-2"
+                              >
+                                <MapPin size={14} /> Voir sur Maps
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </NeuCard>
+                  ))}
+                </div>
+                <div className="mt-4 flex justify-center">
+                   <button 
+                    onClick={() => setAiRecommendations([])}
+                    className="text-xs font-bold text-muted-foreground hover:text-warn transition-colors flex items-center gap-1.5"
+                   >
+                     <X size={12} /> Effacer les recommandations
+                   </button>
+                </div>
+                <div className="h-px bg-border/20 my-8 w-full" />
               </div>
             )}
             
@@ -1661,181 +1813,211 @@ function AgentDossierPage() {
             </button>
 
             <div>
-              <h2 className="text-3xl font-extrabold tracking-tight">Modifier le Dossier</h2>
+              <h2 className="text-3xl font-extrabold tracking-tight">
+                {isReadOnly ? "Détails du Dossier" : "Modifier le Dossier"}
+              </h2>
               <p className="text-muted-foreground text-sm mt-2 font-medium">
-                Mettez à jour les critères et informations du dossier {dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}.
+                {isReadOnly 
+                  ? `Consultation des critères du dossier ${dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}.`
+                  : `Mettez à jour les critères et informations du dossier ${dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}.`
+                }
               </p>
             </div>
 
-            <div className="space-y-6">
-              {dossier.clientType === 'BUYER' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label htmlFor="edit-budget-min" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum (MAD)</label>
-                    <input 
-                      id="edit-budget-min"
-                      type="number"
-                      value={editForm.budgetMin}
-                      onChange={e => setEditForm({...editForm, budgetMin: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Budget minimum"
-                    />
+            <fieldset disabled={isReadOnly} className="contents">
+              <div className="space-y-6">
+                {dossier.clientType === 'BUYER' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="edit-budget-min" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum ($)</label>
+                      <input 
+                        id="edit-budget-min"
+                        type="number"
+                        value={editForm.budgetMin}
+                        onChange={e => setEditForm({...editForm, budgetMin: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Budget minimum"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-budget-max" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum ($)</label>
+                      <input 
+                        id="edit-budget-max"
+                        type="number"
+                        value={editForm.budgetMax}
+                        onChange={e => setEditForm({...editForm, budgetMax: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Budget maximum"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-area" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Zone Préférée</label>
+                      <input 
+                        id="edit-area"
+                        value={editForm.preferredArea}
+                        onChange={e => setEditForm({...editForm, preferredArea: e.target.value})}
+                        placeholder="Ex: Gauthier, Maarif..."
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Zone préférée"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-size" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface Préférée (m²)</label>
+                      <input 
+                        id="edit-size"
+                        type="number"
+                        value={editForm.preferredSizeM2}
+                        onChange={e => setEditForm({...editForm, preferredSizeM2: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Surface préférée"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-floor" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage Préféré</label>
+                      <select 
+                        id="edit-floor"
+                        value={editForm.preferredFloor}
+                        onChange={e => setEditForm({...editForm, preferredFloor: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none disabled:opacity-70"
+                        title="Étage préféré"
+                      >
+                        {floorOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-type" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Type de Bien</label>
+                      <select 
+                        id="edit-type"
+                        value={editForm.propertySpecificType}
+                        onChange={e => setEditForm({...editForm, propertySpecificType: e.target.value})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none disabled:opacity-70"
+                        title="Type de bien"
+                      >
+                        <option value="">Sélectionner un type</option>
+                        {propertyTypes?.map((pt: any) => (
+                          <option key={pt.idPropertyType} value={pt.specificType}>{pt.specificType}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-budget-max" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum (MAD)</label>
-                    <input 
-                      id="edit-budget-max"
-                      type="number"
-                      value={editForm.budgetMax}
-                      onChange={e => setEditForm({...editForm, budgetMax: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Budget maximum"
-                    />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="col-span-1 md:col-span-2 space-y-2">
+                      <label htmlFor="edit-title" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Titre de la Propriété</label>
+                      <input 
+                        id="edit-title"
+                        value={editForm.propertyTitle}
+                        onChange={e => setEditForm({...editForm, propertyTitle: e.target.value})}
+                        placeholder="Ex: Bel appartement à Gauthier"
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Titre de la propriété"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-address" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Adresse</label>
+                      <input 
+                        id="edit-address"
+                        value={editForm.address}
+                        onChange={e => setEditForm({...editForm, address: e.target.value})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Adresse"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-city" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Ville</label>
+                      <input 
+                        id="edit-city"
+                        value={editForm.city}
+                        onChange={e => setEditForm({...editForm, city: e.target.value})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Ville"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-asking-price" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé ($)</label>
+                      <input 
+                        id="edit-asking-price"
+                        type="number"
+                        value={editForm.askingPrice}
+                        onChange={e => setEditForm({...editForm, askingPrice: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Prix demandé"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-surface" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface (m²)</label>
+                      <input 
+                        id="edit-surface"
+                        type="number"
+                        value={editForm.propertySurfaceM2}
+                        onChange={e => setEditForm({...editForm, propertySurfaceM2: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Surface"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-rooms" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nombre de Pièces</label>
+                      <input 
+                        id="edit-rooms"
+                        type="number"
+                        value={editForm.numRooms}
+                        onChange={e => setEditForm({...editForm, numRooms: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none disabled:opacity-70"
+                        title="Nombre de pièces"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="edit-prop-floor" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
+                      <select 
+                        id="edit-prop-floor"
+                        value={editForm.propertyFloor}
+                        onChange={e => setEditForm({...editForm, propertyFloor: Number(e.target.value)})}
+                        className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none disabled:opacity-70"
+                        title="Étage"
+                      >
+                        {floorOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-area" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Zone Préférée</label>
-                    <input 
-                      id="edit-area"
-                      value={editForm.preferredArea}
-                      onChange={e => setEditForm({...editForm, preferredArea: e.target.value})}
-                      placeholder="Ex: Gauthier, Maarif..."
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Zone préférée"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-size" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface Préférée (m²)</label>
-                    <input 
-                      id="edit-size"
-                      type="number"
-                      value={editForm.preferredSizeM2}
-                      onChange={e => setEditForm({...editForm, preferredSizeM2: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Surface préférée"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-floor" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage Préféré</label>
-                    <select 
-                      id="edit-floor"
-                      value={editForm.preferredFloor}
-                      onChange={e => setEditForm({...editForm, preferredFloor: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
-                      title="Étage préféré"
-                    >
-                      {floorOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-type" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Type de Bien</label>
-                    <select 
-                      id="edit-type"
-                      value={editForm.propertySpecificType}
-                      onChange={e => setEditForm({...editForm, propertySpecificType: e.target.value})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
-                      title="Type de bien"
-                    >
-                      <option value="">Sélectionner un type</option>
-                      {propertyTypes?.map((pt: any) => (
-                        <option key={pt.idPropertyType} value={pt.specificType}>{pt.specificType}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="col-span-1 md:col-span-2 space-y-2">
-                    <label htmlFor="edit-title" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Titre de la Propriété</label>
-                    <input 
-                      id="edit-title"
-                      value={editForm.propertyTitle}
-                      onChange={e => setEditForm({...editForm, propertyTitle: e.target.value})}
-                      placeholder="Ex: Bel appartement à Gauthier"
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Titre de la propriété"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-address" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Adresse</label>
-                    <input 
-                      id="edit-address"
-                      value={editForm.address}
-                      onChange={e => setEditForm({...editForm, address: e.target.value})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Adresse"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-city" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Ville</label>
-                    <input 
-                      id="edit-city"
-                      value={editForm.city}
-                      onChange={e => setEditForm({...editForm, city: e.target.value})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Ville"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-asking-price" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé (MAD)</label>
-                    <input 
-                      id="edit-asking-price"
-                      type="number"
-                      value={editForm.askingPrice}
-                      onChange={e => setEditForm({...editForm, askingPrice: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Prix demandé"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-surface" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Surface (m²)</label>
-                    <input 
-                      id="edit-surface"
-                      type="number"
-                      value={editForm.propertySurfaceM2}
-                      onChange={e => setEditForm({...editForm, propertySurfaceM2: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Surface"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-rooms" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Nombre de Pièces</label>
-                    <input 
-                      id="edit-rooms"
-                      type="number"
-                      value={editForm.numRooms}
-                      onChange={e => setEditForm({...editForm, numRooms: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none"
-                      title="Nombre de pièces"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="edit-prop-floor" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Étage</label>
-                    <select 
-                      id="edit-prop-floor"
-                      value={editForm.propertyFloor}
-                      onChange={e => setEditForm({...editForm, propertyFloor: Number(e.target.value)})}
-                      className="w-full px-5 py-3 rounded-2xl neu-inset bg-transparent text-sm focus:outline-none appearance-none"
-                      title="Étage"
-                    >
-                      {floorOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </fieldset>
 
             <div className="flex flex-col gap-3 mt-4">
-              <button 
-                onClick={handleUpdateDossier}
-                disabled={updateDossierMutation.isPending}
-                className="w-full py-4 rounded-2xl bg-eerie text-ghost font-bold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                {updateDossierMutation.isPending ? "Mise à jour..." : "Enregistrer les modifications"}
-              </button>
+              {isReadOnly ? (
+                <button 
+                  onClick={() => setIsReadOnly(false)}
+                  className="w-full py-4 rounded-2xl bg-vanilla text-eerie font-bold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <RotateCcw size={18} className="rotate-45" /> Modifier les informations
+                </button>
+              ) : (
+                <div className="flex gap-3">
+                  <button 
+                    onClick={handleUpdateDossier}
+                    disabled={updateDossierMutation.isPending}
+                    className="flex-[2] py-4 rounded-2xl bg-eerie text-ghost font-bold shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  >
+                    {updateDossierMutation.isPending ? "Mise à jour..." : "Enregistrer"}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (openedViaDetails) {
+                        setIsReadOnly(true);
+                      } else {
+                        setEditingDossier(false);
+                      }
+                    }}
+                    className="flex-1 py-4 rounded-2xl neu-sm text-muted-foreground font-bold hover:text-eerie transition-all"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

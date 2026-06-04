@@ -1,59 +1,37 @@
-import { apiRefresh } from "@/lib/auth";
-import { ApiError, parseApiErrorResponse } from "@/lib/api-error";
-import { csrfHeadersForMethod } from "@/lib/csrf";
-import { getApiBase } from "@/lib/api-base";
+import apiClient from "@/lib/api-client";
+import { ApiError } from "@/lib/api-error";
 
+/**
+ * Legacy wrapper that now uses the unified apiClient (Axios).
+ * This allows all legacy calls to benefit from X-Agent-Id injection and global error handling.
+ */
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const method = (options.method ?? "GET").toUpperCase();
-  const apiBase = getApiBase();
-
-  const buildHeaders = (): HeadersInit => {
-    const headers: Record<string, string> = {
-      ...csrfHeadersForMethod(method),
-      ...(options.headers as Record<string, string> | undefined),
-    };
-    if (method !== "GET" && method !== "HEAD") {
-      headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
-    }
-    return headers;
-  };
-
-  const doFetch = () =>
-    fetch(`${apiBase}${path}`, {
-      ...options,
-      credentials: "include",
-      headers: buildHeaders(),
-    });
-
-  let res: Response;
+  
   try {
-    res = await doFetch();
-  } catch {
-    throw ApiError.client(
-      "NETWORK_ERROR",
-      "Impossible de joindre le serveur.",
-      "Vérifiez que le backend est démarré et accessible.",
-    );
-  }
-
-  if (res.status === 401) {
-    const refreshed = await apiRefresh();
-    if (refreshed) {
-      try {
-        res = await doFetch();
-      } catch {
-        throw ApiError.client(
-          "NETWORK_ERROR",
-          "Impossible de joindre le serveur après renouvellement de session.",
-        );
-      }
+    const response = await apiClient({
+      url: path,
+      method: method,
+      data: options.body ? JSON.parse(options.body as string) : undefined,
+      headers: options.headers as any,
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx. Global interceptor handles toasts,
+      // here we just throw an error compatible with legacy expectations if needed.
+      throw error.response.data;
+    } else if (error.request) {
+      // The request was made but no response was received
+      throw ApiError.client(
+        "NETWORK_ERROR",
+        "Impossible de joindre le serveur.",
+        "Vérifiez que le backend est démarré et accessible.",
+      );
+    } else {
+      throw error;
     }
   }
-
-  if (!res.ok) {
-    throw await parseApiErrorResponse(res);
-  }
-
-  if (res.status === 204) return null;
-  return res.json();
 }

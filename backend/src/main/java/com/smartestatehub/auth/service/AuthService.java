@@ -88,6 +88,19 @@ public class AuthService {
         return toUserInfo(user);
     }
 
+    @Transactional
+    public void changePassword(String email, String oldPassword, String newPassword) {
+        InternalUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Utilisateur introuvable."));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BadCredentialsException("L'ancien mot de passe est incorrect.");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
     private InternalUser authenticate(String email, String password) {
         InternalUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Email ou mot de passe incorrect."));

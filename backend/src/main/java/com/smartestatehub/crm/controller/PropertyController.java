@@ -20,6 +20,7 @@ public class PropertyController {
 
     private final PropertyRepository propertyRepository;
     private final PropertyService propertyService;
+    private final com.smartestatehub.ai.service.PropertyRecommendationService propertyRecommendationService;
 
     @GetMapping("/latest")
     public ResponseEntity<Property> getLatestProperty() {
@@ -68,5 +69,15 @@ public class PropertyController {
     public ResponseEntity<List<PropertyDto.Response>> getPropertiesByDeal(@PathVariable("dealId") UUID dealId) {
         List<PropertyDto.Response> response = propertyService.getPropertiesByDeal(dealId);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/properties/recommend?dealId={dealId}
+     * Récupère les 3 meilleures recommandations IA pour un dossier acheteur.
+     */
+    @GetMapping("/recommend")
+    public ResponseEntity<List<com.smartestatehub.ai.dto.PropertyRecommendationResult>> recommendProperties(
+            @RequestParam("dealId") UUID dealId) {
+        return ResponseEntity.ok(propertyRecommendationService.getRecommendations(dealId));
     }
 }

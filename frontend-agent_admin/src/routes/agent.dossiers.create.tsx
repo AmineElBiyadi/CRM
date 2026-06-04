@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
+import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchIdentities } from "@/api/clientsApi";
 import { createDossier, fetchDossierDetail, fetchPropertyTypes, type CreateDossierRequest } from "@/api/dossiersApi";
@@ -81,11 +82,8 @@ function CreateDossierPage() {
       formData.append("upload_preset", CLOUDINARY_PRESET);
 
       try {
-        const res = await fetch(CLOUDINARY_URL, {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
+        const res = await axios.post(CLOUDINARY_URL, formData);
+        const data = res.data;
 
         if (data.secure_url) {
           setPropertyImages(prev => prev.map(p => p.id === item.id ? { ...p, uploading: false, preview: data.secure_url } : p));
