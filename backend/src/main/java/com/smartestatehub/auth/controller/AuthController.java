@@ -1,6 +1,8 @@
 package com.smartestatehub.auth.controller;
 
+import com.smartestatehub.auth.dto.ForgotPasswordRequest;
 import com.smartestatehub.auth.dto.LoginRequest;
+import com.smartestatehub.auth.dto.ResetPasswordRequest;
 import com.smartestatehub.auth.dto.UserInfoResponse;
 import com.smartestatehub.auth.service.AuthService;
 import com.smartestatehub.auth.support.AuthCookies;
@@ -14,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -79,7 +83,27 @@ public class AuthController {
             authService.changePassword(email, request.getOldPassword(), request.getNewPassword());
             return ResponseEntity.ok().build();
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(400).body(java.util.Map.of("message", e.getMessage()));
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            authService.forgotPassword(request.getEmail(), request.getPortal());
+            return ResponseEntity.ok(Map.of("message", "Un lien de réinitialisation vous a été envoyé."));
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(Map.of("message", "Votre mot de passe a été réinitialisé avec succès."));
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
         }
     }
 
