@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAgentDashboard, useToggleMeeting } from "@/hooks/useDashboard";
 import { useConfirmClient } from "@/hooks/useClients";
 import { NeuCard } from "@/components/ui/neu-card";
@@ -9,6 +10,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { EmailModal } from "@/components/EmailModal";
+import { getUser } from "@/lib/auth";
 
 export const Route = createFileRoute("/agent/")({
   component: AgentDashboard,
@@ -16,11 +19,14 @@ export const Route = createFileRoute("/agent/")({
 
 function AgentDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useAgentDashboard();
   const toggleMeetingMutation = useToggleMeeting();
   const confirmClientMutation = useConfirmClient();
+  const user = getUser();
 
   const [confirmingClient, setConfirmingClient] = useState<any>(null);
+  const [selectedEmailClient, setSelectedEmailClient] = useState<any>(null);
   const [confirmForm, setConfirmForm] = useState({
     firstName: "",
     lastName: "",
@@ -204,7 +210,7 @@ function AgentDashboard() {
             <div className="absolute left-0 right-0 top-1/2 h-px bg-ghost/20" />
             <div className="relative flex justify-between gap-4 min-w-[480px]">
               {todayMeetings.map((m: any) => (
-                <Link key={m.idMeeting} to="/agent/dossier" className="flex flex-col items-center gap-3 group flex-1 min-w-[100px]">
+                <Link key={m.idMeeting} to="/agent/dossier" search={{ from: "/agent/" }} className="flex flex-col items-center gap-3 group flex-1 min-w-[100px]">
                   <div className="glass rounded-2xl px-3 py-1.5 text-xs font-semibold">{m.scheduledAt}</div>
                   <div className="w-3 h-3 rounded-full bg-vanilla ring-4 ring-eerie" />
                   <div className="text-center">
@@ -326,7 +332,7 @@ function AgentDashboard() {
               priorities.map((c: any) => (
                 <div 
                   key={c.idDeal} 
-                  onClick={() => navigate({ to: "/agent/dossier", search: { id: c.idDeal } })}
+                  onClick={() => navigate({ to: "/agent/dossier", search: { id: c.idDeal, from: "/agent/" } })}
                   className="flex flex-wrap items-center gap-3 md:gap-4 p-3 rounded-xl hover:bg-alice/40 transition-colors cursor-pointer group"
                 >
                   <Avatar name={c.clientFullName} size={44} />
@@ -342,20 +348,19 @@ function AgentDashboard() {
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <Link 
                       to="/agent/dossier" 
-                      search={{ id: c.idDeal }}
+                      search={{ id: c.idDeal, from: "/agent/" }}
                       className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" 
                       aria-label="Dossier"
                     >
                       <FileText size={14} />
                     </Link>
-                    <a 
-                      href={`mailto:${c.clientEmail}`} 
+                    <button 
+                      onClick={() => setSelectedEmailClient(c)}
                       className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" 
                       aria-label="Email"
-                      onClick={() => toast.info(`Ouverture de la messagerie pour ${c.clientFullName}`)}
                     >
                       <MessageSquarePlus size={14} />
-                    </a>
+                    </button>
                     <a 
                       href={`tel:${c.clientPhone}`} 
                       className="w-9 h-9 rounded-lg neu-sm hover:neu-pressable flex items-center justify-center text-inherit bg-ghost/50" 
@@ -407,6 +412,26 @@ function AgentDashboard() {
           </div>
         </NeuCard>
       </div>
+
+      {/* Email Modal */}
+      {selectedEmailClient && (
+        <EmailModal 
+          isOpen={!!selectedEmailClient}
+          onClose={() => setSelectedEmailClient(null)}
+          dealId={selectedEmailClient.idDeal}
+          clientEmail={selectedEmailClient.clientEmail}
+          clientName={selectedEmailClient.clientFullName}
+          agentEmail={user?.email || ""}
+          initialSubject={`Suivi de votre dossier immobilier - ${selectedEmailClient.clientFullName}`}
+          initialBody=""
+          onSuccess={() => {
+            // Rafraîchir le dashboard après l'envoi (donner 2s pour l'IA)
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ["agent-dashboard"] });
+            }, 2000);
+          }}
+        />
+      )}
     </div>
   );
 }

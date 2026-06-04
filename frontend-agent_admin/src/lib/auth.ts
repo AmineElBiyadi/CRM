@@ -111,6 +111,26 @@ export async function apiLogin(
   return user;
 }
 
+export async function apiForgotPassword(email: string, portal: "ADMIN_AGENT" | "CLIENT"): Promise<string> {
+  const res = await authFetch("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email, portal }),
+  });
+  if (!res.ok) throw await parseApiErrorResponse(res);
+  const data = await res.json();
+  return data.message;
+}
+
+export async function apiResetPassword(token: string, newPassword: string): Promise<string> {
+  const res = await authFetch("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
+  });
+  if (!res.ok) throw await parseApiErrorResponse(res);
+  const data = await res.json();
+  return data.message;
+}
+
 async function performRefresh(): Promise<AuthUser | null> {
   const res = await authFetch("/api/auth/refresh", { method: "POST" });
 

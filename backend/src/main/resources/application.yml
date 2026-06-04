@@ -16,6 +16,14 @@ spring:
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-test-query: SELECT 1       # Teste la connexion avant usage
+      connection-timeout: 20000             # Timeout pour obtenir une connexion (20s)
+      idle-timeout: 300000                  # Connexions inactives max 5 min (avant timeout Supabase)
+      max-lifetime: 600000                  # Durée de vie max d'une connexion : 10 min
+      keepalive-time: 30000                 # Ping toutes les 30s pour garder la connexion vivante
+      maximum-pool-size: 10                 # Max 10 connexions simultanées
+      minimum-idle: 2                       # Maintenir 2 connexions prêtes au minimum
   
   #hange-la en ddl-auto: validate (qui vérifie la DB mais ne la modifie pas) ou ddl-auto: none (désactive tout).
   jpa:
@@ -83,3 +91,6 @@ app:
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:dam3isgtd}
     upload-preset: ${CLOUDINARY_UPLOAD_PRESET:Rawabet}
+  frontend:
+    admin-url: ${ADMIN_URL:http://localhost:5176}
+    client-url: ${CLIENT_URL:http://localhost:5174}

@@ -7,6 +7,7 @@ import com.smartestatehub.crm.model.ContractStatus;
 import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.repository.ContractRepository;
 import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

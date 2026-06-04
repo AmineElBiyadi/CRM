@@ -3,13 +3,14 @@ import React, { useState, type FormEvent, type ChangeEvent } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
 import { 
-  User, Mail, Phone, Shield, Lock, Save, 
+  User, Mail, Phone, Lock, Save, 
   TrendingUp, Star, Award, Zap, Clock 
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAgentDashboard } from "@/hooks/useDashboard";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { changePassword, forgotPassword } from "@/api/authApi";
 
 export const Route = createFileRoute("/agent/profile")({
   component: AgentProfile,
@@ -36,19 +37,48 @@ function AgentProfile() {
     deals: data?.kpis?.totalClosings || 0
   };
 
-  const handlePasswordChange = (e: FormEvent<HTMLFormElement>) => {
+  const handlePasswordChange = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) {
-      toast.error("Les mots de passe ne correspondent pas");
+      toast.error("Les nouveaux mots de passe ne correspondent pas");
       return;
     }
+    
     setLoading(true);
-    // Simuler une mise à jour
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await changePassword({
+        oldPassword: passwords.current,
+        newPassword: passwords.new
+      });
       toast.success("Mot de passe mis à jour avec succès");
       setPasswords({ current: "", new: "", confirm: "" });
-    }, 1000);
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Erreur lors de la mise à jour du mot de passe";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!agent.email || agent.email === "chargement...") {
+      toast.error("Adresse email non disponible");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await forgotPassword({
+        email: agent.email,
+        portal: "ADMIN_AGENT"
+      });
+      toast.success("Un lien de réinitialisation a été envoyé à votre adresse email professionnel.");
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Erreur lors de l'envoi du lien de réinitialisation";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: keyof typeof passwords) => {
@@ -96,36 +126,30 @@ function AgentProfile() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
+          <div className="grid grid-cols-1 gap-6 flex-1">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Email Professionnel</label>
-              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent group transition-colors">
-                <Mail size={18} className="text-vanilla/70" />
-                <span className="text-sm font-medium truncate">{agent.email}</span>
+              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent group transition-colors overflow-hidden">
+                <Mail size={18} className="text-vanilla/70 shrink-0" />
+                <span className="text-sm font-medium break-all">{agent.email}</span>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Téléphone</label>
-              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
-                <Phone size={18} className="text-vanilla/70" />
-                <span className="text-sm font-medium">{agent.phone}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Téléphone</label>
+                <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
+                  <Phone size={18} className="text-vanilla/70 shrink-0" />
+                  <span className="text-sm font-medium">{agent.phone}</span>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Statut</label>
-              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
-                <Shield size={18} className="text-vanilla/70" />
-                <span className="text-sm font-medium">Agent Certifié Rawabet</span>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ancienneté</label>
-              <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
-                <Clock size={18} className="text-vanilla/70" />
-                <span className="text-sm font-medium">Membre depuis {agent.since}</span>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ancienneté</label>
+                <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
+                  <Clock size={18} className="text-vanilla/70 shrink-0" />
+                  <span className="text-sm font-medium">{agent.since}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -189,10 +213,11 @@ function AgentProfile() {
               </button>
               <button 
                 type="button"
-                onClick={() => toast.info("Un lien de réinitialisation a été envoyé à votre adresse email.")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-vanilla/10 text-vanilla font-black uppercase tracking-widest text-xs hover:bg-vanilla/20 transition-all border border-vanilla/20 shadow-sm"
+                disabled={loading}
+                onClick={handleForgotPassword}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-vanilla/5 text-vanilla/60 font-black uppercase tracking-widest text-[10px] hover:bg-alice/10 hover:text-alice transition-all border border-vanilla/10 shadow-sm disabled:opacity-50"
               >
-                <Shield size={18} /> Mot de passe oublié ?
+                Mot de passe oublié ?
               </button>
             </div>
           </form>

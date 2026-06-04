@@ -1,4 +1,4 @@
-import { apiFetch } from "@/utils/api";
+import apiClient from "@/lib/api-client";
 
 export interface NotificationDto {
   id: string;
@@ -10,15 +10,18 @@ export interface NotificationDto {
 }
 
 export async function fetchNotifications(): Promise<NotificationDto[]> {
-  return apiFetch("/api/notifications") as Promise<NotificationDto[]>;
+  const res = await apiClient.get<NotificationDto[]>("/api/notifications");
+  return res.data;
 }
 
 export async function markNotificationRead(id: string): Promise<NotificationDto> {
-  return apiFetch(`/api/notifications/${id}/read`, { method: "PATCH" }) as Promise<NotificationDto>;
+  const res = await apiClient.patch<NotificationDto>(`/api/notifications/${id}/read`);
+  return res.data;
 }
 
 export async function markAllNotificationsRead(): Promise<{ updated: number }> {
-  return apiFetch("/api/notifications/read-all", { method: "POST" }) as Promise<{ updated: number }>;
+  const res = await apiClient.post<{ updated: number }>("/api/notifications/read-all");
+  return res.data;
 }
 
 export function formatNotificationTime(iso: string): string {

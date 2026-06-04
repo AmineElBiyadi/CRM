@@ -1111,7 +1111,7 @@ function CreateAgentModal({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="prenom@smartestate.ma"
+              placeholder="prenom@rawabet.ma"
               className="input-neu"
             />
           </Field>

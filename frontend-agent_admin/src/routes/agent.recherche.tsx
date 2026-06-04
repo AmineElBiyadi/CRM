@@ -8,12 +8,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { searchProperties, linkPropertyToDeal } from "@/api/propertyApi";
 import { Search, MapPin, Link2, Loader2, X, Building2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import apiClient from "@/lib/api-client";
 
 export const Route = createFileRoute("/agent/recherche")({
   component: RecherchePage,
 });
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8081";
+
 
 // Villes US populaires pour la RapidAPI Realty
 const CITIES = [
@@ -76,9 +77,8 @@ function RecherchePage() {
     const fetchTypes = async () => {
       setLoadingTypes(true);
       try {
-        const res = await fetch(`${API_BASE}/api/property-types/grouped`, { credentials: "include" });
-        if (!res.ok) throw new Error("Erreur chargement types");
-        const data: GroupedTypes = await res.json();
+        const res = await apiClient.get("/api/property-types/grouped");
+        const data: GroupedTypes = res.data;
         setGroupedTypes(data);
 
         // Find general type for the specific type if provided
@@ -132,9 +132,8 @@ function RecherchePage() {
       if (dealId) params.append("dealId", dealId);
       if (floor !== undefined) params.append("floor", String(floor));
 
-      const res = await fetch(`${API_BASE}/api/properties/search?${params.toString()}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Erreur recherche");
-      const data = await res.json();
+      const res = await apiClient.get(`/api/properties/search?${params.toString()}`);
+      const data = res.data;
       setResults(data.results || []);
       setTotalResults(data.total || 0);
       if ((data.results?.length || 0) === 0) {

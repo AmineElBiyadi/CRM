@@ -39,16 +39,16 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SmartEstateHub ÔÇö Le CRM immobilier qui clos├® pour vous" },
+      { title: "Rawabet — Le CRM immobilier qui close pour vous" },
       {
         name: "description",
         content:
-          "CRM immobilier propuls├® par l'IA pour agents et directeurs d'agence. Scoring de leads, relances automatiques, contrats, portail client. Closez plus, g├®rez moins.",
+          "CRM immobilier propulsé par l'IA pour agents et directeurs d'agence. Scoring de leads, relances automatiques, contrats, portail client. Closez plus, gérez moins.",
       },
-      { property: "og:title", content: "SmartEstateHub ÔÇö CRM immobilier IA pour agents et agences" },
+      { property: "og:title", content: "Rawabet — CRM immobilier IA pour agents et agences" },
       {
         property: "og:description",
-        content: "Closez plus de mandats. Laissez l'IA g├®rer le reste.",
+        content: "Closez plus de mandats. Laissez l'IA gérer le reste.",
       },
     ],
   }),
@@ -105,17 +105,17 @@ function Header() {
     >
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl neu-sm flex items-center justify-center bg-vanilla">
-            <Sparkles size={18} className="text-eerie" strokeWidth={1.8} />
+          <div className="w-11 h-11 rounded-2xl neu-sm flex items-center justify-center bg-eerie text-white">
+            <Building2 size={20} />
           </div>
           <div>
-            <div className="font-bold text-base leading-none">SmartEstateHub</div>
+            <div className="font-bold text-base leading-none">Rawabet</div>
             <div className="text-[11px] text-muted-foreground mt-1">CRM immobilier</div>
           </div>
         </Link>
         <nav className="hidden md:flex items-center gap-7 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-eerie transition-colors">Fonctionnalit├®s</a>
-          <a href="#how" className="hover:text-eerie transition-colors">Comment ├ºa marche</a>
+          <a href="#features" className="hover:text-eerie transition-colors">Fonctionnalités</a>
+          <a href="#how" className="hover:text-eerie transition-colors">Comment ça marche</a>
           <a href="#pricing" className="hover:text-eerie transition-colors">Tarifs</a>
           <a href="#faq" className="hover:text-eerie transition-colors">FAQ</a>
         </nav>
@@ -128,7 +128,7 @@ function Header() {
           </Link>
           <AccessModal>
             <button className="neu-pressable bg-eerie text-ghost rounded-md px-4 py-2 text-sm font-semibold inline-flex items-center gap-2 cursor-pointer">
-              Demander un acc├¿s <ArrowRight size={14} />
+              Demander un accès <ArrowRight size={14} />
             </button>
           </AccessModal>
         </div>
@@ -144,17 +144,17 @@ function Hero() {
     <section className="relative max-w-6xl mx-auto px-6 pt-16 pb-24 text-center">
       <div className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-full neu-sm mb-8">
         <span className="w-2 h-2 rounded-full bg-honeydew" />
-        Nouveau ┬À Scoring de leads par IA
+        Nouveau · Scoring de leads par IA
       </div>
         <h1 className="text-5xl md:text-7xl font-bold leading-[1.05] tracking-tight max-w-4xl mx-auto">
           Faites grandir votre agence.
           <span className="block italic font-serif text-eerie/70">L'IA s'occupe du reste.</span>
         </h1>
       <p className="mt-7 text-muted-foreground text-lg max-w-2xl mx-auto">
-        SmartEstateHub donne ├á votre agence les outils que les grands r├®seaux ont :
+        Rawabet donne à votre agence les outils que les grands réseaux ont :
         scoring IA, relances automatiques, pipeline clair et portail client.
-        Con├ºu pour les directeurs d'agence qui veulent faire grandir leur ├®quipe,
-        pas g├®rer cinq outils diff├®rents.
+        Conçu pour les directeurs d'agence qui veulent faire grandir leur équipe,
+        pas gérer cinq outils différents.
       </p>
       <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
         <AccessModal>
@@ -166,11 +166,11 @@ function Hero() {
           href="#how"
           className="neu-sm neu-pressable bg-ghost rounded-md px-6 py-3 text-sm font-semibold inline-flex items-center gap-2"
         >
-          Voir comment ├ºa marche
+          Voir comment ça marche
         </a>
       </div>
       <p className="mt-4 text-xs text-muted-foreground">
-        R├®ponse sous 24h ┬À Setup complet en une journ├®e ┬À Accompagnement inclus
+        Réponse sous 24h · Setup complet en une journée · Accompagnement inclus
       </p>
 
       {/* Product mock */}
@@ -180,13 +180,13 @@ function Hero() {
             <span className="w-3 h-3 rounded-full bg-[oklch(0.78_0.15_25)]" />
             <span className="w-3 h-3 rounded-full bg-vanilla" />
             <span className="w-3 h-3 rounded-full bg-honeydew" />
-            <span className="ml-4 text-xs text-muted-foreground">app.smartestatehub.fr/agent</span>
+            <span className="ml-4 text-xs text-muted-foreground">app.rawabet.fr/agent</span>
           </div>
           <div className="p-6 grid md:grid-cols-3 gap-4 bg-ghost">
             {[
               { label: "Leads chauds", value: "24", delta: "+6 cette semaine", tone: "bg-vanilla" },
-              { label: "Mandats sign├®s", value: "12", delta: "+2 ce mois", tone: "bg-honeydew" },
-              { label: "Pipeline", value: "1,4 MÔé¼", delta: "+18% vs M-1", tone: "bg-alice" },
+              { label: "Mandats signés", value: "12", delta: "+2 ce mois", tone: "bg-honeydew" },
+              { label: "Pipeline", value: "1,4 M€", delta: "+18% vs M-1", tone: "bg-alice" },
             ].map((s) => (
               <div key={s.label} className="neu-sm p-5 rounded-xl text-left">
                 <div className="text-xs text-muted-foreground">{s.label}</div>
@@ -203,9 +203,9 @@ function Hero() {
               </div>
               <div className="space-y-2 text-sm">
                 {[
-                  "Relancer Mme Bernard ÔÇö score pass├® de 62 ├á 84",
-                  "Proposer le bien #1129 ├á M. Lopez (match 92%)",
-                  "Pr├®parer le compromis pour la villa de Saint-Cloud",
+                  "Relancer Mme Bernard — score passé de 62 à 84",
+                  "Proposer le bien #1129 à M. Lopez (match 92%)",
+                  "Préparer le compromis pour la villa de Saint-Cloud",
                 ].map((t) => (
                   <div key={t} className="flex items-center gap-2 text-eerie">
                     <span className="w-1.5 h-1.5 rounded-full bg-eerie/60" />
@@ -224,9 +224,9 @@ function Hero() {
 /* ---------- 2. Problem ---------- */
 
 const problems = [
-  { Icon: AlertTriangle, title: "Des leads qui s'├®vaporent", desc: "Un prospect chaud re├ºoit une r├®ponse 48h plus tard. Il a d├®j├á sign├® ailleurs." },
-  { Icon: Clock, title: "Des relances oubli├®es", desc: "Vous savez qu'il faut relancer. Vous le notez. Vous oubliez. Le mandat passe." },
-  { Icon: EyeOff, title: "Z├®ro visibilit├® pipeline", desc: "Combien de dossiers actifs ce mois ? Aucun manager ne sait r├®pondre sans Excel." },
+  { Icon: AlertTriangle, title: "Des leads qui s'évaporent", desc: "Un prospect chaud reçoit une réponse 48h plus tard. Il a déjà signé ailleurs." },
+  { Icon: Clock, title: "Des relances oubliées", desc: "Vous savez qu'il faut relancer. Vous le notez. Vous oubliez. Le mandat passe." },
+  { Icon: EyeOff, title: "Zéro visibilité pipeline", desc: "Combien de dossiers actifs ce mois ? Aucun manager ne sait répondre sans Excel." },
   { Icon: MessageSquareWarning, title: "Contrats en vrac", desc: "WhatsApp, mail, drive, papier. Le compromis prend 3 semaines au lieu de 3 jours." },
 ];
 
@@ -234,14 +234,14 @@ function Problem() {
   return (
     <section className="relative max-w-6xl mx-auto px-6 py-24">
       <div className="text-center max-w-2xl mx-auto mb-14">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Le probl├¿me</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Le problème</div>
         <h2 className="text-4xl md:text-5xl font-bold leading-tight">
           Vous ne perdez pas des ventes.
           <span className="block italic font-serif text-eerie/70">Vous perdez du temps.</span>
         </h2>
         <p className="mt-5 text-muted-foreground">
-          La plupart des directeurs d'agence g├¿rent leur activit├® avec 5 outils diff├®rents
-          qui ne se parlent pas. Sans visibilit├® sur le pipeline, impossible de piloter
+          La plupart des directeurs d'agence gèrent leur activité avec 5 outils différents
+          qui ne se parlent pas. Sans visibilité sur le pipeline, impossible de piloter
           la croissance.
         </p>
       </div>
@@ -265,19 +265,19 @@ function Problem() {
 /* ---------- 3. Features ---------- */
 
 const features = [
-  { Icon: Brain, accent: "bg-vanilla", title: "Lead Scoring IA", desc: "Chaque prospect re├ºoit un score de 0 ├á 100 mis ├á jour en temps r├®el. Vous savez qui appeler en premier." },
-  { Icon: Bell, accent: "bg-honeydew", title: "Relances automatiques", desc: "S├®quences mail et SMS personnalis├®es qui se d├®clenchent au bon moment, sans intervention." },
-  { Icon: FileSignature, accent: "bg-alice", title: "Gestion de contrats", desc: "Mandats, compromis, baux : g├®n├®r├®s, envoy├®s et sign├®s en ligne. Archivage automatique." },
-  { Icon: LayoutDashboard, accent: "bg-honeydew", title: "Portail client", desc: "Chaque client suit son dossier, d├®pose ses documents et discute avec un assistant IA 24/7." },
+  { Icon: Brain, accent: "bg-vanilla", title: "Lead Scoring IA", desc: "Chaque prospect reçoit un score de 0 à 100 mis à jour en temps réel. Vous savez qui appeler en premier." },
+  { Icon: Bell, accent: "bg-honeydew", title: "Relances automatiques", desc: "Séquences mail et SMS personnalisées qui se déclenchent au bon moment, sans intervention." },
+  { Icon: FileSignature, accent: "bg-alice", title: "Gestion de contrats", desc: "Mandats, compromis, baux : générés, envoyés et signés en ligne. Archivage automatique." },
+  { Icon: LayoutDashboard, accent: "bg-honeydew", title: "Portail client", desc: "Chaque client suit son dossier, dépose ses documents et discute avec un assistant IA 24/7." },
   { Icon: Search, accent: "bg-vanilla", title: "Recherche de biens", desc: "Matching automatique entre besoins clients et biens du portefeuille. Recommandations IA." },
-  { Icon: BarChart3, accent: "bg-alice", title: "Rapports hebdo", desc: "Lundi matin, vous recevez la photo de votre pipeline. Plus besoin de courir apr├¿s les chiffres." },
+  { Icon: BarChart3, accent: "bg-alice", title: "Rapports hebdo", desc: "Lundi matin, vous recevez la photo de votre pipeline. Plus besoin de courir après les chiffres." },
 ];
 
 function Features() {
   return (
     <section id="features" className="relative max-w-6xl mx-auto px-6 py-24">
       <div className="text-center max-w-2xl mx-auto mb-14">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Fonctionnalit├®s</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Fonctionnalités</div>
         <h2 className="text-4xl md:text-5xl font-bold leading-tight">
           Tout ce qu'il faut pour piloter votre agence.
           <span className="block italic font-serif text-eerie/70">Rien de plus.</span>
@@ -303,20 +303,20 @@ function Features() {
 /* ---------- 4. How it works ---------- */
 
 const steps = [
-  { n: "01", title: "Contactez notre ├®quipe", desc: "Remplissez le formulaire, nous revenons vers vous sous 24h pour comprendre vos besoins." },
-  { n: "02", title: "Nous cr├®ons votre compte", desc: "Votre espace admin est configur├® sur-mesure. Vous recevez vos identifiants et les acc├¿s agents." },
-  { n: "03", title: "Vous param├®trez votre agence", desc: "Changez votre mot de passe, invitez vos agents, importez vos clients. On vous accompagne." },
-  { n: "04", title: "Vos agents closent", desc: "Plateforme compl├¿te d├¿s le premier jour. Scoring IA, relances auto, pipeline ÔÇö tout est l├á." },
+  { n: "01", title: "Contactez notre équipe", desc: "Remplissez le formulaire, nous revenons vers vous sous 24h pour comprendre vos besoins." },
+  { n: "02", title: "Nous créons votre compte", desc: "Votre espace admin est configuré sur-mesure. Vous recevez vos identifiants et les accès agents." },
+  { n: "03", title: "Vous paramétrez votre agence", desc: "Changez votre mot de passe, invitez vos agents, importez vos clients. On vous accompagne." },
+  { n: "04", title: "Vos agents closent", desc: "Plateforme complète dès le premier jour. Scoring IA, relances auto, pipeline — tout est là." },
 ];
 
 function HowItWorks() {
   return (
     <section id="how" className="relative max-w-6xl mx-auto px-6 py-24">
       <div className="text-center max-w-2xl mx-auto mb-14">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Comment ├ºa marche</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground mb-3">Comment ça marche</div>
         <h2 className="text-4xl md:text-5xl font-bold leading-tight">
-          Votre agence op├®rationnelle
-          <span className="italic font-serif text-eerie/70"> en une journ├®e.</span>
+          Votre agence opérationnelle
+          <span className="italic font-serif text-eerie/70"> en une journée.</span>
         </h2>
       </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -337,18 +337,18 @@ function HowItWorks() {
 const testimonials = [
   {
     name: "Camille Reynaud",
-    role: "Directrice, Agence Lumi├¿re (Lyon)",
-    quote: "On a doubl├® notre taux de transformation en 4 mois. Mes agents sont plus productifs et je vois enfin ce qui se passe dans mon pipeline.",
+    role: "Directrice, Agence Lumière (Lyon)",
+    quote: "On a doublé notre taux de transformation en 4 mois. Mes agents sont plus productifs et je vois enfin ce qui se passe dans mon pipeline.",
   },
   {
     name: "Karim Benhaddou",
-    role: "Directeur g├®n├®ral, Urbanis (Casablanca)",
-    quote: "J'ai enfin une vision claire sur l'activit├® de mes 12 agents. Le scoring IA nous a fait gagner un temps fou sur la qualification.",
+    role: "Directeur général, Urbanis (Casablanca)",
+    quote: "J'ai enfin une vision claire sur l'activité de mes 12 agents. Le scoring IA nous a fait gagner un temps fou sur la qualification.",
   },
   {
     name: "Sophie Marchand",
-    role: "Co-fondatrice, C├┤te d'Azur Estates",
-    quote: "Enfin un outil qui parle le langage des agences, pas celui des consultants. Notre onboarding a ├®t├® fait en une matin├®e avec leur ├®quipe.",
+    role: "Co-fondatrice, Côte d'Azur Estates",
+    quote: "Enfin un outil qui parle le langage des agences, pas celui des consultants. Notre onboarding a été fait en une matinée avec leur équipe.",
   },
 ];
 
@@ -379,8 +379,8 @@ function Testimonials() {
         ))}
       </div>
       <div className="mt-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm text-muted-foreground">
-        <span className="font-serif italic text-lg">Lumi├¿re</span>
-        <span className="font-bold tracking-widest">C├öTE D'AZUR ESTATES</span>
+        <span className="font-serif italic text-lg">Lumière</span>
+        <span className="font-bold tracking-widest">CÔTE D'AZUR ESTATES</span>
         <span className="font-serif italic text-lg">Maison &amp; Co</span>
         <span className="font-bold tracking-widest">URBANIS</span>
         <span className="font-serif italic text-lg">Belle Pierre</span>
@@ -395,16 +395,16 @@ const plans = [
   {
     name: "Par Agent",
     price: "Sur devis",
-    desc: "Vous payez en fonction du nombre d'agents sur la plateforme. ├ëchelonnez vos co├╗ts avec votre croissance.",
-    features: ["Prix d├®gressif par agent", "Clients illimit├®s", "Lead scoring IA", "Relances automatiques", "Portail client", "Support prioritaire"],
+    desc: "Vous payez en fonction du nombre d'agents sur la plateforme. Échelonnez vos coûts avec votre croissance.",
+    features: ["Prix dégressif par agent", "Clients illimités", "Lead scoring IA", "Relances automatiques", "Portail client", "Support prioritaire"],
     cta: "Nous contacter",
     highlight: false,
   },
   {
     name: "Forfait Mensuel",
     price: "Sur devis",
-    desc: "Prix fixe mensuel quel que soit le nombre d'agents. Id├®al pour les agences structur├®es.",
-    features: ["Agents illimit├®s", "Clients illimit├®s", "Gestion de contrats", "Rapports hebdo", "Automatisations avanc├®es", "Onboarding d├®di├®"],
+    desc: "Prix fixe mensuel quel que soit le nombre d'agents. Idéal pour les agences structurées.",
+    features: ["Agents illimités", "Clients illimités", "Gestion de contrats", "Rapports hebdo", "Automatisations avancées", "Onboarding dédié"],
     cta: "Nous contacter",
     highlight: true,
   },
@@ -420,8 +420,8 @@ function Pricing() {
           <span className="italic font-serif text-eerie/70"> sans surprise.</span>
         </h2>
         <p className="mt-5 text-muted-foreground">
-          Deux mod├¿les, un seul objectif : adapter la facturation ├á la structure de votre agence.
-          Aucun paiement en ligne ÔÇö on discute ensemble pour trouver la formule qui vous convient.
+          Deux modèles, un seul objectif : adapter la facturation à la structure de votre agence.
+          Aucun paiement en ligne — on discute ensemble pour trouver la formule qui vous convient.
         </p>
       </div>
       <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -445,7 +445,7 @@ function Pricing() {
                   <span className="text-3xl font-bold">Sur devis</span>
                 ) : (
                   <>
-                    <span className="text-4xl font-bold">{p.price}Ôé¼</span>
+                    <span className="text-4xl font-bold">{p.price}€</span>
                     <span className="text-muted-foreground text-sm">/ agent / mois</span>
                   </>
                 )}
@@ -481,13 +481,13 @@ function Pricing() {
 /* ---------- 7. FAQ ---------- */
 
 const faqs = [
-  { q: "Puis-je importer mes clients existants ?", a: "Oui, l'import se fait en quelques clics depuis un CSV ou Excel. Notre ├®quipe vous accompagne gratuitement sur la migration lors de votre onboarding." },
-  { q: "Combien d'agents puis-je ajouter ?", a: "Avec le mod├¿le Par Agent, vos co├╗ts ├®voluent avec votre ├®quipe. Avec le Forfait Mensuel, vous avez un nombre illimit├® d'agents pour un prix fixe." },
-  { q: "Mes donn├®es sont-elles s├®curis├®es ?", a: "Vos donn├®es sont h├®berg├®es en Europe, chiffr├®es au repos et en transit. Nous sommes conformes RGPD et auditons r├®guli├¿rement notre infrastructure." },
-  { q: "Faut-il un engagement ?", a: "Non engagement de dur├®e. Vous pouvez r├®silier ├á tout moment avec un pr├®avis de 30 jours. Nous pr├®f├®rons vous convaincre par la valeur de l'outil." },
-  { q: "L'IA remplace-t-elle l'agent ?", a: "Au contraire : elle lib├¿re vos agents du temps administratif pour leur permettre de se concentrer sur la relation client. C'est un copilote, pas un pilote automatique." },
-  { q: "Comment se passe l'onboarding ?", a: "D├¿s votre premier contact, nous vous attribuons un interlocuteur d├®di├®. Votre compte est configur├® sur-mesure, vos agents sont form├®s, et vous ├¬tes op├®rationnels en une journ├®e." },
-  { q: "Puis-je tester avant de m'engager ?", a: "Oui, nous proposons une p├®riode de test de 14 jours apr├¿s notre premier appel. Aucune carte bancaire n'est demand├®e ÔÇö on commence par un ├®change humain." },
+  { q: "Puis-je importer mes clients existants ?", a: "Oui, l'import se fait en quelques clics depuis un CSV ou Excel. Notre équipe vous accompagne gratuitement sur la migration lors de votre onboarding." },
+  { q: "Combien d'agents puis-je ajouter ?", a: "Avec le modèle Par Agent, vos coûts évoluent avec votre équipe. Avec le Forfait Mensuel, vous avez un nombre illimité d'agents pour un prix fixe." },
+  { q: "Mes données sont-elles sécurisées ?", a: "Vos données sont hébergées en Europe, chiffrées au repos et en transit. Nous sommes conformes RGPD et auditons régulièrement notre infrastructure." },
+  { q: "Faut-il un engagement ?", a: "Non engagement de durée. Vous pouvez résilier à tout moment avec un préavis de 30 jours. Nous préférons vous convaincre par la valeur de l'outil." },
+  { q: "L'IA remplace-t-elle l'agent ?", a: "Au contraire : elle libère vos agents du temps administratif pour leur permettre de se concentrer sur la relation client. C'est un copilote, pas un pilote automatique." },
+  { q: "Comment se passe l'onboarding ?", a: "Dès votre premier contact, nous vous attribuons un interlocuteur dédié. Votre compte est configuré sur-mesure, vos agents sont formés, et vous êtes opérationnels en une journée." },
+  { q: "Puis-je tester avant de m'engager ?", a: "Oui, nous proposons une période de test de 14 jours après notre premier appel. Aucune carte bancaire n'est demandée — on commence par un échange humain." },
 ];
 
 function FAQ() {
@@ -536,22 +536,22 @@ function FinalCTA() {
         <div className="absolute -bottom-20 -right-20 w-72 h-72 rounded-full bg-honeydew/20 blur-3xl" />
         <div className="relative">
           <h2 className="text-4xl md:text-5xl font-bold leading-tight max-w-2xl mx-auto">
-            Pr├¬t ├á transformer
+            Prêt à transformer
             <span className="italic font-serif text-vanilla"> votre agence ?</span>
           </h2>
           <p className="mt-5 text-ghost/70 max-w-xl mx-auto">
-            Rejoignez les agences qui ont cess├® de courir apr├¿s leurs leads et ont repris le contr├┤le de leur croissance.
-            Premi├¿re r├®ponse sous 24h.
+            Rejoignez les agences qui ont cessé de courir après leurs leads et ont repris le contrôle de leur croissance.
+            Première réponse sous 24h.
           </p>
           <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
             <AccessModal>
               <button className="bg-ghost text-eerie rounded-md px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-vanilla transition-colors cursor-pointer">
-                Demander un acc├¿s <ArrowRight size={16} />
+                Demander un accès <ArrowRight size={16} />
               </button>
             </AccessModal>
             <AccessModal>
               <button className="border border-ghost/30 rounded-md px-6 py-3 text-sm font-semibold inline-flex items-center gap-2 hover:bg-ghost/10 transition-colors cursor-pointer">
-                Parler ├á un humain
+                Parler à un humain
               </button>
             </AccessModal>
           </div>
@@ -569,19 +569,19 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-14 grid md:grid-cols-4 gap-10">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center bg-vanilla">
-              <Sparkles size={16} className="text-eerie" strokeWidth={1.8} />
+            <div className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center bg-eerie text-white">
+              <Building2 size={18} />
             </div>
-            <div className="font-bold">SmartEstateHub</div>
+            <div className="font-bold">Rawabet</div>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Le CRM immobilier nouvelle g├®n├®ration. Pens├® pour les directeurs d'agence, con├ºu pour faire grandir les ├®quipes.
+            Le CRM immobilier nouvelle génération. Pensé pour les directeurs d'agence, conçu pour faire grandir les équipes.
           </p>
         </div>
         <FooterCol
           title="Produit"
           links={[
-            { label: "Fonctionnalit├®s", href: "#features" },
+            { label: "Fonctionnalités", href: "#features" },
             { label: "Tarifs", href: "#pricing" },
             { label: "FAQ", href: "#faq" },
             { label: "Connexion", href: "/login" },
@@ -590,17 +590,17 @@ function Footer() {
         <FooterCol
           title="Entreprise"
           links={[
-            { label: "├Ç propos", href: "#" },
+            { label: "À propos", href: "#" },
             { label: "Blog", href: "#" },
-            { label: "Carri├¿res", href: "#" },
-            { label: "Contact", href: "mailto:hello@smartestatehub.fr" },
+            { label: "Carrières", href: "#" },
+            { label: "Contact", href: "mailto:hello@rawabet.fr" },
           ]}
         />
         <FooterCol
-          title="L├®gal"
+          title="Légal"
           links={[
-            { label: "Mentions l├®gales", href: "#" },
-            { label: "Confidentialit├®", href: "#" },
+            { label: "Mentions légales", href: "#" },
+            { label: "Confidentialité", href: "#" },
             { label: "CGU", href: "#" },
             { label: "RGPD", href: "#" },
           ]}
@@ -608,9 +608,9 @@ function Footer() {
       </div>
       <div className="border-t border-border/60">
         <div className="max-w-6xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <div>┬® {new Date().getFullYear()} SmartEstateHub. Tous droits r├®serv├®s.</div>
+          <div>© {new Date().getFullYear()} Rawabet. Tous droits réservés.</div>
           <div className="flex items-center gap-4">
-            <a href="mailto:hello@smartestatehub.fr" className="hover:text-eerie"><Mail size={14} /></a>
+            <a href="mailto:hello@rawabet.fr" className="hover:text-eerie"><Mail size={14} /></a>
             <a href="#" className="hover:text-eerie"><Twitter size={14} /></a>
             <a href="#" className="hover:text-eerie"><Linkedin size={14} /></a>
             <a href="#" className="hover:text-eerie"><Github size={14} /></a>
@@ -648,10 +648,10 @@ function AccessModal({ children }: { children: React.ReactNode }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-md border-border bg-ghost p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl">Demander un acc├¿s</DialogTitle>
+          <DialogTitle className="text-xl">Demander un accès</DialogTitle>
           <DialogDescription>
             {mode === "choice" 
-              ? "Comment pr├®f├®rez-vous ├®changer avec notre ├®quipe ?"
+              ? "Comment préférez-vous échanger avec notre équipe ?"
               : "Remplissez ce formulaire et nous vous contacterons sous 24h."}
           </DialogDescription>
         </DialogHeader>
@@ -667,7 +667,7 @@ function AccessModal({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <div className="font-semibold text-eerie">Remplir le formulaire</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Laissez-nous vos coordonn├®es, on vous rappelle.</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Laissez-nous vos coordonnées, on vous rappelle.</div>
               </div>
             </button>
             
@@ -680,12 +680,12 @@ function AccessModal({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <div className="font-semibold text-eerie">Appeler un conseiller</div>
-                <div className="text-xs text-muted-foreground mt-0.5">├ëchangez de vive voix imm├®diatement.</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Échangez de vive voix immédiatement.</div>
               </div>
             </a>
           </div>
         ) : (
-          <form className="flex flex-col gap-4 py-4" onSubmit={(e) => { e.preventDefault(); alert("Formulaire envoy├® ! Nous vous recontacterons bient├┤t."); }}>
+          <form className="flex flex-col gap-4 py-4" onSubmit={(e) => { e.preventDefault(); alert("Formulaire envoyé ! Nous vous recontacterons bientôt."); }}>
             <Field icon={<UserIcon size={16} />} label="Nom complet">
               <input type="text" className="input-neu pl-10" placeholder="Jeanne Dupont" required />
             </Field>
@@ -698,7 +698,7 @@ function AccessModal({ children }: { children: React.ReactNode }) {
               <input type="email" className="input-neu pl-10" placeholder="jeanne@agence.fr" required />
             </Field>
             
-            <Field icon={<Phone size={16} />} label="T├®l├®phone">
+            <Field icon={<Phone size={16} />} label="Téléphone">
               <input type="tel" className="input-neu pl-10" placeholder="06 12 34 56 78" required />
             </Field>
 
