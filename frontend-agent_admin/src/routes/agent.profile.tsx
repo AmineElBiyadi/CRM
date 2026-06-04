@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useAgentDashboard } from "@/hooks/useDashboard";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { changePassword } from "@/api/authApi";
+import { changePassword, forgotPassword } from "@/api/authApi";
 
 export const Route = createFileRoute("/agent/profile")({
   component: AgentProfile,
@@ -54,6 +54,27 @@ function AgentProfile() {
       setPasswords({ current: "", new: "", confirm: "" });
     } catch (error: any) {
       const message = error.response?.data?.message || "Erreur lors de la mise à jour du mot de passe";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!agent.email || agent.email === "chargement...") {
+      toast.error("Adresse email non disponible");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await forgotPassword({
+        email: agent.email,
+        portal: "ADMIN_AGENT"
+      });
+      toast.success("Un lien de réinitialisation a été envoyé à votre adresse email professionnel.");
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Erreur lors de l'envoi du lien de réinitialisation";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -192,8 +213,9 @@ function AgentProfile() {
               </button>
               <button 
                 type="button"
-                onClick={() => toast.info("Un lien de réinitialisation a été envoyé à votre adresse email.")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-vanilla/5 text-vanilla/60 font-black uppercase tracking-widest text-[10px] hover:bg-alice/10 hover:text-alice transition-all border border-vanilla/10 shadow-sm"
+                disabled={loading}
+                onClick={handleForgotPassword}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-vanilla/5 text-vanilla/60 font-black uppercase tracking-widest text-[10px] hover:bg-alice/10 hover:text-alice transition-all border border-vanilla/10 shadow-sm disabled:opacity-50"
               >
                 Mot de passe oublié ?
               </button>

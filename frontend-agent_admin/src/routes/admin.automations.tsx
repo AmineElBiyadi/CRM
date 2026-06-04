@@ -95,7 +95,7 @@ function AutomationsPage() {
           <label className="text-xs font-medium text-muted-foreground">Modèle email d'intégration</label>
           <textarea
             rows={4}
-            defaultValue="Bonjour {{client_name}}, bienvenue chez SmartEstate. Votre agent {{agent_name}} vous contactera sous 24h…"
+            defaultValue="Bonjour {{client_name}}, bienvenue chez Rawabet. Votre agent {{agent_name}} vous contactera sous 24h…"
             className="mt-2 w-full px-4 py-3 neu-inset rounded-lg bg-transparent focus:outline-none text-sm"
           />
         </div>

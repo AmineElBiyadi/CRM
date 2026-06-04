@@ -13,4 +13,9 @@ export const changePassword = async (passwords: { oldPassword: string; newPasswo
   return response.data;
 };
 
+export const forgotPassword = async (data: { email: string; portal: string }) => {
+  const response = await api.post('/api/auth/forgot-password', data);
+  return response.data;
+};
+
 export default api;
