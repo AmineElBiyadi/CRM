@@ -423,7 +423,7 @@ function AgentDashboard() {
           clientName={selectedEmailClient.clientFullName}
           agentEmail={user?.email || ""}
           initialSubject={`Suivi de votre dossier immobilier - ${selectedEmailClient.clientFullName}`}
-          initialBody={selectedEmailClient.aiRecommendedAction ? `Bonjour ${selectedEmailClient.clientFullName},\n\nConcernant votre projet immobilier, je vous recommande l'action suivante : ${selectedEmailClient.aiRecommendedAction}.\n\nJe reste à votre disposition pour en discuter.\n\nCordialement,\n${user?.firstName} ${user?.lastName}` : ""}
+          initialBody=""
           onSuccess={() => {
             // Rafraîchir le dashboard après l'envoi (donner 2s pour l'IA)
             setTimeout(() => {

@@ -2065,7 +2065,7 @@ function AgentDossierPage() {
           clientName={dossier.clientName}
           agentEmail={user?.email || ""}
           initialSubject={`Suivi de votre dossier immobilier - ${dossier.clientName}`}
-          initialBody={dossier.aiSummary ? `Bonjour ${dossier.clientName},\n\nVoici un résumé de l'état de votre dossier :\n\n${dossier.aiSummary}\n\nCordialement,\n${user?.firstName} ${user?.lastName}` : ""}
+          initialBody=""
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ["interactions", id] });
             fetchDossierData();
