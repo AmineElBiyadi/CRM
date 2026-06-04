@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
-import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
+import { Sparkles, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api-error";
 import { apiLogin, tryRestoreSession } from "@/lib/auth";
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -101,13 +102,20 @@ function LoginPage() {
 
             <Field icon={<Lock size={16} />} label="Mot de passe">
               <input
-                className="input-neu pl-10"
-                type="password"
+                className="input-neu pl-10 pr-10 w-full"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-eerie transition-colors cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </Field>
 
             <div className="flex items-center justify-between text-xs">
