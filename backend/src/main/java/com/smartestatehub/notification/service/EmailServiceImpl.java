@@ -34,6 +34,12 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.sendgrid.from-email}")
     private String fromEmail;
 
+    @Value("${app.frontend.admin-url}")
+    private String adminUrl;
+
+    @Value("${app.frontend.client-url}")
+    private String clientUrl;
+
     private void sendEmail(String to, String subject, String htmlContent) {
         if (sendgridApiKey == null || sendgridApiKey.isBlank() || sendgridApiKey.startsWith("your_")) {
             log.warn("[MOCK EMAIL] Pas de clé SendGrid valide. Email vers {} non envoyé réellement.", to);
@@ -82,7 +88,10 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendPasswordResetEmail(String to, String token) {
+    public void sendPasswordResetEmail(String to, String token, String portal) {
+        String baseUrl = "CLIENT".equals(portal) ? clientUrl : adminUrl;
+        String resetLink = baseUrl + "/reset-password?token=" + token;
+
         String subject = "Réinitialisation de votre mot de passe — SmartEstateHub";
         String html = """
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
@@ -94,17 +103,18 @@ public class EmailServiceImpl implements EmailService {
                         <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
                         <p>Veuillez cliquer sur le lien ci-dessous pour continuer :</p>
                         <div style="margin: 30px 0; text-align: center;">
-                            <a href="http://localhost:5173/reset-password?token=%s" 
+                            <a href="%s" 
                                style="display: inline-block; padding: 12px 24px; background-color: #1a1a1a; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold;">
                                 Réinitialiser mon mot de passe
                             </a>
                         </div>
                         <p style="font-size: 13px; color: #666;">Ce lien est valable pendant 2 heures. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
+                        <p style="font-size: 11px; color: #999; word-break: break-all;">Si le bouton ne fonctionne pas, copiez ce lien : %s</p>
                         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                        <p style="font-size: 12px; color: #888; text-align: center;">L'équipe SmartEstateHub</p>
+                        <p style="font-size: 12px; color: #888; text-align: center;">SmartEstateHub · Excellence Immobilière</p>
                     </div>
                 </div>
-                """.formatted(token);
+                """.formatted(resetLink, resetLink);
 
         sendEmail(to, subject, html);
     }
