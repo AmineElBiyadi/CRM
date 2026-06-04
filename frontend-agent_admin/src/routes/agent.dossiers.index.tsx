@@ -401,7 +401,7 @@ function DossierRow({ dossier }: { dossier: DossierSummary }) {
           ) : (
             <Link 
               to="/agent/dossier" 
-              search={{ id: dossier.idDeal ?? undefined }}
+              search={{ id: dossier.idDeal ?? undefined, from: "/agent/dossiers" }}
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl neu-sm hover:neu-pressable text-sm font-bold group-hover:bg-alice/10"
             >
               Détails <ChevronRight size={16} />
