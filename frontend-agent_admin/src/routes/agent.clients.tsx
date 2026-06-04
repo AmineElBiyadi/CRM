@@ -69,7 +69,7 @@ function ClientCard({
       </div>
 
       {/* Middle Section: Contact Quick Actions */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="grid grid-cols-1 gap-3 mb-6">
         <a 
           href={`tel:${client.phone}`}
           onClick={(e) => e.stopPropagation()}
@@ -81,19 +81,6 @@ function ClientCard({
           <div className="min-w-0 flex-1">
             <div className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-1">Appeler</div>
             <div className="text-[11px] font-bold truncate">{client.phone || "N/A"}</div>
-          </div>
-        </a>
-        <a 
-          href={`mailto:${client.email}`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-2 p-2.5 rounded-xl neu-sm hover:neu-pressable transition-all group/btn"
-        >
-          <div className="w-7 h-7 rounded-lg bg-alice/30 flex items-center justify-center text-eerie group-hover/btn:bg-alice transition-colors">
-            <Mail size={14} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[9px] uppercase font-bold text-muted-foreground leading-none mb-1">Email</div>
-            <div className="text-[11px] font-bold truncate">Envoyer</div>
           </div>
         </a>
       </div>
@@ -271,7 +258,7 @@ function ClientDossierDrawer({
                   </div>
                   <Link 
                     to="/agent/dossier" 
-                    search={{ id: d.idDeal }}
+                    search={{ id: d.idDeal, from: "/agent/clients" }}
                     className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-honeydew transition-colors text-muted-foreground hover:text-eerie"
                     title="Voir les détails"
                   >
