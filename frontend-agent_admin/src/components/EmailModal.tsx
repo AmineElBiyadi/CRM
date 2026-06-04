@@ -51,11 +51,7 @@ export function EmailModal({
     setError(null);
 
     try {
-      // TODO: Remplacer par le vrai appel API : POST /api/ai/deals/{dealId}/draft-email
-      // const response = await apiClient.post(`/api/ai/deals/${dealId}/draft-email`);
-      // const { subject: aiSubject, body: aiBody } = response.data;
-
-      // Mock temporaire (1s)
+      // Mock temporaire (1s) comme demandé
       await new Promise(resolve => setTimeout(resolve, 1000));
       const aiSubject = "Suivi de votre dossier immobilier";
       const aiBody = `Bonjour ${clientName.split(' ')[0]},\n\nJe me permets de vous contacter suite à notre dernière interaction concernant votre projet immobilier. \n\nL'analyse de votre dossier montre une belle progression et je souhaitais m'assurer que vous aviez toutes les informations nécessaires pour la suite.\n\nJe reste à votre entière disposition pour un échange téléphonique.\n\nCordialement,\n${agentEmail}`;
@@ -101,16 +97,12 @@ export function EmailModal({
     setError(null);
 
     try {
-      // TODO: Remplacer par le vrai appel API quand le backend sera prêt
-      // await apiClient.post('/api/emails/send', {
-      //   dealId,
-      //   clientEmail,
-      //   subject,
-      //   body
-      // });
-
-      // Mock temporaire (1.5s)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await apiClient.post('/api/emails/send', {
+        dealId,
+        clientEmail,
+        subject,
+        body
+      });
 
       // Journalisation automatique de l'interaction
       await apiClient.post('/api/agent/interactions', {

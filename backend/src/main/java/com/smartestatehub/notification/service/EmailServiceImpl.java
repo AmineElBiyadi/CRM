@@ -40,6 +40,47 @@ public class EmailServiceImpl implements EmailService {
     @Value("${app.frontend.client-url}")
     private String clientUrl;
 
+    // Template de base pour tous les emails
+    private String wrapWithTemplate(String content) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; margin: 0; padding: 0; color: #333; }
+                        .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #eef2f5; }
+                        .header { background: #1a1a1a; padding: 40px 20px; text-align: center; }
+                        .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+                        .content { padding: 40px; line-height: 1.8; font-size: 16px; }
+                        .content h2 { color: #1a1a1a; margin-top: 0; font-size: 22px; font-weight: 700; }
+                        .button-container { text-align: center; margin: 35px 0; }
+                        .button { display: inline-block; padding: 14px 32px; background-color: #1a1a1a; color: #ffffff !important; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 15px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+                        .footer { background: #fcfdfe; padding: 30px; text-align: center; border-top: 1px solid #f0f4f8; }
+                        .footer p { margin: 5px 0; font-size: 13px; color: #94a3b8; }
+                        .highlight-box { background: #f8fafc; border-radius: 12px; padding: 25px; margin: 25px 0; border-left: 4px solid #1a1a1a; }
+                        .highlight-box p { margin: 10px 0; font-size: 15px; }
+                        .highlight-box strong { color: #1a1a1a; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Rawabet</h1>
+                        </div>
+                        <div class="content">
+                            %s
+                        </div>
+                        <div class="footer">
+                            <p><strong>Rawabet</strong> · Excellence Immobilière</p>
+                            <p>Agence Immobilière Intelligente</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(content);
+    }
+
     private void sendEmail(String to, String subject, String htmlContent) {
         if (sendgridApiKey == null || sendgridApiKey.isBlank() || sendgridApiKey.startsWith("your_")) {
             log.warn("[MOCK EMAIL] Pas de clé SendGrid valide. Email vers {} non envoyé réellement.", to);
@@ -48,7 +89,7 @@ public class EmailServiceImpl implements EmailService {
         }
 
         try {
-            Email from = new Email(fromEmail, "SmartEstateHub");
+            Email from = new Email(fromEmail, "Rawabet");
             Email recipient = new Email(to);
             Content content = new Content("text/html", htmlContent);
             Mail mail = new Mail(from, subject, recipient, content);
@@ -73,18 +114,15 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendWelcomeEmail(String to, String name) {
-        String subject = "Bienvenue chez SmartEstateHub !";
-        String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
-                    <h2 style="color: #1a1a1a;">Bienvenue, %s !</h2>
-                    <p>Nous sommes ravis de vous compter parmi nous.</p>
-                    <p>SmartEstateHub est votre nouvel allié pour la gestion immobilière intelligente.</p>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                    <p style="font-size: 12px; color: #888;">L'équipe SmartEstateHub</p>
-                </div>
+        String subject = "Bienvenue chez Rawabet !";
+        String content = """
+                <h2>Bienvenue, %s !</h2>
+                <p>Nous sommes ravis de vous compter parmi nous.</p>
+                <p><strong>Rawabet</strong> est votre nouvel allié pour une expérience immobilière moderne, transparente et assistée par l'intelligence artificielle.</p>
+                <p>Notre équipe est déjà mobilisée pour faire de votre projet une réussite totale.</p>
                 """.formatted(name);
 
-        sendEmail(to, subject, html);
+        sendEmail(to, subject, wrapWithTemplate(content));
     }
 
     @Override
@@ -92,125 +130,84 @@ public class EmailServiceImpl implements EmailService {
         String baseUrl = "CLIENT".equals(portal) ? clientUrl : adminUrl;
         String resetLink = baseUrl + "/reset-password?token=" + token;
 
-        String subject = "Réinitialisation de votre mot de passe — SmartEstateHub";
-        String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
-                    <div style="background: #1a1a1a; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1 style="color: #fff; margin: 0; font-size: 20px;">SmartEstateHub</h1>
-                    </div>
-                    <div style="padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
-                        <h2 style="color: #1a1a1a;">Réinitialisation de mot de passe</h2>
-                        <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
-                        <p>Veuillez cliquer sur le lien ci-dessous pour continuer :</p>
-                        <div style="margin: 30px 0; text-align: center;">
-                            <a href="%s" 
-                               style="display: inline-block; padding: 12px 24px; background-color: #1a1a1a; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold;">
-                                Réinitialiser mon mot de passe
-                            </a>
-                        </div>
-                        <p style="font-size: 13px; color: #666;">Ce lien est valable pendant 2 heures. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
-                        <p style="font-size: 11px; color: #999; word-break: break-all;">Si le bouton ne fonctionne pas, copiez ce lien : %s</p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                        <p style="font-size: 12px; color: #888; text-align: center;">SmartEstateHub · Excellence Immobilière</p>
-                    </div>
+        String subject = "Réinitialisation de votre mot de passe — Rawabet";
+        String content = """
+                <h2>Réinitialisation de mot de passe</h2>
+                <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>Rawabet</strong>.</p>
+                <p>Veuillez cliquer sur le bouton ci-dessous pour continuer :</p>
+                <div class="button-container">
+                    <a href="%s" class="button">
+                        Réinitialiser mon mot de passe
+                    </a>
                 </div>
+                <p style="font-size: 13px; color: #666;">Ce lien est valable pendant 2 heures. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
+                <p style="font-size: 11px; color: #999; word-break: break-all;">Si le bouton ne fonctionne pas, copiez ce lien : %s</p>
                 """.formatted(resetLink, resetLink);
 
-        sendEmail(to, subject, html);
+        sendEmail(to, subject, wrapWithTemplate(content));
     }
 
     @Override
     public void sendNotificationEmail(String to, String subject, String message) {
-        String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
-                    <h2 style="color: #1a1a1a;">Nouvelle notification</h2>
-                    <p>%s</p>
-                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                    <p style="font-size: 12px; color: #888;">L'équipe SmartEstateHub</p>
-                </div>
+        String content = """
+                <h2>Nouvelle notification</h2>
+                <p>%s</p>
                 """.formatted(message);
 
-        sendEmail(to, subject, html);
+        sendEmail(to, subject, wrapWithTemplate(content));
     }
 
     @Override
     public void sendContractReadyEmail(String to, String clientName, String pdfUrl) {
-        String subject = "Votre contrat est prêt à signer — SmartEstateHub";
-        String html = """
-                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1a1a1a;">
-                  <div style="background:#1a1a1a;padding:24px 32px;border-radius:12px 12px 0 0;">
-                    <h1 style="color:#fff;margin:0;font-size:20px;">SmartEstateHub</h1>
-                  </div>
-                  <div style="padding:32px;background:#fafafa;border:1px solid #eee;border-top:none;border-radius:0 0 12px 12px;">
-                    <p style="font-size:15px;">Bonjour <strong>%s</strong>,</p>
-                    <p>Votre agent vient de préparer un contrat immobilier à votre attention. Il est maintenant disponible pour relecture et signature.</p>
-                    <div style="margin:28px 0;text-align:center;">
-                      <a href="%s"
-                         target="_blank"
-                         style="background:#1a1a1a;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">
+        String subject = "Votre contrat est prêt à signer — Rawabet";
+        String content = """
+                <h2>Bonjour %s,</h2>
+                <p>Votre conseiller Rawabet vient de finaliser la préparation de votre contrat immobilier.</p>
+                <p>Il est désormais disponible pour votre relecture et signature électronique sécurisée.</p>
+                <div class="button-container">
+                    <a href="%s" target="_blank" class="button">
                         Consulter le contrat (PDF)
-                      </a>
-                    </div>
-                    <p style="font-size:12px;color:#888;">Si vous avez des questions, contactez directement votre agent. Ce lien est valable 30 jours.</p>
-                    <hr style="border:none;border-top:1px solid #eee;margin:20px 0;"/>
-                    <p style="font-size:11px;color:#aaa;text-align:center;">SmartEstateHub · Agence Immobilière Intelligente</p>
-                  </div>
+                    </a>
                 </div>
+                <p style="font-size: 13px; color: #64748b;">Si vous avez la moindre question, n'hésitez pas à contacter directement votre agent. Ce lien est accessible pendant 30 jours.</p>
                 """.formatted(clientName, pdfUrl);
 
-        sendEmail(to, subject, html);
+        sendEmail(to, subject, wrapWithTemplate(content));
     }
 
     @Override
     public void sendMeetingScheduledEmail(String to, String clientName, String agentName, String dateTime, String meetingType) {
-        String subject = "Confirmation de rendez-vous — SmartEstateHub";
-        String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
-                    <div style="background: #1a1a1a; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1 style="color: #fff; margin: 0; font-size: 20px;">SmartEstateHub</h1>
-                    </div>
-                    <div style="padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
-                        <h2>Confirmation de rendez-vous</h2>
-                        <p>Bonjour <strong>%s</strong>,</p>
-                        <p>Votre rendez-vous a été programmé avec succès.</p>
-                        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                            <p><strong>Agent :</strong> %s</p>
-                            <p><strong>Date et heure :</strong> %s</p>
-                            <p><strong>Type de rencontre :</strong> %s</p>
-                        </div>
-                        <p>Si vous avez besoin de modifier ou d'annuler ce rendez-vous, veuillez contacter votre agent directement.</p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                        <p style="font-size: 12px; color: #888; text-align: center;">SmartEstateHub · Votre partenaire immobilier</p>
-                    </div>
+        String subject = "Confirmation de rendez-vous — Rawabet";
+        String content = """
+                <h2>Confirmation de rendez-vous</h2>
+                <p>Bonjour <strong>%s</strong>,</p>
+                <p>Votre rencontre a été programmée avec succès dans notre agenda.</p>
+                <div class="highlight-box">
+                    <p><strong>Agent :</strong> %s</p>
+                    <p><strong>Date et heure :</strong> %s</p>
+                    <p><strong>Type de rencontre :</strong> %s</p>
                 </div>
+                <p>Pour toute modification ou annulation, nous vous remercions de contacter votre agent Rawabet dans les plus brefs délais.</p>
                 """.formatted(clientName, agentName, dateTime, meetingType);
 
-        sendEmail(to, subject, html);
+        sendEmail(to, subject, wrapWithTemplate(content));
     }
 
     @Override
     public void sendOfferReceivedEmail(String to, String clientName, String propertyTitle, Double amount) {
-        String subject = "Nouvelle offre reçue — SmartEstateHub";
-        String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
-                    <div style="background: #1a1a1a; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1 style="color: #fff; margin: 0; font-size: 20px;">SmartEstateHub</h1>
-                    </div>
-                    <div style="padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
-                        <h2>Nouvelle offre pour votre bien</h2>
-                        <p>Bonjour <strong>%s</strong>,</p>
-                        <p>Une nouvelle offre a été déposée pour la propriété : <strong>%s</strong>.</p>
-                        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                            <p style="font-size: 18px; color: #1a1a1a; font-weight: bold;">Montant de l'offre : %,.2f €</p>
-                        </div>
-                        <p>Vous pouvez consulter les détails de l'offre et y répondre depuis votre portail client.</p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                        <p style="font-size: 12px; color: #888; text-align: center;">SmartEstateHub · L'immobilier en toute simplicité</p>
-                    </div>
+        String subject = "Nouvelle offre reçue — Rawabet";
+        String content = """
+                <h2>Nouvelle offre pour votre bien</h2>
+                <p>Bonjour <strong>%s</strong>,</p>
+                <p>Une nouvelle offre d'achat vient d'être déposée pour votre propriété :</p>
+                <div class="highlight-box" style="text-align: center;">
+                    <p style="font-size: 14px; margin-bottom: 5px;">%s</p>
+                    <p style="font-size: 24px; color: #1a1a1a; font-weight: 800; margin: 0;">%,.2f MAD</p>
                 </div>
+                <p>Vous pouvez consulter les détails complets et formuler votre réponse directement depuis votre portail client Rawabet.</p>
                 """.formatted(clientName, propertyTitle, amount);
 
-        sendEmail(to, subject, html);
+        sendEmail(to, subject, wrapWithTemplate(content));
     }
 
     @Override
@@ -218,7 +215,7 @@ public class EmailServiceImpl implements EmailService {
         log.info("Génération d'un email via IA pour {} - Sujet: {}", to, subject);
 
         String systemPrompt = """
-                Tu es un assistant de communication pour une agence immobilière de luxe "SmartEstateHub".
+                Tu es un assistant de communication pour une agence immobilière de luxe "Rawabet".
                 Ta mission est de rédiger le corps d'un email professionnel, chaleureux et persuasif.
                 Utilise les informations fournies dans le contexte pour personnaliser le message.
                 Réponds uniquement avec le contenu HTML du corps de l'email (sans balises <html> ou <body>, juste le contenu).
@@ -236,23 +233,17 @@ public class EmailServiceImpl implements EmailService {
                     .call()
                     .content();
 
-            String finalHtml = """
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #333; line-height: 1.6;">
-                        <div style="background: #1a1a1a; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                            <h1 style="color: #fff; margin: 0; font-size: 20px;">SmartEstateHub</h1>
-                        </div>
-                        <div style="padding: 30px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
-                            %s
-                            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
-                            <p style="font-size: 12px; color: #888; text-align: center;">SmartEstateHub · Excellence Immobilière</p>
-                        </div>
-                    </div>
-                    """.formatted(aiContent);
-
-            sendEmail(to, subject, finalHtml);
+            sendEmail(to, subject, wrapWithTemplate(aiContent));
         } catch (Exception e) {
             log.error("Erreur lors de la génération de l'email par IA: {}", e.getMessage());
             sendNotificationEmail(to, subject, "Une mise à jour importante concernant votre dossier est disponible.");
         }
+    }
+
+    @Override
+    public void sendCustomEmail(String to, String subject, String body) {
+        // Pour les emails personnalisés envoyés par l'agent
+        String htmlBody = body.replace("\n", "<br/>");
+        sendEmail(to, subject, wrapWithTemplate(htmlBody));
     }
 }
