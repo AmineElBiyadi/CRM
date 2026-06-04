@@ -2,9 +2,20 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  withCredentials: true, // Crucial for sending auth cookies
 });
 
 api.interceptors.request.use((config) => {
+  // If your app uses CSRF protection, we should include the token here
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrf_token='))
+    ?.split('=')[1];
+    
+  if (csrfToken && config.method !== 'get') {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

@@ -1,19 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
-const API_BASE_URL = "/api/public/client-portal";
-
-const getClientId = () => localStorage.getItem("client_id") || "d755eba6-106f-4f81-af56-4e4d60f16840";
+const API_BASE_URL = "/api/client/portal";
 
 // Configure axios for use-client-data
 const clientPortalAxios = axios.create({
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
 clientPortalAxios.interceptors.request.use((config) => {
-  const clientId = getClientId();
-  if (clientId) {
-    config.headers["X-Client-Id"] = clientId;
+  // Support for CSRF token from cookies
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrf_token='))
+    ?.split('=')[1];
+    
+  if (csrfToken && config.method !== 'get') {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -102,73 +111,7 @@ export interface Meeting {
   type: string;
 }
 
-export function useMeetingActions() {
-  const queryClient = useQueryClient();
-  const clientId = getClientId();
 
-  const accept = useMutation({
-    mutationFn: async (meetingId: string) => {
-      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/accept`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
-
-  const reschedule = useMutation({
-    mutationFn: async ({ meetingId, newDate, reason }: { meetingId: string; newDate: string; reason: string }) => {
-      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/reschedule`, { newDate, reason });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
-
-  const cancel = useMutation({
-    mutationFn: async ({ meetingId, reason }: { meetingId: string; reason: string }) => {
-      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/meetings/${meetingId}/cancel`, { reason });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
-
-  return { accept, reschedule, cancel };
-}
-
-export function useOfferActions() {
-  const queryClient = useQueryClient();
-  const clientId = getClientId();
-
-  const accept = useMutation({
-    mutationFn: async (offerId: string) => {
-      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/offers/${offerId}/accept`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
-
-  const reject = useMutation({
-    mutationFn: async (offerId: string) => {
-      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/offers/${offerId}/reject`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
-
-  const withdraw = useMutation({
-    mutationFn: async (offerId: string) => {
-      await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/offers/${offerId}/withdraw`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
-
-  return { accept, reject, withdraw };
-}
 
 export interface TimelineEvent {
   type: "INTERACTION" | "MEETING" | "DOCUMENT" | "CONTRACT" | "STAGE_UPDATE";
@@ -190,37 +133,123 @@ export interface ClientPortalData {
 }
 
 export function useClientData() {
-  const clientId = getClientId();
-  return useQuery<ClientPortalData>({
-    queryKey: ["clientPortalData", clientId],
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, error } = useQuery<ClientPortalData>({
+    queryKey: ["clientPortalData"],
     queryFn: async () => {
-      const { data } = await clientPortalAxios.get(`${API_BASE_URL}/${clientId}/full-data`);
+      const { data } = await clientPortalAxios.get("/full-data");
       return data;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   });
+
+  const updateProfile = useMutation({
+    mutationFn: async (dto: { firstName?: string; lastName?: string; email?: string; phone?: string }) => {
+      await clientPortalAxios.put("/profile", dto);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const sendMessage = useMutation({
+    mutationFn: async (content: string) => {
+      await clientPortalAxios.post("/message", { content });
+    },
+  });
+
+  const acceptMeeting = useMutation({
+    mutationFn: async (meetingId: string) => {
+      await clientPortalAxios.put(`/meetings/${meetingId}/accept`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const rescheduleMeeting = useMutation({
+    mutationFn: async ({ meetingId, newDate, reason }: { meetingId: string; newDate: string; reason: string }) => {
+      await clientPortalAxios.put(`/meetings/${meetingId}/reschedule`, { newDate, reason });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const cancelMeeting = useMutation({
+    mutationFn: async ({ meetingId, reason }: { meetingId: string; reason: string }) => {
+      await clientPortalAxios.put(`/meetings/${meetingId}/cancel`, { reason });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const acceptOffer = useMutation({
+    mutationFn: async (offerId: string) => {
+      await clientPortalAxios.put(`/offers/${offerId}/accept`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const rejectOffer = useMutation({
+    mutationFn: async (offerId: string) => {
+      await clientPortalAxios.put(`/offers/${offerId}/reject`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const withdrawOffer = useMutation({
+    mutationFn: async (offerId: string) => {
+      await clientPortalAxios.put(`/offers/${offerId}/withdraw`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
+  const updatePassword = useMutation({
+    mutationFn: async (dto: any) => {
+      await clientPortalAxios.put("/password", dto);
+    },
+  });
+
+  return {
+    data,
+    isLoading,
+    error,
+    updateProfile,
+    sendMessage,
+    acceptMeeting,
+    rescheduleMeeting,
+    cancelMeeting,
+    acceptOffer,
+    rejectOffer,
+    withdrawOffer,
+    updatePassword,
+  };
+}
+
+export function useMeetingActions() {
+  const { acceptMeeting, rescheduleMeeting, cancelMeeting } = useClientData();
+  return {
+    accept: acceptMeeting,
+    reschedule: rescheduleMeeting,
+    cancel: cancelMeeting
+  };
 }
 
 export function useUpdateProfile() {
-  const queryClient = useQueryClient();
-  const clientId = getClientId();
-  return useMutation({
-    mutationFn: async (dto: { firstName?: string; lastName?: string; email?: string; phone?: string }) => {
-      const response = await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/profile`, dto);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientPortalData", clientId] });
-    },
-  });
+  const { updateProfile } = useClientData();
+  return updateProfile;
 }
 
 export function useUpdatePassword() {
-  const clientId = getClientId();
-  return useMutation({
-    mutationFn: async (dto: { oldPassword?: string; newPassword: string }) => {
-      const response = await clientPortalAxios.put(`${API_BASE_URL}/${clientId}/password`, dto);
-      return response.data;
-    },
-  });
+  const { updatePassword } = useClientData();
+  return updatePassword;
+}
+
+export function useOfferActions() {
+  const { acceptOffer, rejectOffer, withdrawOffer } = useClientData();
+  return {
+    accept: acceptOffer,
+    reject: rejectOffer,
+    withdraw: withdrawOffer,
+  };
+}
+
+export function useSendMessage() {
+  const { sendMessage } = useClientData();
+  return sendMessage;
 }

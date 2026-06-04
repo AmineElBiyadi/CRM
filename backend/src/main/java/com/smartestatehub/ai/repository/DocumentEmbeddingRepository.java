@@ -25,4 +25,19 @@ public interface DocumentEmbeddingRepository extends JpaRepository<DocumentEmbed
             @Param("dealId") UUID dealId, 
             @Param("queryEmbedding") String queryEmbedding, 
             @Param("limit") int limit);
+
+    /**
+     * Recherche de similarité cosinus pour TOUS les documents d'un client.
+     */
+    @Query(value = "SELECT de.* FROM document_embeddings de " +
+           "JOIN documents d ON de.id_document = d.id_document " +
+           "JOIN deals dl ON d.id_deal = dl.id_deal " +
+           "JOIN client_folder cf ON dl.id_client_profile = cf.id_profile " +
+           "WHERE cf.id_client = :clientId " +
+           "ORDER BY de.embedding <=> cast(:queryEmbedding as vector) " +
+           "LIMIT :limit", nativeQuery = true)
+    List<DocumentEmbedding> findSimilarChunksForClient(
+            @Param("clientId") UUID clientId, 
+            @Param("queryEmbedding") String queryEmbedding, 
+            @Param("limit") int limit);
 }

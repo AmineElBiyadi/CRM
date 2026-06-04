@@ -13,7 +13,7 @@ interface Message {
 }
 
 interface RagChatWidgetProps {
-  dealId: string;
+  dealId?: string;
 }
 
 export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
@@ -38,7 +38,10 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
     setIsLoading(true);
 
     try {
-      const response = await ragApi.askQuestion(dealId, input);
+      const response = dealId 
+        ? await ragApi.askQuestion(dealId, input)
+        : await ragApi.askGlobalQuestion(input);
+        
       const assistantMessage: Message = { 
         role: 'assistant', 
         content: response.answer,
@@ -95,10 +98,10 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-eerie">Comment puis-je vous aider ?</p>
-                  <p className="text-xs px-6">Posez-moi une question sur vos documents (contrats, diagnostics, budget...).</p>
+                  <p className="text-xs px-6">Posez-moi une question sur vos dossiers, rendez-vous, contrats ou documents.</p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 px-4">
-                  {["Clauses suspensives ?", "Date de signature ?", "Montant du dépôt ?"].map((q) => (
+                  {["Combien j'ai de dossiers ?", "Mon prochain RDV ?", "État de mes contrats ?"].map((q) => (
                     <button
                       key={q}
                       onClick={() => setInput(q)}
@@ -144,7 +147,7 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
               <div className="flex justify-start">
                 <div className="bg-white border border-border rounded-2xl p-4 flex items-center gap-3">
                   <Loader2 className="w-4 h-4 animate-spin text-vanilla" />
-                  <span className="text-xs text-muted-foreground italic font-medium">Analyse de vos documents...</span>
+                  <span className="text-xs text-muted-foreground italic font-medium">Analyse de vos données...</span>
                 </div>
               </div>
             )}

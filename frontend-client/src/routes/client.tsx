@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/app-shell";
 import { Home, FileText, Bot, Calendar, Folder } from "lucide-react";
 import { useClientData } from "@/hooks/use-client-data";
@@ -12,6 +12,14 @@ const nav = [
 ];
 
 export const Route = createFileRoute("/client")({
+  beforeLoad: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw redirect({
+        to: '/login',
+      });
+    }
+  },
   component: ClientLayout,
 });
 

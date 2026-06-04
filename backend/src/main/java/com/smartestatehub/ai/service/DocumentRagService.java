@@ -2,25 +2,36 @@ package com.smartestatehub.ai.service;
 
 import com.smartestatehub.ai.dto.ChatResponse;
 import com.smartestatehub.ai.dto.DocumentQueryRequest;
+import com.smartestatehub.ai.dto.ClientQueryRequest;
 import com.smartestatehub.ai.model.DocumentEmbedding;
 import com.smartestatehub.ai.repository.DocumentEmbeddingRepository;
 import com.smartestatehub.crm.model.Document;
 import com.smartestatehub.crm.repository.DocumentRepository;
+import com.smartestatehub.crm.service.ClientPortalService;
+import com.smartestatehub.crm.dto.ClientPortalDataDto;
+import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.crm.repository.ClientRepository;
+import com.smartestatehub.crm.model.Deal;
+import com.smartestatehub.crm.model.Client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestClient;
+import java.util.Map;
+import java.util.Collections;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -34,6 +45,65 @@ public class DocumentRagService {
     private final DocumentEmbeddingRepository embeddingRepository;
     private final EmbeddingModel embeddingModel;
     private final ChatClient chatClient;
+    private final ClientPortalService clientPortalService;
+    private final DealRepository dealRepository;
+    private final ClientRepository clientRepository;
+
+    @Value("${spring.ai.openai.api-key}")
+    private String apiKey;
+
+    @Value("${spring.ai.openai.base-url}")
+    private String baseUrl;
+
+    @Value("${spring.ai.openai.embedding.options.model:nvidia/llama-nemotron-embed-1b-v2}")
+    private String embeddingModelName;
+
+    private RestClient restClient;
+
+    private void initRestClient() {
+        if (restClient == null) {
+            log.info("RAG: Initialisation du RestClient avec BaseURL: {} (API Key: {}***)", 
+                baseUrl, 
+                (apiKey != null && apiKey.length() > 5) ? apiKey.substring(0, 5) : "NULL");
+            restClient = RestClient.builder()
+                    .baseUrl(baseUrl + "/v1")
+                    .defaultHeader("Authorization", "Bearer " + apiKey)
+                    .defaultHeader("Content-Type", "application/json")
+                    .build();
+        }
+    }
+
+    private List<Double> getEmbedding(String text, String inputType) {
+        initRestClient();
+        
+        log.debug("Génération d'embedding (type: {}) via RestClient manuel", inputType);
+        
+        Map<String, Object> body = Map.of(
+            "input", Collections.singletonList(text),
+            "model", embeddingModelName,
+            "input_type", inputType,
+            "encoding_format", "float"
+        );
+
+        try {
+            Map result = restClient.post()
+                    .uri("/embeddings")
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+
+            if (result != null && result.containsKey("data")) {
+                List<Map<String, Object>> data = (List<Map<String, Object>>) result.get("data");
+                if (!data.isEmpty()) {
+                    return (List<Double>) data.get(0).get("embedding");
+                }
+            }
+            throw new RuntimeException("Format de réponse d'embedding invalide ou vide");
+        } catch (Exception e) {
+            log.error("Erreur lors de l'appel manuel à l'embedding NVIDIA NIM. Text: {}, Type: {}", text.substring(0, Math.min(20, text.length())), inputType, e);
+            throw e;
+        }
+    }
 
     /**
      * Processus asynchrone pour indexer un document :
@@ -64,8 +134,8 @@ public class DocumentRagService {
             for (int i = 0; i < chunks.size(); i++) {
                 String chunkText = chunks.get(i);
                 
-                // Appel API NVIDIA via Spring AI (renvoie une List<Double> dans cette version)
-                List<Double> vector = embeddingModel.embed(chunkText);
+                // Appel API NVIDIA manuel pour inclure input_type="passage"
+                List<Double> vector = getEmbedding(chunkText, "passage");
                 
                 // Conversion List<Double> en double[] pour l'entité
                 double[] doubleVector = vector.stream().mapToDouble(Double::doubleValue).toArray();
@@ -96,21 +166,54 @@ public class DocumentRagService {
     public ChatResponse askQuestion(DocumentQueryRequest request) {
         log.info("Question reçue pour le deal {} : {}", request.getDealId(), request.getQuery());
 
-        // 1. Vectoriser la question
-        List<Double> queryVector = embeddingModel.embed(request.getQuery());
+        // 1. Récupérer les données structurées du client (Dossier, RDV, Finances)
+        Deal deal = dealRepository.findById(request.getDealId())
+                .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
+        UUID clientId = deal.getClientFolder().getClient().getIdClient();
+        ClientPortalDataDto clientData = clientPortalService.getFullClientPortalData(clientId);
+
+        String rdvInfo = clientData.getMeetings().stream()
+                .map(m -> m.getType() + " prévu le " + m.getScheduledAt())
+                .collect(Collectors.joining(", "));
+
+        String contratInfo = clientData.getContracts().stream()
+                .map(c -> "Contrat " + c.getStatus() + " (Prix: " + c.getAgreedPrice() + ")")
+                .collect(Collectors.joining(", "));
+
+        String structuredData = String.format(
+            "DONNÉES DU CLIENT :\n" +
+            "- Nom : %s %s\n" +
+            "- Statut dossier : %s\n" +
+            "- Type : %s\n" +
+            "- Budget max : %s\n" +
+            "- RDV : %s\n" +
+            "- Contrats : %s\n",
+            clientData.getProfile().getFirstName(), clientData.getProfile().getLastName(),
+            deal.getStage(), deal.getClientFolder().getClientType(),
+            deal.getClientFolder().getBuyerFolder() != null ? deal.getClientFolder().getBuyerFolder().getBudgetMax() : "N/A",
+            rdvInfo.isEmpty() ? "Aucun" : rdvInfo,
+            contratInfo.isEmpty() ? "Aucun" : contratInfo
+        );
+
+        // 2. Vectoriser la question (input_type="query")
+        List<Double> queryVector = getEmbedding(request.getQuery(), "query");
         String vectorString = queryVector.toString();
 
-        // 2. Recherche de similarité dans pgvector
+        // 3. Recherche de similarité dans pgvector (Documents PDF)
         List<DocumentEmbedding> similarChunks = embeddingRepository.findSimilarChunks(
                 request.getDealId(), 
                 vectorString, 
                 5
         );
+        log.info("RAG: {} chunks similaires trouvés pour le deal {}", similarChunks.size(), request.getDealId());
 
-        // 3. Construction du contexte et liste des sources
-        String context = similarChunks.stream()
+        // 4. Construction du contexte hybride
+        String documentContext = similarChunks.stream()
                 .map(DocumentEmbedding::getChunkText)
                 .collect(Collectors.joining("\n---\n"));
+
+        String finalContext = structuredData + "\nCONTENU DES DOCUMENTS PDF :\n" + documentContext;
+        log.debug("RAG: Contexte final généré (longueur: {})", finalContext.length());
 
         List<String> sources = similarChunks.stream()
                 .map(chunk -> {
@@ -119,18 +222,122 @@ public class DocumentRagService {
                 })
                 .distinct()
                 .collect(Collectors.toList());
+        
+        // Ajouter "Données du dossier" comme source
+        sources.add(0, "Données du dossier");
 
-        // 4. Appel au LLM (GPT-OSS-20B via NVIDIA NIM)
-        String answer = chatClient.prompt()
-                .system(s -> s.text("Tu es un assistant immobilier expert. Utilise UNIQUEMENT le contexte suivant pour répondre. Si l'info n'y est pas, dis que tu ne sais pas. \n\nCONTEXTE :\n" + context))
-                .user(request.getQuery())
-                .call()
-                .content();
+        // 5. Appel au LLM (GPT-OSS-20B via NVIDIA NIM)
+        try {
+            log.info("RAG: Envoi de la requête au LLM...");
+            String answer = chatClient.prompt()
+                    .system(s -> s.text("Tu es un assistant immobilier expert. Utilise les DONNÉES DU CLIENT et le CONTENU DES DOCUMENTS pour répondre précisément. \n\nCONTEXTE COMPLET :\n" + finalContext))
+                    .user(request.getQuery())
+                    .call()
+                    .content();
+            log.info("RAG: Réponse du LLM reçue (longueur: {})", answer != null ? answer.length() : 0);
+            return ChatResponse.builder()
+                    .answer(answer)
+                    .sources(sources)
+                    .build();
+        } catch (Exception e) {
+            log.error("RAG: Erreur lors de l'appel au ChatClient LLM", e);
+            throw e;
+        }
+    }
 
-        return ChatResponse.builder()
-                .answer(answer)
-                .sources(sources)
-                .build();
+    /**
+     * Recherche globale pour un client sur TOUS ses dossiers et documents.
+     */
+    public ChatResponse askGlobalQuestion(String email, ClientQueryRequest request) {
+        log.info("Question globale reçue pour le client {} : {}", email, request.getQuery());
+
+        // 1. Identifier le client
+        Client client = clientRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Client non trouvé : " + email));
+        
+        // 2. Récupérer toutes les données du portail pour ce client
+        ClientPortalDataDto clientData = clientPortalService.getFullClientPortalData(client.getIdClient());
+
+        // 3. Synthèse des dossiers
+        String dossiersInfo = clientData.getDossiers().stream()
+                .map(d -> String.format("- Dossier %s (%s) : %s, Score IA: %s", 
+                    d.getIdProfile(), d.getClientType(), d.getStage(), d.getAiLeadScore()))
+                .collect(Collectors.joining("\n"));
+
+        String rdvInfo = clientData.getMeetings().stream()
+                .map(m -> String.format("- %s prévu le %s (Statut: %s)", m.getType(), m.getScheduledAt(), m.getStatus()))
+                .collect(Collectors.joining("\n"));
+
+        String contratsInfo = clientData.getContracts().stream()
+                .map(c -> String.format("- Contrat %s : Statut %s, Prix %s MAD", c.getIdContract(), c.getStatus(), c.getAgreedPrice()))
+                .collect(Collectors.joining("\n"));
+
+        String structuredContext = String.format(
+            "VUE D'ENSEMBLE DU CLIENT :\n" +
+            "Nom : %s %s\n" +
+            "Email : %s\n" +
+            "\nDOSSIERS ACTIFS :\n%s\n" +
+            "\nRENDEZ-VOUS :\n%s\n" +
+            "\nCONTRATS :\n%s\n",
+            clientData.getProfile().getFirstName(), clientData.getProfile().getLastName(),
+            clientData.getProfile().getEmail(),
+            dossiersInfo.isEmpty() ? "Aucun dossier" : dossiersInfo,
+            rdvInfo.isEmpty() ? "Aucun rendez-vous" : rdvInfo,
+            contratsInfo.isEmpty() ? "Aucun contrat" : contratsInfo
+        );
+
+        // 4. Recherche de similarité dans TOUS les documents du client
+        List<Double> queryVector = getEmbedding(request.getQuery(), "query");
+        List<DocumentEmbedding> similarChunks = embeddingRepository.findSimilarChunksForClient(
+                client.getIdClient(), 
+                queryVector.toString(), 
+                7 // On prend un peu plus de chunks pour une recherche globale
+        );
+        log.info("RAG Global: {} chunks similaires trouvés pour le client {}", similarChunks.size(), client.getIdClient());
+
+        String documentContext = similarChunks.stream()
+                .map(chunk -> String.format("[Doc: %s] %s", 
+                    chunk.getDocument().getDocumentType() != null ? chunk.getDocument().getDocumentType().name() : "Autre", 
+                    chunk.getChunkText()))
+                .collect(Collectors.joining("\n---\n"));
+
+        String finalContext = structuredContext + "\nCONTENU PERTINENT DES DOCUMENTS PDF :\n" + documentContext;
+
+        List<String> sources = similarChunks.stream()
+                .map(chunk -> chunk.getDocument().getDocumentType() != null ? chunk.getDocument().getDocumentType().name() : "DOCUMENT")
+                .distinct()
+                .collect(Collectors.toList());
+        sources.add(0, "Données du compte");
+
+        // 5. Appel au LLM
+        try {
+            String systemPrompt = "Tu es l'Assistant Intelligent Expert de SmartEstateHub. Ton rôle est d'aider le client à naviguer dans son espace et de répondre à TOUTES ses questions en utilisant les données fournies.\n\n" +
+                    "Tes capacités :\n" +
+                    "- Tu as accès à la 'VUE D'ENSEMBLE DU CLIENT' (dossiers, rendez-vous, contrats).\n" +
+                    "- Tu peux analyser le 'CONTENU DES DOCUMENTS' (PDFs) pour des questions précises.\n" +
+                    "- Tu es un assistant général : même sans documents, tu peux discuter poliment et expliquer le fonctionnement de la plateforme.\n\n" +
+                    "INSTRUCTIONS PRIORITAIRES :\n" +
+                    "1. Utilise d'abord les données structurées pour répondre aux questions factuelles (ex: nombre de dossiers, dates de rendez-vous, montants des contrats).\n" +
+                    "2. Utilise le contenu textuel pour les questions précises sur les documents.\n" +
+                    "3. Sois concis, chaleureux et professionnel. Réponds en français.\n\n" +
+                    "CONTEXTE DU CLIENT :\n" + finalContext;
+
+            log.info("RAG Global: Envoi de la requête au LLM...");
+            String answer = chatClient.prompt()
+                    .system(systemPrompt)
+                    .user(request.getQuery())
+                    .call()
+                    .content();
+            log.info("RAG Global: Réponse du LLM reçue (longueur: {})", answer != null ? answer.length() : 0);
+
+            return ChatResponse.builder()
+                    .answer(answer)
+                    .sources(sources)
+                    .build();
+        } catch (Exception e) {
+            log.error("RAG Global: Erreur lors de l'appel au ChatClient LLM", e);
+            throw e;
+        }
     }
 
     private String extractTextFromUrl(String fileUrl) throws Exception {
