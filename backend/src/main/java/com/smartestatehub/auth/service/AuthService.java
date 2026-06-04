@@ -3,12 +3,17 @@ package com.smartestatehub.auth.service;
 import com.smartestatehub.auth.dto.LoginRequest;
 import com.smartestatehub.auth.dto.UserInfoResponse;
 import com.smartestatehub.auth.model.InternalUser;
+import com.smartestatehub.auth.model.PasswordResetToken;
 import com.smartestatehub.auth.model.RefreshToken;
+import com.smartestatehub.auth.repository.PasswordResetTokenRepository;
 import com.smartestatehub.auth.repository.RefreshTokenRepository;
 import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.auth.support.AuthCookies;
 import com.smartestatehub.auth.support.TokenHasher;
 import com.smartestatehub.config.JwtConfig;
+import com.smartestatehub.crm.model.Client;
+import com.smartestatehub.crm.repository.ClientRepository;
+import com.smartestatehub.notification.service.EmailService;
 import com.smartestatehub.shared.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,18 +24,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final UserRepository userRepository;
+    private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final JwtConfig jwtConfig;
     private final TokenHasher tokenHasher;
     private final AuthCookies authCookies;
+    private final EmailService emailService;
 
     @Transactional
     public UserInfoResponse login(LoginRequest request, HttpServletResponse response) {
@@ -99,6 +108,77 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void forgotPassword(String email, String portal) {
+        Optional<InternalUser> userOpt = userRepository.findByEmail(email);
+        Optional<Client> clientOpt = clientRepository.findByEmail(email);
+
+        boolean isAgentAdminPortal = "ADMIN_AGENT".equals(portal);
+        boolean isClientPortal = "CLIENT".equals(portal);
+
+        PasswordResetToken token = null;
+
+        if (isAgentAdminPortal) {
+            if (userOpt.isEmpty()) {
+                throw new BadCredentialsException("Aucun compte agent ou administrateur n'est associé à cet email.");
+            }
+            InternalUser user = userOpt.get();
+            token = PasswordResetToken.builder()
+                    .internalUser(user)
+                    .tokenHash(tokenHasher.hash(tokenHasher.generateOpaqueToken()))
+                    .expiresAt(LocalDateTime.now().plusHours(2))
+                    .used(false)
+                    .build();
+        } else if (isClientPortal) {
+            if (clientOpt.isEmpty()) {
+                throw new BadCredentialsException("Aucun compte client n'est associé à cet email.");
+            }
+            Client client = clientOpt.get();
+            token = PasswordResetToken.builder()
+                    .client(client)
+                    .tokenHash(tokenHasher.hash(tokenHasher.generateOpaqueToken()))
+                    .expiresAt(LocalDateTime.now().plusHours(2))
+                    .used(false)
+                    .build();
+        }
+
+        if (token == null) {
+            throw new BadCredentialsException("Type de portail invalide.");
+        }
+
+        String rawToken = tokenHasher.generateOpaqueToken();
+        token.setTokenHash(tokenHasher.hash(rawToken));
+        
+        passwordResetTokenRepository.save(token);
+        emailService.sendPasswordResetEmail(email, rawToken);
+    }
+
+    @Transactional
+    public void resetPassword(String rawToken, String newPassword) {
+        String hash = tokenHasher.hash(rawToken);
+        PasswordResetToken token = passwordResetTokenRepository.findByTokenHashAndUsedFalse(hash)
+                .orElseThrow(() -> new BadCredentialsException("Le lien de réinitialisation est invalide ou a déjà été utilisé."));
+
+        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BadCredentialsException("Le lien de réinitialisation a expiré.");
+        }
+
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        if (token.getInternalUser() != null) {
+            InternalUser user = token.getInternalUser();
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        } else if (token.getClient() != null) {
+            Client client = token.getClient();
+            client.setPassword(encodedPassword);
+            clientRepository.save(client);
+        }
+
+        token.setUsed(true);
+        token.setUsedAt(LocalDateTime.now());
+        passwordResetTokenRepository.save(token);
     }
 
     private InternalUser authenticate(String email, String password) {
