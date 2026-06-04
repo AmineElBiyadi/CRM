@@ -8,4 +8,5 @@ public interface EmailService {
     void sendMeetingScheduledEmail(String to, String clientName, String agentName, String dateTime, String meetingType);
     void sendOfferReceivedEmail(String to, String clientName, String propertyTitle, Double amount);
     void sendAiGeneratedEmail(String to, String subject, String prompt, java.util.Map<String, Object> context);
+    void sendCustomEmail(String to, String subject, String body);
 }
