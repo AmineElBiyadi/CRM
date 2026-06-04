@@ -71,6 +71,7 @@ function AgentsPage() {
   const [agentDetail, setAgentDetail] = useState<AdminAgentDetailDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [savingAgent, setSavingAgent] = useState(false);
+  const [deactivatingAgent, setDeactivatingAgent] = useState<Agent | null>(null);
 
   const detail = list.find((a) => a.id === detailId) ?? null;
 
@@ -136,8 +137,16 @@ function AgentsPage() {
       return;
     }
     setActionId(id);
+    
+    // Si l'agent est actif et qu'on veut le désactiver, on vérifie s'il a des clients
+    if (a.active && a.activeClients > 0) {
+      setDeactivatingAgent(a);
+      setActionId(null);
+      return;
+    }
+
     try {
-      const updated = await updateAdminAgentStatus(id, !a.active);
+      const updated = await updateAdminAgentStatus(id, { active: !a.active });
       upsertAgent(updated);
       setAgentDetail((prev) =>
         prev?.agent.id === id ? { ...prev, agent: updated } : prev,
@@ -361,6 +370,208 @@ function AgentsPage() {
           onCreate={createAgent}
         />
       )}
+
+      {/* Modal — Deactivate agent (transfer deals) */}
+      {deactivatingAgent && (
+        <DeactivateAgentModal
+          agent={deactivatingAgent}
+          otherAgents={list.filter((a) => a.id !== deactivatingAgent.id && a.active)}
+          onClose={() => setDeactivatingAgent(null)}
+          onConfirm={async (fallbackId, transfers) => {
+            try {
+              const updated = await updateAdminAgentStatus(deactivatingAgent.id, {
+                active: false,
+                fallbackAgentId: fallbackId,
+                dealTransfers: transfers,
+              });
+              upsertAgent(updated);
+              setDeactivatingAgent(null);
+              toast.success(`${updated.name} a été désactivé et ses dossiers transférés.`);
+              loadAgents();
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Erreur lors du transfert.");
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeactivateAgentModal({
+  agent,
+  otherAgents,
+  onClose,
+  onConfirm,
+}: {
+  agent: Agent;
+  otherAgents: Agent[];
+  onClose: () => void;
+  onConfirm: (fallbackId?: string, transfers?: Record<string, string>) => Promise<void>;
+}) {
+  const [transferMode, setTransferMode] = useState<"bulk" | "granular">("bulk");
+  const [fallbackId, setFallbackId] = useState<string>("");
+  const [granularTransfers, setGranularTransfers] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [dossiers, setDossiers] = useState<AdminAgentDossierDto[]>([]);
+  const [dossiersLoading, setDossiersLoading] = useState(false);
+
+  useEffect(() => {
+    if (transferMode === "granular" && dossiers.length === 0) {
+      setDossiersLoading(true);
+      fetchAdminAgentDetail(agent.id)
+        .then((data) => {
+          const activeDossiers = data.dossiers.filter(d => 
+            !["CLOSED", "LOST"].includes(d.stage)
+          );
+          setDossiers(activeDossiers);
+        })
+        .finally(() => setDossiersLoading(false));
+    }
+  }, [transferMode, agent.id, dossiers.length]);
+
+  const canConfirm = transferMode === "bulk" 
+    ? !!fallbackId 
+    : dossiers.length > 0 && dossiers.every(d => !!granularTransfers[d.idDeal]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ghost/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg animate-in fade-in zoom-in duration-200">
+        <NeuCard className="p-6 md:p-8 flex flex-col gap-6 max-h-[90vh] overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div className="h-12 w-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
+              <Power size={24} />
+            </div>
+            <div className="ml-4 flex-1">
+              <h2 className="text-xl font-bold tracking-tight">
+                Désactiver {agent.name}
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {agent.activeClients} dossier(s) actif(s) à transférer.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-black/5 rounded-lg transition-colors shrink-0"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex p-1 rounded-xl neu-inset bg-ghost/50">
+            <button
+              onClick={() => setTransferMode("bulk")}
+              className={cn(
+                "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
+                transferMode === "bulk" ? "bg-ghost neu-sm text-eerie" : "text-muted-foreground hover:text-eerie"
+              )}
+            >
+              Tout transférer
+            </button>
+            <button
+              onClick={() => setTransferMode("granular")}
+              className={cn(
+                "flex-1 py-2 text-xs font-medium rounded-lg transition-all",
+                transferMode === "granular" ? "bg-ghost neu-sm text-eerie" : "text-muted-foreground hover:text-eerie"
+              )}
+            >
+              Assigner par dossier
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 min-h-[120px]">
+            {transferMode === "bulk" ? (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Transférer tous les dossiers vers :
+                </label>
+                <Select value={fallbackId} onValueChange={setFallbackId}>
+                  <SelectTrigger className="h-11 rounded-xl neu-inset border-0 bg-transparent">
+                    <SelectValue placeholder="Choisir un agent..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {otherAgents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name} ({a.activeClients} dossiers)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {dossiersLoading ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-3">
+                    <RotateCw size={24} className="animate-spin text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Chargement des dossiers...</p>
+                  </div>
+                ) : (
+                  dossiers.map((deal) => (
+                    <div key={deal.idDeal} className="p-3 rounded-xl neu-inset space-y-2">
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-xs font-bold truncate max-w-[180px]">
+                          {deal.clientName}
+                        </span>
+                        <StageBadge stage={dealStageToUi(deal.stage)} size="sm" />
+                      </div>
+                      <Select 
+                        value={granularTransfers[deal.idDeal] || ""} 
+                        onValueChange={(val) => setGranularTransfers(prev => ({ ...prev, [deal.idDeal]: val }))}
+                      >
+                        <SelectTrigger className="h-9 rounded-lg border-0 bg-ghost text-[11px] neu-sm">
+                          <SelectValue placeholder="Assigner à..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {otherAgents.map((a) => (
+                            <SelectItem key={a.id} value={a.id} className="text-xs">
+                              {a.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              type="button"
+              disabled={!canConfirm || loading}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  if (transferMode === "bulk") {
+                    await onConfirm(fallbackId);
+                  } else {
+                    await onConfirm(undefined, granularTransfers);
+                  }
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="w-full py-3.5 rounded-xl bg-eerie text-ghost text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
+            >
+              {loading ? (
+                <RotateCw size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <Check size={16} /> Confirmer la désactivation
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-3.5 rounded-xl neu-sm text-sm font-medium hover:neu-pressable transition-all"
+            >
+              Annuler
+            </button>
+          </div>
+        </NeuCard>
+      </div>
     </div>
   );
 }

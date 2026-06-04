@@ -197,14 +197,20 @@ export async function updateAdminAgent(
   }) as Promise<AdminAgentDto>;
 }
 
+export interface UpdateAgentStatusRequest {
+  active: boolean;
+  fallbackAgentId?: string;
+  dealTransfers?: Record<string, string>;
+}
+
 export async function updateAdminAgentStatus(
   agentId: string,
-  active: boolean,
+  body: UpdateAgentStatusRequest,
 ): Promise<AdminAgentDto> {
   await requireAdmin();
   return apiFetch(`/api/admin/dashboard/agents/${agentId}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ active }),
+    body: JSON.stringify(body),
   }) as Promise<AdminAgentDto>;
 }
 
