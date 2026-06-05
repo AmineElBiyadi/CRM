@@ -5,6 +5,7 @@ import { Avatar, SoftBadge } from "@/components/ui/design-bits";
 import { LogOut, Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationCenter } from "./notification-center";
+import { RagChatWidget } from "../ai/RagChatWidget";
 
 export interface NavItem {
   to: string;
@@ -53,9 +54,18 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const [notifs, setNotifs] = useState(() => initialNotifs(space));
   const unread = notifs.filter((n) => !n.read).length;
 
-  const handleLogout = () => {
-    localStorage.removeItem("client_id"); // Supprimer l'ID client du localStorage
-    window.location.href = "/"; // Rediriger vers la page d'accueil
+  const handleLogout = async () => {
+    try {
+      const { authApi } = await import("@/api/authApi");
+      await authApi.logout();
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout error", error);
+      localStorage.removeItem("token");
+      localStorage.removeItem("client_id");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
   };
 
   useEffect(() => {
@@ -65,11 +75,15 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const SidebarContent = (
     <>
       <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center neu-sm", accent)}>
-          <span className="font-bold text-eerie">S</span>
+        <div className="w-10 h-10 flex items-center justify-center">
+          <img 
+            src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+            alt="Rawabet Logo" 
+            className="w-full h-full object-contain"
+          />
         </div>
         <div>
-          <div className="font-bold leading-tight">SmartEstate</div>
+          <div className="font-bold leading-tight">Rawabet</div>
           <div className="text-xs text-muted-foreground">{spaceLabel}</div>
         </div>
       </div>
@@ -190,6 +204,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
           <Outlet />
         </main>
       </div>
+      {space === "client" && <RagChatWidget />}
     </div>
   );
 }

@@ -57,13 +57,16 @@ public class SecurityConfig {
                 .requestMatchers("/uploads/**").permitAll()
                 .requestMatchers(
                     "/api/auth/login", 
+                    "/api/auth/login-client",
                     "/api/auth/refresh", 
                     "/api/auth/logout", 
                     "/api/auth/me",
                     "/api/auth/forgot-password",
                     "/api/auth/reset-password"
                 ).permitAll()
+                .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/webhooks/**").permitAll() // Allow n8n access
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/notifications/**").hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers(
@@ -73,9 +76,11 @@ public class SecurityConfig {
                     "/api/properties/**",
                     "/api/property-types/**",
                     "/api/contracts/**",
-                    "/api/offers/**"
+                    "/api/offers/**",
+                    "/api/emails/**"
                 ).hasAnyRole("AGENT", "ADMIN")
-                .requestMatchers("/api/client/**").hasRole("CLIENT")
+                .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "AGENT", "ADMIN")
+                .requestMatchers("/api/rag/**").hasAnyRole("AGENT", "ADMIN", "CLIENT")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

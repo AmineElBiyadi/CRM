@@ -17,6 +17,7 @@ public class DocumentDto {
     private UUID idDocument;
     private String documentType;
     private String filePath;
+    private String localFilePath;
     private Boolean confirmedReceived;
     private LocalDateTime createdAt;
     private UUID dealId;

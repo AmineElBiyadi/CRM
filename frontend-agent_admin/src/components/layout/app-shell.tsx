@@ -115,8 +115,12 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const SidebarContent = (
     <>
       <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center neu-sm bg-eerie text-white")}>
-          <Building2 size={20} />
+        <div className="w-12 h-12 flex items-center justify-center">
+          <img 
+            src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+            alt="Rawabet Logo" 
+            className="w-full h-full object-contain"
+          />
         </div>
         <div>
           <div className="font-bold leading-tight">Rawabet</div>

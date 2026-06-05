@@ -44,22 +44,22 @@ public class ClientPortalService {
         // Aggregate related entities
         List<Interaction> interactions = dealIds.stream()
                 .flatMap(id -> interactionRepository.findByDeal_IdDeal(id).stream())
-                .sorted(Comparator.comparing(Interaction::getOccurredAt).reversed())
+                .sorted(Comparator.comparing(Interaction::getOccurredAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
         List<Meeting> meetings = dealIds.stream()
                 .flatMap(id -> meetingRepository.findByDeal_IdDeal(id).stream())
-                .sorted(Comparator.comparing(Meeting::getScheduledAt).reversed())
+                .sorted(Comparator.comparing(Meeting::getScheduledAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
         List<Document> documents = dealIds.stream()
-                .flatMap(id -> documentRepository.findByDeal_IdDeal(id).stream())
-                .sorted(Comparator.comparing(Document::getCreatedAt).reversed())
+                .flatMap(id -> documentRepository.findByDeal_IdDealAndDeletedAtIsNull(id).stream())
+                .sorted(Comparator.comparing(Document::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
         List<Contract> contracts = dealIds.stream()
                 .flatMap(id -> contractRepository.findByDealIdActive(id).stream())
-                .sorted(Comparator.comparing(Contract::getCreatedAt).reversed())
+                .sorted(Comparator.comparing(Contract::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 
         // Map to DTOs
@@ -204,7 +204,7 @@ public class ClientPortalService {
             if (deal.getOffers() != null && !deal.getOffers().isEmpty()) {
                 // Take the property from the latest offer
                 primaryProp = deal.getOffers().stream()
-                        .sorted(Comparator.comparing(Offer::getCreatedAt).reversed())
+                        .sorted(Comparator.comparing(Offer::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                         .map(Offer::getProperty)
                         .findFirst()
                         .orElse(null);
@@ -267,6 +267,7 @@ public class ClientPortalService {
                 .collect(Collectors.toList()) : List.of());
 
         dto.setOffers(deal.getOffers() != null ? deal.getOffers().stream()
+                .filter(o -> o.getProperty() != null)
                 .map(this::mapToOfferDetailDto)
                 .collect(Collectors.toList()) : List.of());
 
@@ -282,7 +283,9 @@ public class ClientPortalService {
         // For properties, we can show those linked to offers or those visited
         Set<Property> dealProperties = new HashSet<>();
         if (deal.getOffers() != null) {
-            deal.getOffers().forEach(o -> dealProperties.add(o.getProperty()));
+            deal.getOffers().stream()
+                .filter(o -> o.getProperty() != null)
+                .forEach(o -> dealProperties.add(o.getProperty()));
         }
         // Also add properties from meetings if they were visits
         if (deal.getMeetings() != null) {
@@ -319,7 +322,7 @@ public class ClientPortalService {
     private InteractionDto mapToInteractionDto(Interaction i) {
         return InteractionDto.builder()
                 .idInteraction(i.getIdInteraction())
-                .type(i.getType())
+                .type(i.getType() != null ? i.getType() : null)
                 .description(i.getDescription())
                 .occurredAt(i.getOccurredAt())
                 .durationMinutes(i.getDurationMinutes())
@@ -335,15 +338,15 @@ public class ClientPortalService {
                 .propertyAddress(m.getPropertyAddress())
                 .reminder1hSent(m.isReminder1hSent())
                 .reminder24hSent(m.isReminder24hSent())
-                .status(m.getStatus().name())
-                .type(m.getType().name())
+                .status(m.getStatus() != null ? m.getStatus().name() : "PENDING")
+                .type(m.getType() != null ? m.getType().name() : "OTHER")
                 .build();
     }
 
     private DocumentDto mapToDocumentDto(Document d) {
         return DocumentDto.builder()
                 .idDocument(d.getIdDocument())
-                .documentType(d.getDocumentType().name())
+                .documentType(d.getDocumentType() != null ? d.getDocumentType().name() : "OTHER")
                 .filePath(d.getFilePath())
                 .confirmedReceived(d.isConfirmedReceived())
                 .createdAt(d.getCreatedAt())
@@ -368,10 +371,11 @@ public class ClientPortalService {
 
     private OfferDetailDto mapToOfferDetailDto(Offer o) {
         Property p = o.getProperty();
+        if (p == null) return null; // skip offers with no linked local property
         return OfferDetailDto.builder()
                 .idOffer(o.getIdOffer())
                 .offerAmount(o.getOfferAmount())
-                .status(o.getStatus().name())
+                .status(o.getStatus() != null ? o.getStatus().name() : "PENDING")
                 .createdAt(o.getCreatedAt())
                 .idProperty(p.getIdProperty())
                 .propertyTitle(p.getTitle())
@@ -421,45 +425,70 @@ public class ClientPortalService {
         DateTimeFormatter iso = DateTimeFormatter.ISO_DATE_TIME;
 
         for (Interaction i : interactions) {
+            String title = "Interaction";
+            try {
+                if (i.getType() != null) {
+                    title = i.getType().name();
+                }
+            } catch (Exception e) {
+                // handle potential proxy issues
+            }
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("INTERACTION")
-                    .title(i.getType().name())
+                    .title(title)
                     .description(i.getDescription())
-                    .date(i.getOccurredAt().format(iso))
+                    .date(i.getOccurredAt() != null ? i.getOccurredAt().format(iso) : null)
                     .agentName(i.getUser() != null ? i.getUser().getFirstName() + " " + i.getUser().getLastName() : "Système")
                     .build());
         }
 
         for (Meeting m : meetings) {
+            String titleSuffix = "Autre";
+            try {
+                if (m.getType() != null) {
+                    titleSuffix = m.getType().name();
+                }
+            } catch (Exception e) {
+                // handle potential proxy issues
+            }
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("MEETING")
-                    .title("Rendez-vous : " + m.getType().name())
+                    .title("Rendez-vous : " + titleSuffix)
                     .description(m.getNotesLogged())
-                    .date(m.getScheduledAt().format(iso))
-                    .status(m.getStatus().name())
+                    .date(m.getScheduledAt() != null ? m.getScheduledAt().format(iso) : null)
+                    .status(m.getStatus() != null ? m.getStatus().name() : "PENDING")
                     .build());
         }
 
         for (Document d : documents) {
+            String typeName = "Autre";
+            try {
+                if (d.getDocumentType() != null) {
+                    typeName = d.getDocumentType().name();
+                }
+            } catch (Exception e) {
+                // handle potential proxy issues
+            }
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("DOCUMENT")
                     .title("Document " + (d.isConfirmedReceived() ? "reçu" : "attendu"))
-                    .description(d.getDocumentType().name())
-                    .date(d.getCreatedAt().format(iso))
+                    .description(typeName)
+                    .date(d.getCreatedAt() != null ? d.getCreatedAt().format(iso) : null)
                     .build());
         }
 
         for (Contract c : contracts) {
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("CONTRACT")
-                    .title("Contrat " + c.getStatus().name())
+                    .title("Contrat " + (c.getStatus() != null ? c.getStatus().name() : "Brouillon"))
                     .description("Prix convenu : " + c.getAgreedPrice() + " MAD")
-                    .date(c.getCreatedAt().format(iso))
+                    .date(c.getCreatedAt() != null ? c.getCreatedAt().format(iso) : null)
                     .build());
         }
 
         return events.stream()
-                .sorted(Comparator.comparing(ClientPortalDataDto.TimelineEvent::getDate).reversed())
+                .filter(e -> e.getDate() != null)
+                .sorted(Comparator.comparing(ClientPortalDataDto.TimelineEvent::getDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
     }
 

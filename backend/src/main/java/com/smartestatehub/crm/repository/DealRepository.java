@@ -118,4 +118,14 @@ public interface DealRepository extends JpaRepository<Deal, UUID> {
     LocalDateTime findEarliestDealCreatedAt();
 
     long countByClientFolder_AssignedAgent_IdUserAndStageAndDeletedAtIsNull(UUID agentId, DealStage stage);
+    @Query("""
+            SELECT d FROM Deal d
+            JOIN FETCH d.clientFolder cf
+            JOIN FETCH cf.client
+            LEFT JOIN FETCH cf.assignedAgent
+            WHERE d.deletedAt IS NULL
+              AND d.stage NOT IN :terminalStages
+              AND (d.lastInteractionAt IS NULL OR d.lastInteractionAt < :threshold)
+            """)
+    List<Deal> findColdLeads(@Param("threshold") LocalDateTime threshold, @Param("terminalStages") List<DealStage> terminalStages);
 }

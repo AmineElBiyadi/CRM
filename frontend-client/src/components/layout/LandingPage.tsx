@@ -109,8 +109,12 @@ export function LandingPage() {
       <header className="h-16 px-6 lg:px-12 flex items-center justify-between sticky top-0 z-50 bg-ghost/80 backdrop-blur-lg border-b border-gray-100/60">
         <div className="flex items-center gap-10">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-eerie flex items-center justify-center text-white">
-              <Building2 size={15} />
+            <div className="w-8 h-8 flex items-center justify-center">
+              <img 
+                src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+                alt="Rawabet Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="text-sm font-black tracking-widest">{content.brand.name}</span>
           </div>
@@ -121,10 +125,10 @@ export function LandingPage() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <Link to="/client" className="text-[10px] font-black uppercase tracking-widest text-alice/50 hover:text-eerie transition-colors px-4 py-2 hidden sm:block">
+          <Link to="/login" className="text-[10px] font-black uppercase tracking-widest text-alice/50 hover:text-eerie transition-colors px-4 py-2 hidden sm:block">
             Connexion
           </Link>
-          <Link to="/client" className="px-5 py-2.5 rounded-xl bg-eerie text-white font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-lg shadow-black/10">
+          <Link to="/login" className="px-5 py-2.5 rounded-xl bg-eerie text-white font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2 shadow-lg shadow-black/10">
             Démarrer <ArrowRight size={12} />
           </Link>
         </div>
@@ -153,7 +157,7 @@ export function LandingPage() {
 
           <Reveal delay={240}>
             <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/client" className="px-8 py-3.5 rounded-xl bg-eerie text-white font-black text-[10px] uppercase tracking-widest hover:scale-[1.03] transition-all shadow-xl shadow-black/10 flex items-center gap-2.5">
+              <Link to="/login" className="px-8 py-3.5 rounded-xl bg-eerie text-white font-black text-[10px] uppercase tracking-widest hover:scale-[1.03] transition-all shadow-xl shadow-black/10 flex items-center gap-2.5">
                 {content.hero.cta.primary} <ArrowRight size={14} />
               </Link>
               <a href="#demo-flow" className="px-8 py-3.5 rounded-xl border border-gray-200 bg-white text-eerie font-black text-[10px] uppercase tracking-widest hover:shadow-md transition-all">
@@ -443,8 +447,12 @@ export function LandingPage() {
       <footer className="border-t border-gray-100 py-12">
         <div className="max-w-6xl mx-auto px-6 lg:px-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-eerie flex items-center justify-center text-white">
-              <Building2 size={14} />
+            <div className="w-7 h-7 flex items-center justify-center">
+              <img 
+                src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+                alt="Rawabet Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="text-sm font-black tracking-widest">{content.brand.name}</span>
           </div>

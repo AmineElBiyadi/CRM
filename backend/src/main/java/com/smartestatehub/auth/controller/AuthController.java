@@ -39,6 +39,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/login-client")
+    public ResponseEntity<?> loginClient(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response) {
+        try {
+            UserInfoResponse user = authService.loginClient(request, response);
+            return ResponseEntity.ok(user);
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(401).body(authError(e.getMessage()));
+        }
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
         try {
