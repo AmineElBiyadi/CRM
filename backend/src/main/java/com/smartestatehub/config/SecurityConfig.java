@@ -64,6 +64,7 @@ public class SecurityConfig {
                     "/api/auth/reset-password"
                 ).permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/property-types", "/api/property-types/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/webhooks/**").permitAll() // Allow n8n access
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

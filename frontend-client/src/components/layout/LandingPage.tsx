@@ -19,6 +19,7 @@ import {
 import { Avatar, LeadScore } from "@/components/ui/design-bits";
 import { LANDING_CONTENT as content } from "@/config/landing-content";
 import { cn } from "@/lib/utils";
+import { MurshidChatbot } from "@/components/ai/MurshidChatbot";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard, Shield, Users, Search, ArrowRight,
@@ -312,13 +313,13 @@ export function LandingPage() {
           <Reveal className="space-y-6">
             <SectionLabel>Intelligence Artificielle</SectionLabel>
             <h2 className="text-4xl font-extrabold tracking-tight">
-              Le Cerveau <span className="font-serif italic text-alice/35">Nexus</span>
+              L'Assistant <span className="font-serif italic text-alice/35">Murshid</span>
             </h2>
             <p className="text-base text-alice/65 leading-relaxed max-w-sm">
               {content.aiSection.description}
             </p>
             <div className="flex gap-10 pt-2">
-              {[{ val: "x5", lbl: "Gain Opérationnel" }, { val: "99%", lbl: "Précision IA" }].map((m, i) => (
+              {[{ val: "x5", lbl: "Gain Opérationnel" }, { val: "96%", lbl: "Précision Murshid" }].map((m, i) => (
                 <div key={i}>
                   <div className="text-3xl font-black">{m.val}</div>
                   <div className="text-[9px] font-black uppercase tracking-widest text-alice/40 mt-1">{m.lbl}</div>
@@ -328,43 +329,7 @@ export function LandingPage() {
           </Reveal>
 
           <Reveal className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden">
-            {/* Chat header */}
-            <div className="h-13 px-6 py-3.5 border-b border-gray-50 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <Sparkles size={14} className="text-vanilla fill-vanilla" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-alice/50">Nexus IA</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> En ligne
-              </div>
-            </div>
-
-            {/* Chat messages */}
-            <div className="h-72 overflow-y-auto p-6 flex flex-col gap-4 bg-ghost/20">
-              {chatHistory.map((msg, i) => (
-                <div key={i} className={cn(
-                  "max-w-[82%] px-4 py-3 rounded-2xl text-sm font-medium",
-                  msg.role === 'ai'
-                    ? "bg-white text-eerie self-start border border-gray-100 shadow-sm"
-                    : "bg-eerie text-white self-end"
-                )}>
-                  {msg.text}
-                </div>
-              ))}
-            </div>
-
-            {/* Input */}
-            <form onSubmit={handleChat} className="p-4 border-t border-gray-50 flex gap-3 bg-white">
-              <input
-                value={chatMessage}
-                onChange={e => setChatMessage(e.target.value)}
-                placeholder="Posez votre question à Nexus…"
-                className="flex-1 bg-ghost/50 border border-gray-100 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-alice/30 outline-none transition-all"
-              />
-              <button className="w-10 h-10 rounded-xl bg-eerie text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
-                <Send size={16} />
-              </button>
-            </form>
+            <MurshidChatbot />
           </Reveal>
         </section>
 

@@ -22,6 +22,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Optional;
 
+import com.smartestatehub.crm.dto.PublicOnboardingDTO.*;
+import com.smartestatehub.crm.repository.PropertyTypeRepository;
+
+import com.smartestatehub.auth.model.Role;
+
 @Service
 @RequiredArgsConstructor
 public class ClientService {
@@ -32,6 +37,159 @@ public class ClientService {
     private final DealAssignmentRepository dealAssignmentRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
+    private final PropertyTypeRepository propertyTypeRepository;
+    private final DealService dealService;
+
+    @Transactional(readOnly = true)
+    public boolean isEmailTaken(String email) {
+        return clientRepository.findByEmail(email).isPresent();
+    }
+
+    @Transactional
+    public Client createPublicClient(ClientStep1Request request) {
+        // Validation: Email and phone should be unique
+        if (clientRepository.findByEmail(request.email()).isPresent()) {
+            throw new RuntimeException("EMAIL_TAKEN");
+        }
+        
+        Optional<Client> existingPhone = clientRepository.findByPhone(request.phone());
+        if (existingPhone.isPresent()) {
+            return existingPhone.get();
+        }
+
+        Client client = Client.builder()
+                .firstName(request.firstName())
+                .lastName(request.lastName())
+                .email(request.email())
+                .phone(request.phone())
+                .source(request.source())
+                .password("PORTAL_PENDING") // Set as per user instruction
+                .status(ClientStatus.PENDING)
+                .build();
+
+        return clientRepository.save(client);
+    }
+
+    @Transactional
+    public ClientFolder createPublicDossier(DossierStep3Request request) {
+        Client client = clientRepository.findById(request.clientId())
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        // Smart Assignment: Combine Least Loaded + Specialization
+        InternalUser agent = findSmartAgent(request);
+
+        // Create the dossier request for DealService
+        CreateDossierRequest dealRequest = new CreateDossierRequest();
+        dealRequest.setIdClient(client.getIdClient());
+        dealRequest.setType(request.clientType());
+        
+        if (request.clientType() == ClientType.BUYER) {
+            dealRequest.setBudgetMin(request.budgetMin());
+            dealRequest.setBudgetMax(request.budgetMax());
+            dealRequest.setPreferredArea(request.preferredArea());
+            dealRequest.setSurfaceM2(request.preferredSizeM2());
+            dealRequest.setFloor(request.preferredFloor());
+            
+            if (request.propertyTypeId() != null) {
+                propertyTypeRepository.findById(request.propertyTypeId())
+                    .ifPresent(pt -> dealRequest.setPropertySpecificType(pt.getSpecificType()));
+            }
+        } else {
+            dealRequest.setPropertyTitle(request.propertyTitle());
+            dealRequest.setAddress(request.address());
+            dealRequest.setCity(request.city());
+            dealRequest.setAskingPrice(request.price());
+            dealRequest.setPropertySurfaceM2(request.surfaceM2());
+            dealRequest.setNumRooms(request.numRooms());
+            dealRequest.setPropertyFloor(request.floor());
+            
+            if (request.propertyTypeId() != null) {
+                propertyTypeRepository.findById(request.propertyTypeId())
+                    .ifPresent(pt -> dealRequest.setPropertySpecificType(pt.getSpecificType()));
+            }
+        }
+
+        // Call DealService to handle the complex creation
+        DossierSummaryDto summary = dealService.createDossier(dealRequest, agent.getIdUser());
+        
+        // Retrieve the created folder and fix fields for public onboarding
+        ClientFolder folder = clientFolderRepository.findById(summary.getIdProfile())
+                .orElseThrow(() -> new RuntimeException("Failed to retrieve created folder"));
+
+        folder.setCreatedByAgent(null); // Should be null for public onboarding
+        folder.setStatus(FolderStatus.PENDING); // Set status to PENDING as requested
+
+        return clientFolderRepository.save(folder);
+    }
+
+    private InternalUser findSmartAgent(DossierStep3Request request) {
+        List<InternalUser> agents = userRepository.findAll().stream()
+                .filter(u -> (u.getRole() == Role.AGENT || u.getRole() == Role.ADMIN) && u.getDeletedAt() == null)
+                .toList();
+
+        if (agents.isEmpty()) {
+            throw new RuntimeException("No agent available for assignment");
+        }
+
+        // Calculate score for each agent
+        return agents.stream()
+                .min((a1, a2) -> {
+                    long score1 = calculateAgentScore(a1, request);
+                    long score2 = calculateAgentScore(a2, request);
+                    return Long.compare(score1, score2);
+                })
+                .orElse(agents.get(0));
+    }
+
+    private long calculateAgentScore(InternalUser agent, DossierStep3Request request) {
+        List<ClientFolder> agentFolders = clientFolderRepository.findByAssignedAgent_IdUserAndDeletedAtIsNull(agent.getIdUser());
+        
+        // 1. Load Score (10 points per active dossier)
+        long loadScore = agentFolders.stream()
+                .filter(f -> f.getStatus() == FolderStatus.ACTIVE)
+                .count() * 10;
+
+        // 2. Specialization Score (Bonus points for matching city or property type)
+        long specializationBonus = 0;
+        
+        String targetCity = request.clientType() == ClientType.SELLER ? request.city() : request.preferredArea();
+        UUID targetTypeId = request.propertyTypeId();
+
+        for (ClientFolder folder : agentFolders) {
+            // Check City Match
+            if (targetCity != null) {
+                if (folder.getSellerFolder() != null && folder.getSellerFolder().getProperties() != null) {
+                    for (Property p : folder.getSellerFolder().getProperties()) {
+                        if (targetCity.equalsIgnoreCase(p.getCity())) {
+                            specializationBonus += 2;
+                            break;
+                        }
+                    }
+                }
+                if (folder.getBuyerFolder() != null && targetCity.equalsIgnoreCase(folder.getBuyerFolder().getPreferredArea())) {
+                    specializationBonus += 2;
+                }
+            }
+
+            // Check Property Type Match
+            if (targetTypeId != null) {
+                if (folder.getSellerFolder() != null && folder.getSellerFolder().getProperties() != null) {
+                    for (Property p : folder.getSellerFolder().getProperties()) {
+                        if (p.getPropertyType() != null && targetTypeId.equals(p.getPropertyType().getIdPropertyType())) {
+                            specializationBonus += 3;
+                            break;
+                        }
+                    }
+                }
+                if (folder.getBuyerFolder() != null && folder.getBuyerFolder().getPropertyType() != null 
+                    && targetTypeId.equals(folder.getBuyerFolder().getPropertyType().getIdPropertyType())) {
+                    specializationBonus += 3;
+                }
+            }
+        }
+
+        return loadScore - specializationBonus; // Lower score is better
+    }
 
     @Transactional(readOnly = true)
     public List<ClientIdentityDto> getClientIdentitiesForAgent(UUID agentId) {
