@@ -66,6 +66,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/api/webhooks/**").permitAll() // Allow n8n access
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/notifications/**").hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers(
@@ -75,7 +76,8 @@ public class SecurityConfig {
                     "/api/properties/**",
                     "/api/property-types/**",
                     "/api/contracts/**",
-                    "/api/offers/**"
+                    "/api/offers/**",
+                    "/api/emails/**"
                 ).hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "AGENT", "ADMIN")
                 .requestMatchers("/api/rag/**").hasAnyRole("AGENT", "ADMIN", "CLIENT")

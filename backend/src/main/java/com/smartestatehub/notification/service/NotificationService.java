@@ -74,6 +74,25 @@ public class NotificationService {
         return notificationRepository.markAllReadForUser(user.getIdUser(), LocalDateTime.now());
     }
 
+    @Transactional
+    public NotificationDto sendSystemNotification(
+            String receiverEmail,
+            String title,
+            String message
+    ) {
+        InternalUser receiver = userRepository.findByEmail(receiverEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Destinataire introuvable : " + receiverEmail));
+
+        Notification notification = Notification.builder()
+                .title(title)
+                .message(message)
+                .senderType(SenderType.SYSTEM)
+                .receiverUser(receiver)
+                .build();
+
+        return toDto(notificationRepository.save(notification));
+    }
+
     private InternalUser requireUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Utilisateur introuvable."));

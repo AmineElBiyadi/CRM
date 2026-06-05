@@ -9,7 +9,10 @@ import com.smartestatehub.crm.model.MeetingStatus;
 import com.smartestatehub.crm.model.MeetingType;
 import com.smartestatehub.crm.repository.DealRepository;
 import com.smartestatehub.crm.repository.MeetingRepository;
+import com.smartestatehub.shared.events.MeetingCompletedEvent;
+import com.smartestatehub.shared.events.MeetingScheduledEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,7 @@ public class MeetingService {
 
     private final MeetingRepository meetingRepository;
     private final DealRepository dealRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<MeetingDto> getTodayMeetings(UUID agentId) {
@@ -72,7 +76,10 @@ public class MeetingService {
                 .status(request.getStatus() != null ? request.getStatus() : MeetingStatus.PENDING)
                 .build();
 
-        return mapToDto(meetingRepository.save(meeting));
+        Meeting saved = meetingRepository.save(meeting);
+        eventPublisher.publishEvent(new MeetingScheduledEvent(this, saved));
+
+        return mapToDto(saved);
     }
 
     @Transactional
@@ -82,6 +89,9 @@ public class MeetingService {
 
         if (request.getNewStatus() != null) {
             meeting.setStatus(request.getNewStatus());
+            if (request.getNewStatus() == MeetingStatus.COMPLETED) {
+                eventPublisher.publishEvent(new MeetingCompletedEvent(this, meeting));
+            }
         }
 
         if (request.getNewScheduledAt() != null) {

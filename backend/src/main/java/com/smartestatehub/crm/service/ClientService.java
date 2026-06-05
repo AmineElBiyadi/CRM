@@ -9,6 +9,7 @@ import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.DealAssignmentRepository;
 import com.smartestatehub.crm.repository.ClientFolderRepository;
 import com.smartestatehub.crm.repository.ClientRepository;
+import com.smartestatehub.shared.events.ClientCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -167,18 +168,29 @@ public class ClientService {
         InternalUser agent = userRepository.findById(agentId)
                 .orElseThrow(() -> new RuntimeException("Agent not found: " + agentId));
 
+        String tempPassword = "Pass" + (int)(Math.random() * 9000 + 1000);
+
         Client client = Client.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .email(request.email())
                 .phone(request.phone())
                 .source(request.source() != null ? request.source() : "Saisie manuelle")
-                .password(passwordEncoder.encode("client123"))
+                .password(passwordEncoder.encode(tempPassword))
                 .status(ClientStatus.ACTIVE)
                 .registeredBy(agent)
                 .build();
 
-        clientRepository.save(client);
+        Client saved = clientRepository.save(client);
+        eventPublisher.publishEvent(new ClientCreatedEvent(this, saved, tempPassword));
+    }
+
+    @Transactional
+    public void closeDossier(UUID folderId) {
+        ClientFolder folder = clientFolderRepository.findById(folderId)
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable."));
+        folder.setStatus(FolderStatus.CLOSED);
+        clientFolderRepository.save(folder);
     }
 
     @Transactional(readOnly = true)

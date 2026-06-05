@@ -42,6 +42,12 @@ public class WorkflowController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/dossiers/{id}/cloturer")
+    public ResponseEntity<Void> closeDossier(@PathVariable UUID id) {
+        clientService.closeDossier(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/agents/{agentId}/dossiers")
     public ResponseEntity<List<DossierAgentDto>> getDossiersForAgent(@PathVariable UUID agentId) {
         return ResponseEntity.ok(clientService.getDossierIdentitiesForAgent(agentId));
