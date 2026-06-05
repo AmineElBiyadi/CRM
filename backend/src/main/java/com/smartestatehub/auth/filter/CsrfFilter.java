@@ -21,8 +21,10 @@ public class CsrfFilter extends OncePerRequestFilter {
 
     private static final Set<String> EXEMPT_PATHS = Set.of(
             "/api/auth/login",
+            "/api/auth/login-client",
             "/api/auth/refresh",
             "/api/auth/logout",
+            "/api/rag/chat",
             "/api/auth/forgot-password",
             "/api/auth/reset-password"
     );

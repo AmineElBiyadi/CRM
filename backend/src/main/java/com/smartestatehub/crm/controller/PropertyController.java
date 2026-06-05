@@ -24,7 +24,7 @@ public class PropertyController {
 
     @GetMapping("/latest")
     public ResponseEntity<Property> getLatestProperty() {
-        return propertyRepository.findLatestProperty()
+        return propertyRepository.findFirstByOrderByCreatedAtDesc()
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

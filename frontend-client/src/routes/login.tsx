@@ -1,10 +1,19 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "@/api/authApi";
 
 export const Route = createFileRoute("/login")({
+  beforeLoad: () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      throw redirect({
+        to: '/client',
+      });
+    }
+  },
   head: () => ({
     meta: [
       { title: "Connexion — SmartEstateHub" },
@@ -17,6 +26,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -27,11 +37,17 @@ function LoginPage() {
       return;
     }
     setLoading(true);
-    // Frontend-only stub — branchez ici votre auth (Lovable Cloud) plus tard.
-    await new Promise((r) => setTimeout(r, 500));
-    setLoading(false);
-    toast.success("Bienvenue !");
-    navigate({ to: "/" });
+    
+    try {
+      await authApi.login({ email, password, rememberMe });
+      toast.success("Bienvenue !");
+      navigate({ to: "/client" });
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Identifiants incorrects.";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -88,7 +104,12 @@ function LoginPage() {
 
             <div className="flex items-center justify-between text-xs">
               <label className="flex items-center gap-2 cursor-pointer text-muted-foreground">
-                <input type="checkbox" className="accent-eerie" />
+                <input 
+                  type="checkbox" 
+                  className="accent-eerie" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
                 Se souvenir de moi
               </label>
               <button type="button" className="text-eerie hover:underline font-medium cursor-pointer">

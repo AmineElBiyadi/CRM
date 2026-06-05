@@ -5,6 +5,7 @@ import { Avatar, SoftBadge } from "@/components/ui/design-bits";
 import { LogOut, Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationCenter } from "./notification-center";
+import { RagChatWidget } from "../ai/RagChatWidget";
 
 export interface NavItem {
   to: string;
@@ -53,9 +54,18 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   const [notifs, setNotifs] = useState(() => initialNotifs(space));
   const unread = notifs.filter((n) => !n.read).length;
 
-  const handleLogout = () => {
-    localStorage.removeItem("client_id"); // Supprimer l'ID client du localStorage
-    window.location.href = "/"; // Rediriger vers la page d'accueil
+  const handleLogout = async () => {
+    try {
+      const { authApi } = await import("@/api/authApi");
+      await authApi.logout();
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout error", error);
+      localStorage.removeItem("token");
+      localStorage.removeItem("client_id");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
+    }
   };
 
   useEffect(() => {
@@ -194,6 +204,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
           <Outlet />
         </main>
       </div>
+      {space === "client" && <RagChatWidget />}
     </div>
   );
 }

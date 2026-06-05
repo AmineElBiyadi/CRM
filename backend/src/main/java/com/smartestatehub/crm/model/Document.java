@@ -32,6 +32,9 @@ public class Document {
     @Column(name = "file_path", nullable = true)
     private String filePath;
 
+    @Column(name = "local_file_path", nullable = true)
+    private String localFilePath;
+
     @Column(name = "confirmed_received", nullable = false)
     @Builder.Default
     private boolean confirmedReceived = false;

@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.smartestatehub.crm.event.ContractCreatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 @RequiredArgsConstructor
@@ -97,6 +99,9 @@ public class ContractService {
 
         Contract savedContract = contractRepository.save(contract);
         log.info("Contrat créé avec succès. ID: {}", savedContract.getIdContract());
+
+        // Publier l'événement pour l'audit IA automatique
+        eventPublisher.publishEvent(new ContractCreatedEvent(this, savedContract));
 
         // Génération et upload du PDF Cloudinary
         try {

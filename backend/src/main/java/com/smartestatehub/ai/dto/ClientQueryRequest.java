@@ -1,12 +1,10 @@
 package com.smartestatehub.ai.dto;
 
 import lombok.Data;
-import java.util.UUID;
 import java.util.List;
 
 @Data
-public class DocumentQueryRequest {
-    private UUID dealId;
+public class ClientQueryRequest {
     private String query;
     private List<ChatMessage> history;
 

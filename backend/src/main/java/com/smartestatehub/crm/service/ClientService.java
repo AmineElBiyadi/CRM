@@ -12,6 +12,7 @@ import com.smartestatehub.crm.repository.ClientRepository;
 import com.smartestatehub.shared.events.ClientCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +31,7 @@ public class ClientService {
     private final UserRepository userRepository;
     private final DealAssignmentRepository dealAssignmentRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public List<ClientIdentityDto> getClientIdentitiesForAgent(UUID agentId) {
@@ -70,7 +72,7 @@ public class ClientService {
                 .email(dto.getEmail())
                 .phone(dto.getPhone())
                 .source(dto.getSource())
-                .password("PORTAL_PENDING")
+                .password(passwordEncoder.encode("client123"))
                 .status(ClientStatus.PENDING)
                 .build();
 
@@ -174,7 +176,7 @@ public class ClientService {
                 .email(request.email())
                 .phone(request.phone())
                 .source(request.source() != null ? request.source() : "Saisie manuelle")
-                .password(tempPassword) // In a real app, we would hash this
+                .password(passwordEncoder.encode(tempPassword))
                 .status(ClientStatus.ACTIVE)
                 .registeredBy(agent)
                 .build();
