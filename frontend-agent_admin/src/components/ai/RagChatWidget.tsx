@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, MessageSquare, ShieldCheck, FileText, TrendingUp, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Send, Bot, User, Loader2, MessageSquare, ShieldCheck, FileText, TrendingUp, AlertTriangle, ChevronDown, X, Square } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,13 +17,23 @@ interface RagChatWidgetProps {
   dealId: string;
 }
 
+const WAITING_QUOTES = [
+  "Analyse des documents en cours...",
+  "Extraction des données clés...",
+  "Murshid consulte votre dossier...",
+  "Vérification de la conformité...",
+  "Synthèse des informations...",
+];
+
 export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentQuote, setCurrentQuote] = useState(WAITING_QUOTES[0]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const quickActions = [
     { label: 'Résumé documents', icon: <FileText size={12} />, query: 'Fais-moi un résumé synthétique des documents déposés.' },
@@ -39,10 +49,32 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
   }, [messages, isLoading]);
 
   useEffect(() => {
+    let interval: any;
+    if (isLoading) {
+      interval = setInterval(() => {
+        setCurrentQuote(WAITING_QUOTES[Math.floor(Math.random() * WAITING_QUOTES.length)]);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  useEffect(() => {
     if (isModalOpen && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isModalOpen]);
+
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: "Analyse interrompue par l'utilisateur."
+      }]);
+    }
+  };
 
   const handleSend = async (queryOverride?: string) => {
     const textToSend = queryOverride || input;
@@ -53,16 +85,24 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
     if (!queryOverride) setInput('');
     setIsLoading(true);
 
+    // Create a new AbortController for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
       const response = await askRagQuestion({ dealId, query: textToSend, history });
+      
+      if (controller.signal.aborted) return;
+
       const assistantMessage: Message = { 
         role: 'assistant', 
         content: response.answer,
         sources: response.sources 
       };
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error('Erreur RAG:', error);
       const errorMessage: Message = { 
         role: 'assistant', 
@@ -70,33 +110,36 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsLoading(false);
     }
   };
 
   return (
     <div className="w-full flex flex-col gap-2">
-      {/* Trigger Button - Design improved to match the app */}
+      {/* Trigger Button - Simple and App matching */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="w-full bg-eerie text-ghost rounded-2xl p-5 flex items-center justify-between hover:bg-black transition-all shadow-xl shadow-black/5 group border border-white/10"
+        className="w-full bg-eerie text-ghost rounded-2xl p-4 flex items-center justify-between hover:bg-black transition-all shadow-md group border border-white/5"
       >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-vanilla flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500 ring-4 ring-vanilla/10">
-            <Bot className="w-7 h-7 text-eerie" />
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-vanilla flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform duration-300">
+            <Bot className="w-5 h-5 text-eerie" />
           </div>
-          <div className="text-left space-y-0.5">
-            <h3 className="text-[11px] font-black tracking-[0.2em] uppercase text-vanilla">Murshid Docs</h3>
-            <p className="text-[9px] opacity-40 font-black uppercase tracking-widest">Analyse Intelligente</p>
+          <div className="text-left">
+            <h3 className="text-[10px] font-black tracking-widest uppercase text-vanilla">Murshid Docs</h3>
+            <p className="text-[8px] opacity-40 font-bold uppercase tracking-tighter">Assistant IA</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-md">
-            <div className="w-1.5 h-1.5 rounded-full bg-honeydew animate-pulse shadow-[0_0_8px_rgba(183,235,143,0.8)]" />
-            <span className="text-[8px] font-black uppercase tracking-widest opacity-80">AI READY</span>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 bg-white/5 px-2 py-1 rounded-full border border-white/10">
+            <div className="w-1 h-1 rounded-full bg-honeydew animate-pulse shadow-[0_0_5px_rgba(183,235,143,0.8)]" />
+            <span className="text-[7px] font-black uppercase tracking-widest opacity-60">READY</span>
           </div>
-          <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-vanilla/10 transition-colors">
-            <ChevronDown size={18} className="opacity-40 -rotate-90" />
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-vanilla/10 transition-colors">
+            <ChevronDown size={14} className="opacity-40 -rotate-90" />
           </div>
         </div>
       </button>
@@ -105,56 +148,56 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div 
-            className="absolute inset-0 bg-eerie/80 backdrop-blur-md animate-in fade-in duration-300" 
+            className="absolute inset-0 bg-eerie/70 backdrop-blur-sm animate-in fade-in duration-200" 
             onClick={() => setIsModalOpen(false)} 
           />
-          <Card className="relative w-full max-w-2xl h-[85vh] border-none shadow-2xl bg-ghost rounded-[2.5rem] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-            <CardHeader className="bg-eerie text-ghost p-6 shrink-0">
+          <Card className="relative w-full max-w-lg h-[600px] border-none shadow-2xl bg-ghost rounded-[2rem] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <CardHeader className="bg-white border-b border-border/40 p-4 shrink-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-vanilla flex items-center justify-center shadow-lg">
-                    <Bot size={28} className="text-eerie" />
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-vanilla flex items-center justify-center shadow-sm">
+                    <Bot size={20} className="text-eerie" />
                   </div>
                   <div>
-                    <CardTitle className="text-sm font-black tracking-[0.2em] uppercase text-vanilla">Murshid</CardTitle>
-                    <p className="text-[10px] opacity-40 font-bold uppercase tracking-widest mt-0.5">Assistant Documentaire</p>
+                    <CardTitle className="text-[11px] font-black tracking-widest uppercase text-eerie">Murshid</CardTitle>
+                    <p className="text-[8px] opacity-50 font-bold uppercase tracking-widest mt-0.5">Assistant Intelligence</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all active:scale-90"
+                  className="w-8 h-8 rounded-lg bg-ghost hover:bg-danger/5 hover:text-danger flex items-center justify-center transition-all active:scale-90 border border-border/10"
                 >
-                  <X size={20} className="opacity-60" />
+                  <X size={16} />
                 </button>
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 overflow-hidden p-0 bg-white/50 backdrop-blur-sm">
-              <ScrollArea className="h-full p-8">
-                <div className="space-y-6 pb-4">
+            <CardContent className="flex-1 overflow-hidden p-0 bg-ghost/10">
+              <ScrollArea className="h-full p-5">
+                <div className="space-y-4 pb-4">
                   {messages.length === 0 && (
-                    <div className="py-12 space-y-10 text-center">
-                      <div className="space-y-3">
-                        <div className="w-20 h-20 bg-vanilla/10 rounded-[2.5rem] flex items-center justify-center mx-auto ring-8 ring-vanilla/5">
-                          <Bot size={40} className="text-vanilla" />
+                    <div className="py-6 space-y-6 text-center">
+                      <div className="space-y-2">
+                        <div className="w-14 h-14 bg-vanilla/10 rounded-2xl flex items-center justify-center mx-auto">
+                          <Bot size={28} className="text-vanilla" />
                         </div>
-                        <h3 className="text-lg font-black text-eerie uppercase tracking-tight">Besoin d'une analyse ?</h3>
-                        <p className="text-xs text-muted-foreground max-w-[280px] mx-auto font-medium leading-relaxed uppercase tracking-widest opacity-60">
-                          Posez une question sur les documents ou utilisez une action rapide ci-dessous.
+                        <h3 className="text-sm font-black text-eerie uppercase tracking-tight">Analyse de documents</h3>
+                        <p className="text-[9px] text-muted-foreground max-w-[200px] mx-auto font-bold leading-relaxed uppercase tracking-widest opacity-60">
+                          Choisissez une action ou posez votre question.
                         </p>
                       </div>
                       
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
+                      <div className="grid grid-cols-2 gap-2.5 max-w-sm mx-auto px-4">
                         {quickActions.map((action, idx) => (
                           <button
                             key={idx}
                             onClick={() => handleSend(action.query)}
-                            className="p-5 rounded-3xl bg-white border border-border/40 hover:border-vanilla/60 hover:shadow-xl hover:shadow-vanilla/10 transition-all flex items-center gap-4 text-left group/btn shadow-sm"
+                            className="p-3 rounded-xl bg-white border border-border/40 hover:border-vanilla/40 hover:shadow-md transition-all flex flex-col items-center gap-2 text-center group/btn shadow-sm"
                           >
-                            <div className="p-3 rounded-2xl bg-ghost group-hover/btn:bg-vanilla/20 transition-all text-eerie shrink-0">
+                            <div className="p-2 rounded-lg bg-ghost group-hover/btn:bg-vanilla/10 transition-all text-eerie shrink-0">
                               {action.icon}
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest leading-tight text-eerie/80">{action.label}</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest leading-tight text-eerie/80">{action.label}</span>
                           </button>
                         ))}
                       </div>
@@ -164,16 +207,16 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
                   {messages.map((msg, index) => (
                     <div
                       key={index}
-                      className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}
+                      className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}
                     >
                       {msg.role === 'assistant' && (
-                        <div className="w-10 h-10 rounded-2xl bg-vanilla text-eerie flex items-center justify-center shrink-0 shadow-lg shadow-vanilla/20 mt-1">
-                          <Bot size={20} />
+                        <div className="w-7 h-7 rounded-lg bg-vanilla text-eerie flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                          <Bot size={14} />
                         </div>
                       )}
                       
-                      <div className={`max-w-[85%] space-y-3`}>
-                         <div className={`rounded-3xl p-5 text-sm shadow-sm leading-relaxed font-medium markdown-content ${
+                      <div className={`max-w-[85%] space-y-1.5`}>
+                         <div className={`rounded-2xl p-3.5 text-xs shadow-sm leading-relaxed font-medium markdown-content ${
                             msg.role === 'user'
                               ? 'bg-eerie text-ghost rounded-tr-none font-bold'
                               : 'bg-white border border-border/30 text-eerie rounded-tl-none'
@@ -182,10 +225,10 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
                          </div>
                          
                          {msg.sources && msg.sources.length > 0 && (
-                          <div className="flex flex-wrap gap-2 px-1">
+                          <div className="flex flex-wrap gap-1 px-1">
                             {msg.sources.map((source, i) => (
-                              <span key={i} className="text-[9px] bg-white/80 backdrop-blur-md border border-border/40 px-3 py-1.5 rounded-xl font-black uppercase tracking-widest text-eerie/60 flex items-center gap-2 shadow-sm hover:border-vanilla/40 transition-colors">
-                                 <FileText size={12} className="text-vanilla" /> {source}
+                              <span key={i} className="text-[7px] bg-white/80 border border-border/30 px-2 py-0.5 rounded-md font-black uppercase tracking-widest text-eerie/50 flex items-center gap-1 shadow-sm">
+                                 <FileText size={8} className="text-vanilla" /> {source}
                               </span>
                             ))}
                           </div>
@@ -195,34 +238,28 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
                   ))}
                   
                   {isLoading && (
-                    <div className="flex gap-4 items-start animate-in fade-in duration-300">
-                      <div className="w-10 h-10 rounded-2xl bg-vanilla text-eerie flex items-center justify-center shrink-0 shadow-lg shadow-vanilla/20 mt-1 animate-pulse">
-                        <Bot size={20} />
+                    <div className="flex gap-2.5 items-start animate-in fade-in duration-200">
+                      <div className="w-7 h-7 rounded-lg bg-vanilla text-eerie flex items-center justify-center shrink-0 shadow-sm mt-0.5 animate-pulse">
+                        <Bot size={14} />
                       </div>
-                      <div className="bg-white border border-border/30 rounded-3xl rounded-tl-none p-6 flex flex-col gap-4 min-w-[280px] shadow-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 bg-vanilla rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-1.5 h-1.5 bg-vanilla rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
-                            <span className="w-1.5 h-1.5 bg-vanilla rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
+                      <div className="bg-white border border-border/20 rounded-2xl rounded-tl-none p-4 flex flex-col gap-2.5 min-w-[200px] shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-0.5">
+                            <span className="w-1 h-1 bg-vanilla rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-1 h-1 bg-vanilla rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-1 h-1 bg-vanilla rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 italic">Analyse en cours</span>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="h-1.5 w-full bg-ghost rounded-full overflow-hidden">
-                            <div className="h-full w-1/3 bg-vanilla/40 animate-[shiver_2s_infinite]" />
-                          </div>
-                          <div className="h-1.5 w-2/3 bg-ghost rounded-full" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground italic">{currentQuote}</span>
                         </div>
                       </div>
                     </div>
                   )}
-                  <div ref={scrollRef} className="h-4" />
+                  <div ref={scrollRef} className="h-2" />
                 </div>
               </ScrollArea>
             </CardContent>
 
-            <CardFooter className="p-6 border-t border-border/20 bg-ghost shrink-0">
+            <CardFooter className="p-4 border-t border-border/20 bg-white shrink-0">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -230,13 +267,13 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
                 }}
                 className="relative w-full"
               >
-                <div className="relative flex items-end gap-3 bg-white rounded-[1.5rem] border border-border/40 focus-within:border-vanilla/50 focus-within:shadow-xl focus-within:shadow-vanilla/5 transition-all p-2 shadow-sm">
+                <div className="relative flex items-center gap-2 bg-ghost/50 rounded-xl border border-border/40 focus-within:border-vanilla/40 focus-within:bg-white transition-all p-1 shadow-inner">
                   <textarea
                     ref={inputRef}
-                    placeholder="Posez votre question sur les documents..."
+                    placeholder="Posez votre question..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="flex-1 bg-transparent px-4 py-3 focus:outline-none text-xs font-bold resize-none min-h-[44px] max-h-[120px] soft-scroll placeholder:text-muted-foreground/40"
+                    className="flex-1 bg-transparent px-3 py-2.5 focus:outline-none text-[10px] font-bold resize-none min-h-[36px] max-h-[80px] soft-scroll placeholder:text-muted-foreground/30"
                     disabled={isLoading}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -245,19 +282,22 @@ export const RagChatWidget: React.FC<RagChatWidgetProps> = ({ dealId }) => {
                       }
                     }}
                   />
-                  <Button 
-                    type="submit" 
-                    size="icon" 
-                    disabled={isLoading || !input.trim()}
-                    className={`w-11 h-11 rounded-2xl transition-all shadow-lg shrink-0 ${
-                        isLoading || !input.trim() ? 'bg-muted opacity-50' : 'bg-eerie text-vanilla hover:bg-black hover:scale-105 active:scale-95'
+                  <button 
+                    type={isLoading ? "button" : "submit"}
+                    onClick={isLoading ? stopGeneration : undefined}
+                    className={`w-9 h-9 rounded-lg transition-all shadow-md shrink-0 flex items-center justify-center ${
+                        isLoading 
+                          ? 'bg-danger/10 text-danger hover:bg-danger/20' 
+                          : !input.trim() 
+                            ? 'bg-ghost text-muted-foreground/30 cursor-not-allowed' 
+                            : 'bg-eerie text-vanilla hover:bg-black scale-100 active:scale-95'
                     }`}
                   >
-                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                  </Button>
+                    {isLoading ? <Square size={14} fill="currentColor" /> : <Send className="w-4 h-4" />}
+                  </button>
                 </div>
-                <p className="text-[8px] text-center text-muted-foreground/30 font-black tracking-[0.3em] uppercase mt-3">
-                  Murshid Docs — Intelligence Immobilière
+                <p className="text-[7px] text-center text-muted-foreground/20 font-black tracking-[0.2em] uppercase mt-2">
+                  Murshid — IA Immobilière
                 </p>
               </form>
             </CardFooter>
