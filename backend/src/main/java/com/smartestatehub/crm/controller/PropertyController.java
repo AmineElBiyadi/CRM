@@ -23,8 +23,9 @@ public class PropertyController {
     private final com.smartestatehub.ai.service.PropertyRecommendationService propertyRecommendationService;
 
     @GetMapping("/latest")
-    public ResponseEntity<Property> getLatestProperty() {
+    public ResponseEntity<PropertyDto.Response> getLatestProperty() {
         return propertyRepository.findFirstByOrderByCreatedAtDesc()
+                .map(p -> propertyService.toResponse(p))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

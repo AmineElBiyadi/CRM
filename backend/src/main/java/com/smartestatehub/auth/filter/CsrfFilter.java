@@ -26,7 +26,9 @@ public class CsrfFilter extends OncePerRequestFilter {
             "/api/auth/logout",
             "/api/rag/chat",
             "/api/auth/forgot-password",
-            "/api/auth/reset-password"
+            "/api/auth/reset-password",
+            "/api/public/onboarding/client",
+            "/api/public/onboarding/dossier"
     );
 
     private final AuthCookies authCookies;

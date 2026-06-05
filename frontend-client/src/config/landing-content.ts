@@ -60,9 +60,9 @@ export const LANDING_CONTENT = {
   },
   aiSection: {
     title: "L'Intelligence Rawabet",
-    description: "L'IA qui pré-qualifie vos dossiers et détecte les signaux d'achat faibles.",
-    assistantName: "Nexus AI",
-    chatPrompt: "Analysez mon potentiel de vente...",
+    description: "Murshid, notre IA prédictive, vous accompagne de la création de votre dossier jusqu'au closing final.",
+    assistantName: "Murshid",
+    chatPrompt: "Démarrez votre projet avec Murshid...",
     metrics: [
       { label: "Précision Prédictive", value: 96 },
       { label: "Gain Opérationnel", value: "x5" }
@@ -88,7 +88,7 @@ export const LANDING_CONTENT = {
     subtitle: "Une expérience fluide du premier message jusqu'au closing.",
     steps: [
       {
-        title: "Dialoguez avec Nexus",
+        title: "Dialoguez avec Murshid",
         description: "Expliquez simplement votre projet à notre IA. Elle comprend vos besoins, même les plus complexes.",
         icon: "MessageSquare",
         color: "text-alice"

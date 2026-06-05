@@ -236,4 +236,8 @@ public class PropertyService {
                 .imageUrls(imageUrls)
                 .build();
     }
+
+    public PropertyDto.Response toResponse(Property p) {
+        return mapToResponse(p);
+    }
 }
