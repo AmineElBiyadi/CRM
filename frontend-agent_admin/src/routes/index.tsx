@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Input } from "@/components/ui/input";
@@ -105,8 +105,12 @@ function Header() {
     >
       <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl neu-sm flex items-center justify-center bg-eerie text-white">
-            <Building2 size={20} />
+          <div className="w-11 h-11 flex items-center justify-center">
+            <img 
+              src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+              alt="Rawabet Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <div className="font-bold text-base leading-none">Rawabet</div>
@@ -569,8 +573,12 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-14 grid md:grid-cols-4 gap-10">
         <div>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl neu-sm flex items-center justify-center bg-eerie text-white">
-              <Building2 size={18} />
+            <div className="w-10 h-10 flex items-center justify-center">
+              <img 
+                src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+                alt="Rawabet Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="font-bold">Rawabet</div>
           </div>

@@ -25,14 +25,14 @@ import { Route as ClientAssistantRouteImport } from './routes/client.assistant'
 import { Route as ClientDossiersIndexRouteImport } from './routes/client.dossiers.index'
 import { Route as ClientDossiersIdRouteImport } from './routes/client.dossiers.$id'
 
-const DesignSystemRoute = DesignSystemRouteImport.update({
-  id: '/design-system',
-  path: '/design-system',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignSystemRoute = DesignSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientRoute = ClientRouteImport.update({
@@ -104,8 +104,8 @@ const ClientDossiersIdRoute = ClientDossiersIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/client': typeof ClientRouteWithChildren
-  '/login': typeof LoginRoute
   '/design-system': typeof DesignSystemRoute
+  '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
   '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
@@ -212,18 +212,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/design-system': {
-      id: '/design-system'
-      path: '/design-system'
-      fullPath: '/design-system'
-      preLoaderRoute: typeof DesignSystemRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof DesignSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client': {
