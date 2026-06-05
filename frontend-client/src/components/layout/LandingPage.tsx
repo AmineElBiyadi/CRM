@@ -211,7 +211,7 @@ export function LandingPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     {[
-                      { label: "Estimation", value: `${property?.price?.toLocaleString()} MAD` },
+                      { label: "Estimation", value: `${property?.price?.toLocaleString()} $` },
                       { label: "Score Lead", value: "96 / 100" },
                     ].map((item, i) => (
                       <div key={i} className="p-4 rounded-2xl bg-ghost/40 border border-gray-50">

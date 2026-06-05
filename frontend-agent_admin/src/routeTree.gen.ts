@@ -23,6 +23,7 @@ import { Route as AgentDossiersRouteImport } from './routes/agent.dossiers'
 import { Route as AgentDossierRouteImport } from './routes/agent.dossier'
 import { Route as AgentClientsRouteImport } from './routes/agent.clients'
 import { Route as AgentAgendaRouteImport } from './routes/agent.agenda'
+import { Route as AdminRechercheRouteImport } from './routes/admin.recherche'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminDossierRouteImport } from './routes/admin.dossier'
@@ -102,6 +103,11 @@ const AgentAgendaRoute = AgentAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AgentRoute,
 } as any)
+const AdminRechercheRoute = AdminRechercheRouteImport.update({
+  id: '/recherche',
+  path: '/recherche',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminProfileRoute = AdminProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/recherche': typeof AdminRechercheRoute
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
   '/agent/dossier': typeof AgentDossierRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/recherche': typeof AdminRechercheRoute
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
   '/agent/dossier': typeof AgentDossierRoute
@@ -202,6 +210,7 @@ export interface FileRoutesById {
   '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/recherche': typeof AdminRechercheRoute
   '/agent/agenda': typeof AgentAgendaRoute
   '/agent/clients': typeof AgentClientsRoute
   '/agent/dossier': typeof AgentDossierRoute
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/admin/dossier'
     | '/admin/pipeline'
     | '/admin/profile'
+    | '/admin/recherche'
     | '/agent/agenda'
     | '/agent/clients'
     | '/agent/dossier'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/admin/dossier'
     | '/admin/pipeline'
     | '/admin/profile'
+    | '/admin/recherche'
     | '/agent/agenda'
     | '/agent/clients'
     | '/agent/dossier'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/admin/dossier'
     | '/admin/pipeline'
     | '/admin/profile'
+    | '/admin/recherche'
     | '/agent/agenda'
     | '/agent/clients'
     | '/agent/dossier'
@@ -394,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentAgendaRouteImport
       parentRoute: typeof AgentRoute
     }
+    '/admin/recherche': {
+      id: '/admin/recherche'
+      path: '/recherche'
+      fullPath: '/admin/recherche'
+      preLoaderRoute: typeof AdminRechercheRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/profile': {
       id: '/admin/profile'
       path: '/profile'
@@ -460,6 +479,7 @@ interface AdminRouteChildren {
   AdminDossierRoute: typeof AdminDossierRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProfileRoute: typeof AdminProfileRoute
+  AdminRechercheRoute: typeof AdminRechercheRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -470,6 +490,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDossierRoute: AdminDossierRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProfileRoute: AdminProfileRoute,
+  AdminRechercheRoute: AdminRechercheRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

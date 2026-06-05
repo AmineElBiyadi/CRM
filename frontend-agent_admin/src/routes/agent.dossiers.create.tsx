@@ -346,7 +346,7 @@ function CreateDossierPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block">
-                    <span className="text-sm font-semibold text-muted-foreground block mb-2">Budget Min (MAD)</span>
+                    <span className="text-sm font-semibold text-muted-foreground block mb-2">Budget Min ($)</span>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
                       <input
@@ -358,7 +358,7 @@ function CreateDossierPage() {
                     </div>
                   </label>
                   <label className="block">
-                    <span className="text-sm font-semibold text-muted-foreground block mb-2">Budget Max (MAD)</span>
+                    <span className="text-sm font-semibold text-muted-foreground block mb-2">Budget Max ($)</span>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
                       <input
@@ -519,7 +519,7 @@ function CreateDossierPage() {
                 </div>
 
                 <label className="block">
-                  <span className="text-sm font-semibold text-muted-foreground block mb-2">Prix demandé (MAD)</span>
+                  <span className="text-sm font-semibold text-muted-foreground block mb-2">Prix demandé ($)</span>
                   <div className="relative">
                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
                     <input

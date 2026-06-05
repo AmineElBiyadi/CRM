@@ -78,7 +78,8 @@ public class SecurityConfig {
                     "/api/property-types/**",
                     "/api/contracts/**",
                     "/api/offers/**",
-                    "/api/emails/**"
+                    "/api/emails/**",
+                    "/api/ai/**"
                 ).hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "AGENT", "ADMIN")
                 .requestMatchers("/api/rag/**").hasAnyRole("AGENT", "ADMIN", "CLIENT")

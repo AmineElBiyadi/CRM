@@ -127,7 +127,7 @@ function PipelineDealCard({ deal }: { deal: AdminPipelineDealDto }) {
   return (
     <Link
       to="/admin/dossier"
-      search={{ id: deal.idProfile }}
+      search={{ id: deal.idDeal }}
       className="block"
     >
       <NeuCard size="sm" pressable className="group relative">

@@ -38,12 +38,22 @@ public class InteractionService {
     }
 
     @Transactional
-    public InteractionDto saveInteraction(CreateInteractionRequest request, UUID agentId) {
+    public InteractionDto saveInteraction(CreateInteractionRequest request, UUID agentId, String fallbackEmail) {
         Deal deal = dealRepository.findById(request.getIdDeal())
                 .orElseThrow(() -> new RuntimeException("Deal not found"));
         
-        InternalUser agent = userRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found"));
+        InternalUser agent = null;
+        if (agentId != null) {
+            agent = userRepository.findById(agentId).orElse(null);
+        }
+        
+        if (agent == null && fallbackEmail != null) {
+            agent = userRepository.findByEmail(fallbackEmail).orElse(null);
+        }
+
+        if (agent == null) {
+            throw new RuntimeException("Agent/Admin not found");
+        }
 
         Interaction interaction = Interaction.builder()
                 .deal(deal)
@@ -64,6 +74,28 @@ public class InteractionService {
         eventPublisher.publishEvent(new InteractionCreatedEvent(this, interaction));
 
         return mapToDto(interaction);
+    }
+
+    @Transactional
+    public InteractionDto updateInteraction(UUID idInteraction, CreateInteractionRequest request) {
+        Interaction interaction = interactionRepository.findById(idInteraction)
+                .orElseThrow(() -> new RuntimeException("Interaction not found"));
+
+        interaction.setType(request.getType());
+        interaction.setDescription(request.getDescription());
+        interaction.setOccurredAt(request.getOccurredAt());
+        interaction.setDurationMinutes(request.getDurationMinutes());
+
+        interaction = interactionRepository.save(interaction);
+        return mapToDto(interaction);
+    }
+
+    @Transactional
+    public void deleteInteraction(UUID idInteraction) {
+        if (!interactionRepository.existsById(idInteraction)) {
+            throw new RuntimeException("Interaction not found");
+        }
+        interactionRepository.deleteById(idInteraction);
     }
 
     private InteractionDto mapToDto(Interaction interaction) {
