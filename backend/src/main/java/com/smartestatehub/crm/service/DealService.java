@@ -11,6 +11,7 @@ import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
 import lombok.RequiredArgsConstructor;
@@ -41,21 +42,38 @@ public class DealService {
     public List<ColdLeadDto> getColdLeads() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(10);
         List<DealStage> terminalStages = List.of(DealStage.CLOSED, DealStage.LOST);
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         
         return dealRepository.findColdLeads(threshold, terminalStages).stream()
                 .map(d -> {
-                    var client = d.getClientFolder().getClient();
-                    var agent = d.getClientFolder().getAssignedAgent();
-                    long days = d.getLastInteractionAt() == null 
-                            ? ChronoUnit.DAYS.between(d.getCreatedAt(), LocalDateTime.now())
-                            : ChronoUnit.DAYS.between(d.getLastInteractionAt(), LocalDateTime.now());
+                    var folder = d.getClientFolder();
+                    var client = folder.getClient();
+                    var agent = folder.getAssignedAgent();
                     
+                    LocalDateTime lastContactDate = d.getLastInteractionAt() != null ? d.getLastInteractionAt() : d.getCreatedAt();
+                    long days = ChronoUnit.DAYS.between(lastContactDate, LocalDateTime.now());
+                    
+                    // Build search criteria from buyer folder
+                    String type = "Non spécifié";
+                    String city = "Non spécifiée";
+                    String budgetMax = "N/A";
+                    
+                    if (folder.getBuyerFolder() != null) {
+                        var buyer = folder.getBuyerFolder();
+                        if (buyer.getPropertyType() != null) type = buyer.getPropertyType().getName();
+                        if (buyer.getPreferredArea() != null) city = buyer.getPreferredArea();
+                        if (buyer.getBudgetMax() != null) budgetMax = String.format("%,.0f$", buyer.getBudgetMax());
+                    }
+
                     return new ColdLeadDto(
                             client.getFirstName() + " " + client.getLastName(),
                             client.getEmail(),
-                            agent != null ? agent.getEmail() : "Non assigné",
+                            agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné",
+                            agent != null ? agent.getEmail() : "N/A",
                             agent != null ? agent.getIdUser() : null,
-                            d.getClientFolder().getIdProfile(),
+                            folder.getIdProfile(),
+                            new ColdLeadDto.SearchCriteriaDto(type, city, budgetMax),
+                            lastContactDate.format(dateFormatter),
                             days
                     );
                 })
