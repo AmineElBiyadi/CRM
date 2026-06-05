@@ -1694,8 +1694,6 @@ function AgentDossierPage() {
           <p className="text-sm font-medium">{dossier.aiRecommendedAction || "Aucune action recommandée pour le moment."}</p>
         </NeuCard>
 
-        <RagChatWidget dealId={id!} />
-
         <NeuCard>
           <h3 className="font-semibold flex items-center gap-2 text-sm mb-4">
             <FileText size={14} /> Documents ({docs.length})
@@ -1807,16 +1805,7 @@ function AgentDossierPage() {
           </div>
         </NeuCard>
 
-        <NeuCard className="bg-vanilla/40">
-          <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Send size={14} /> Suivi Dossier</h3>
-          <p className="text-xs text-muted-foreground mb-3">Actions rapides basées sur le profil.</p>
-          <button
-            onClick={() => toast.info("Email de suivi copié")}
-            className="w-full py-2.5 rounded-lg bg-eerie text-ghost text-xs font-medium hover:opacity-90"
-          >
-            Générer email
-          </button>
-        </NeuCard>
+        <RagChatWidget dealId={id!} />
       </div>
     </div>
 
