@@ -30,6 +30,7 @@ public class NotificationController {
     @PostMapping("/agent")
     public ResponseEntity<NotificationDto> notifyAgent(@RequestBody SystemNotificationRequest request) {
         return ResponseEntity.ok(notificationService.sendSystemNotification(
+                request.getReceiverId(),
                 request.getReceiverEmail(),
                 request.getTitle(),
                 request.getMessage()
@@ -39,6 +40,7 @@ public class NotificationController {
     @PostMapping("/admin")
     public ResponseEntity<NotificationDto> notifyAdmin(@RequestBody SystemNotificationRequest request) {
         return ResponseEntity.ok(notificationService.sendSystemNotification(
+                request.getReceiverId(),
                 request.getReceiverEmail(),
                 request.getTitle(),
                 request.getMessage()

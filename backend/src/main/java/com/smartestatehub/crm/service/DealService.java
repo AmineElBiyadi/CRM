@@ -60,7 +60,7 @@ public class DealService {
                     
                     if (folder.getBuyerFolder() != null) {
                         var buyer = folder.getBuyerFolder();
-                        if (buyer.getPropertyType() != null) type = buyer.getPropertyType().getName();
+                        if (buyer.getPropertyType() != null) type = buyer.getPropertyType().getSpecificType();
                         if (buyer.getPreferredArea() != null) city = buyer.getPreferredArea();
                         if (buyer.getBudgetMax() != null) budgetMax = String.format("%,.0f$", buyer.getBudgetMax());
                     }
