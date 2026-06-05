@@ -8,8 +8,11 @@ import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.repository.ContractRepository;
 import com.smartestatehub.crm.repository.DealRepository;
 import com.smartestatehub.notification.service.EmailService;
+import com.smartestatehub.shared.events.ContractSentEvent;
+import com.smartestatehub.shared.events.ContractSignedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,7 @@ public class ContractService {
     private final DealRepository dealRepository;
     private final ContractPdfService contractPdfService;
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Crée un nouveau contrat pour un dossier (deal) avec son calendrier de
@@ -155,8 +159,10 @@ public class ContractService {
                     }
                 }
             }
+            eventPublisher.publishEvent(new ContractSentEvent(this, contract));
         } else if (newStatus == ContractStatus.RECEIVED_SIGNED) {
             contract.setSignedAt(LocalDateTime.now());
+            eventPublisher.publishEvent(new ContractSignedEvent(this, contract));
         }
 
         Contract saved = contractRepository.save(contract);

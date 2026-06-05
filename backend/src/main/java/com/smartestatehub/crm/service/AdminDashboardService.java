@@ -11,7 +11,9 @@ import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.DealStage;
 import com.smartestatehub.crm.repository.ContractRepository;
 import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.shared.events.AgentCreatedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ public class AdminDashboardService {
     private final ContractRepository contractRepository;
     private final PasswordEncoder passwordEncoder;
     private final DealService dealService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<AdminAgentDto> getAgents(String sortBy, String direction) {
@@ -128,7 +131,10 @@ public class AdminDashboardService {
             applyAgentStatus(agent, false);
         }
 
-        return toAdminAgentDto(userRepository.save(agent));
+        InternalUser saved = userRepository.save(agent);
+        eventPublisher.publishEvent(new AgentCreatedEvent(this, saved, request.password()));
+
+        return toAdminAgentDto(saved);
     }
 
     @Transactional

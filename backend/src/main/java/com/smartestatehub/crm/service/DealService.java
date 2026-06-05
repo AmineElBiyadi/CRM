@@ -11,6 +11,7 @@ import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.model.*;
 import com.smartestatehub.crm.repository.*;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,30 @@ public class DealService {
     private final DealStageUpdateRepository dealStageUpdateRepository;
     private final DealAssignmentRepository dealAssignmentRepository;
 
+    @Transactional(readOnly = true)
+    public List<ColdLeadDto> getColdLeads() {
+        LocalDateTime threshold = LocalDateTime.now().minusDays(10);
+        List<DealStage> terminalStages = List.of(DealStage.CLOSED, DealStage.LOST);
+        
+        return dealRepository.findColdLeads(threshold, terminalStages).stream()
+                .map(d -> {
+                    var client = d.getClientFolder().getClient();
+                    var agent = d.getClientFolder().getAssignedAgent();
+                    long days = d.getLastInteractionAt() == null 
+                            ? ChronoUnit.DAYS.between(d.getCreatedAt(), LocalDateTime.now())
+                            : ChronoUnit.DAYS.between(d.getLastInteractionAt(), LocalDateTime.now());
+                    
+                    return new ColdLeadDto(
+                            client.getFirstName() + " " + client.getLastName(),
+                            client.getEmail(),
+                            agent != null ? agent.getEmail() : "Non assigné",
+                            agent != null ? agent.getIdUser() : null,
+                            d.getClientFolder().getIdProfile(),
+                            days
+                    );
+                })
+                .collect(Collectors.toList());
+    }
 
     @Transactional(readOnly = true)
     public List<DossierSummaryDto> getDossierListingForAgent(UUID agentId) {

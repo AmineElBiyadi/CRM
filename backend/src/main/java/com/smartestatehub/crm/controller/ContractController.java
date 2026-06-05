@@ -1,5 +1,6 @@
 package com.smartestatehub.crm.controller;
 
+import com.smartestatehub.ai.service.ContractRiskService;
 import com.smartestatehub.crm.dto.ContractDto;
 import com.smartestatehub.crm.model.ContractStatus;
 import com.smartestatehub.crm.service.ContractService;
@@ -7,9 +8,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -18,6 +21,17 @@ import java.util.UUID;
 public class ContractController {
 
     private final ContractService contractService;
+    private final ContractRiskService contractRiskService;
+
+    /**
+     * POST /api/contracts/analyze-risks
+     * Analyse les risques d'un fichier contrat PDF.
+     */
+    @PostMapping("/analyze-risks")
+    public ResponseEntity<Map<String, String>> analyzeRisks(@RequestParam("file") MultipartFile file) {
+        String analysis = contractRiskService.analyzeContractRisks(file);
+        return ResponseEntity.ok(Map.of("analysis", analysis));
+    }
 
     /**
      * POST /api/contracts?dealId={dealId}
