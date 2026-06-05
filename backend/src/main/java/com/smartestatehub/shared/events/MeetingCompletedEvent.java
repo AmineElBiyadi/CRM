@@ -5,10 +5,10 @@ import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
 @Getter
-public class MeetingScheduledEvent extends ApplicationEvent {
+public class MeetingCompletedEvent extends ApplicationEvent {
     private final Meeting meeting;
 
-    public MeetingScheduledEvent(Object source, Meeting meeting) {
+    public MeetingCompletedEvent(Object source, Meeting meeting) {
         super(source);
         this.meeting = meeting;
     }

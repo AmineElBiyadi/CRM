@@ -35,9 +35,31 @@ export function EmailModal({
   // IA Generation states
   const [isGenerating, setIsReadOnly] = useState(false); // Using for UI state
   const [isTyping, setIsTyping] = useState(false);
+  const [isImprovingSubject, setIsImprovingSubject] = useState(false);
   const [aiGenerated, setAiGenerated] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleImproveSubject = async () => {
+    if (!subject.trim()) {
+      toast.error("Veuillez saisir un objet avant de l'améliorer.");
+      return;
+    }
+
+    setIsImprovingSubject(true);
+    try {
+      const response = await apiClient.post('/api/emails/improve-subject', {
+        subject: subject.trim()
+      });
+      setSubject(response.data.improvedSubject);
+      toast.success("Objet amélioré par l'IA");
+    } catch (err) {
+      console.error("Erreur amélioration objet:", err);
+      toast.error("Impossible d'améliorer l'objet.");
+    } finally {
+      setIsImprovingSubject(false);
+    }
+  };
 
   const handleGenerateAI = async () => {
     // Confirmation si du texte existe déjà
@@ -51,19 +73,35 @@ export function EmailModal({
     setError(null);
 
     try {
-      // Mock temporaire (1s) comme demandé
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const aiSubject = "Suivi de votre dossier immobilier";
-      const aiBody = `Bonjour ${clientName.split(' ')[0]},\n\nJe me permets de vous contacter suite à notre dernière interaction concernant votre projet immobilier. \n\nL'analyse de votre dossier montre une belle progression et je souhaitais m'assurer que vous aviez toutes les informations nécessaires pour la suite.\n\nJe reste à votre entière disposition pour un échange téléphonique.\n\nCordialement,\n${agentEmail}`;
+      // Appel à l'API réelle de génération de brouillon
+      const response = await apiClient.post('/api/emails/generate-draft', {
+        prompt: subject.trim() ? `Sujet de l'email : ${subject}` : "Rédiger un email de suivi client professionnel",
+        context: {
+          clientName,
+          clientEmail,
+          agentEmail,
+          dealId
+        }
+      });
+
+      const aiContent = response.data.draft;
+
+      // Détection si l'IA demande plus d'informations
+      if (aiContent.includes("[BESOIN_INFOS]")) {
+        const question = aiContent.split("[BESOIN_INFOS] :")[1] || aiContent;
+        setError("L'IA a besoin de plus de contexte : " + question.trim());
+        toast.info("Précisez votre objet pour aider l'IA");
+        setIsReadOnly(false);
+        return;
+      }
 
       // Effet Typewriter pour le corps du message
-      setSubject(aiSubject);
       setBody("");
       setIsTyping(true);
       
       let currentText = "";
-      const fullText = aiBody;
-      const speed = 15; // ms par caractère
+      const fullText = aiContent;
+      const speed = 10; // ms par caractère
       
       const typeNextChar = (index: number) => {
         if (index < fullText.length) {
@@ -181,9 +219,24 @@ export function EmailModal({
 
             {/* Field: Subject */}
             <div className="space-y-2">
-              <label htmlFor="email-subject" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1 flex items-center gap-1.5">
-                <Type size={12} /> Objet
-              </label>
+              <div className="flex items-center justify-between ml-1">
+                <label htmlFor="email-subject" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground flex items-center gap-1.5">
+                  <Type size={12} /> Objet
+                </label>
+                <button 
+                  type="button"
+                  onClick={handleImproveSubject}
+                  disabled={isImprovingSubject || !subject.trim()}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-alice text-eerie/60 hover:bg-vanilla/20 hover:text-eerie transition-all disabled:opacity-30"
+                  title="Améliorer la formulation et corriger les fautes"
+                >
+                  {isImprovingSubject ? (
+                    <><Loader2 size={10} className="animate-spin" /> Correction...</>
+                  ) : (
+                    <><Sparkles size={10} /> Améliorer l'objet</>
+                  )}
+                </button>
+              </div>
               <input 
                 id="email-subject"
                 type="text"

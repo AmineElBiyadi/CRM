@@ -11,7 +11,9 @@ import com.smartestatehub.crm.model.Deal;
 import com.smartestatehub.crm.model.DealStage;
 import com.smartestatehub.crm.repository.ContractRepository;
 import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.shared.events.AgentCreatedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ public class AdminDashboardService {
     private final ContractRepository contractRepository;
     private final PasswordEncoder passwordEncoder;
     private final DealService dealService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<AdminAgentDto> getAgents(String sortBy, String direction) {
@@ -128,7 +131,10 @@ public class AdminDashboardService {
             applyAgentStatus(agent, false);
         }
 
-        return toAdminAgentDto(userRepository.save(agent));
+        InternalUser saved = userRepository.save(agent);
+        eventPublisher.publishEvent(new AgentCreatedEvent(this, saved, request.password()));
+
+        return toAdminAgentDto(saved);
     }
 
     @Transactional
@@ -153,13 +159,58 @@ public class AdminDashboardService {
     @Transactional
     public AdminAgentDto updateAgentStatus(UUID agentId, UpdateAgentStatusRequest request, String adminEmail) {
         InternalUser agent = findAgent(agentId);
-        applyAgentStatus(agent, Boolean.TRUE.equals(request.active()));
+        boolean targetActive = Boolean.TRUE.equals(request.active());
 
-        if (!Boolean.TRUE.equals(request.active()) && adminEmail != null) {
+        if (!targetActive && agent.getDeletedAt() == null) {
+            // Deactivation attempt
+            List<Deal> activeDeals = dealRepository.findActiveDossiersByAgentId(agentId).stream()
+                    .filter(d -> !TERMINAL_STAGES.contains(d.getStage()))
+                    .toList();
+
+            if (!activeDeals.isEmpty()) {
+                handleDealTransfer(activeDeals, request);
+            }
+        }
+
+        applyAgentStatus(agent, targetActive);
+
+        if (!targetActive && adminEmail != null) {
             userRepository.findByEmail(adminEmail).ifPresent(agent::setDeletedBy);
         }
 
         return toAdminAgentDto(userRepository.save(agent));
+    }
+
+    private void handleDealTransfer(List<Deal> activeDeals, UpdateAgentStatusRequest request) {
+        if (request.fallbackAgentId() != null) {
+            InternalUser newAgent = userRepository.findById(request.fallbackAgentId())
+                    .filter(u -> u.getRole() == Role.AGENT && u.getDeletedAt() == null)
+                    .orElseThrow(() -> new IllegalArgumentException("L'agent de transfert est invalide ou inactif."));
+
+            for (Deal deal : activeDeals) {
+                transferDeal(deal, newAgent);
+            }
+        } else if (request.dealTransfers() != null && !request.dealTransfers().isEmpty()) {
+            for (Deal deal : activeDeals) {
+                UUID newAgentId = request.dealTransfers().get(deal.getIdDeal());
+                if (newAgentId == null) {
+                    throw new IllegalArgumentException("Le dossier '" + clientName(deal) + "' doit être transféré.");
+                }
+                InternalUser newAgent = userRepository.findById(newAgentId)
+                        .filter(u -> u.getRole() == Role.AGENT && u.getDeletedAt() == null)
+                        .orElseThrow(() -> new IllegalArgumentException("L'agent choisi pour '" + clientName(deal) + "' est invalide."));
+                transferDeal(deal, newAgent);
+            }
+        } else {
+            throw new IllegalArgumentException("Cet agent possède " + activeDeals.size() + " dossier(s) actif(s). Vous devez les transférer avant de le désactiver.");
+        }
+    }
+
+    private void transferDeal(Deal deal, InternalUser newAgent) {
+        if (deal.getClientFolder() != null) {
+            deal.getClientFolder().setAssignedAgent(newAgent);
+            // Optionally: add an interaction log or notification here
+        }
     }
 
     @Transactional(readOnly = true)

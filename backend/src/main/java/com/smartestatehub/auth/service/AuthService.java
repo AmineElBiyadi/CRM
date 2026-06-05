@@ -125,6 +125,9 @@ public class AuthService {
                 throw new BadCredentialsException("Aucun compte agent ou administrateur n'est associé à cet email.");
             }
             InternalUser user = userOpt.get();
+            if (user.getDeletedAt() != null) {
+                throw new BadCredentialsException("Ce compte est désactivé. Veuillez contacter votre administrateur.");
+            }
             token = PasswordResetToken.builder()
                     .internalUser(user)
                     .tokenHash(tokenHasher.hash(tokenHasher.generateOpaqueToken()))
@@ -136,6 +139,9 @@ public class AuthService {
                 throw new BadCredentialsException("Aucun compte client n'est associé à cet email.");
             }
             Client client = clientOpt.get();
+            if (client.getDeletedAt() != null) {
+                throw new BadCredentialsException("Votre compte est inactif. Veuillez contacter l'agence.");
+            }
             token = PasswordResetToken.builder()
                     .client(client)
                     .tokenHash(tokenHasher.hash(tokenHasher.generateOpaqueToken()))

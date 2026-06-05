@@ -8,6 +8,10 @@ import com.sendgrid.*;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
+import com.smartestatehub.crm.model.Deal;
+import com.smartestatehub.crm.model.Interaction;
+import com.smartestatehub.crm.repository.DealRepository;
+import com.smartestatehub.crm.repository.InteractionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -16,7 +20,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -24,6 +31,8 @@ import java.util.Map;
 public class EmailServiceImpl implements EmailService {
 
     private final ChatClient chatClient;
+    private final DealRepository dealRepository;
+    private final InteractionRepository interactionRepository;
 
     @Value("${app.ai.model-fast}")
     private String fastModel;
@@ -202,7 +211,7 @@ public class EmailServiceImpl implements EmailService {
                 <p>Une nouvelle offre d'achat vient d'être déposée pour votre propriété :</p>
                 <div class="highlight-box" style="text-align: center;">
                     <p style="font-size: 14px; margin-bottom: 5px;">%s</p>
-                    <p style="font-size: 24px; color: #1a1a1a; font-weight: 800; margin: 0;">%,.2f MAD</p>
+                    <p style="font-size: 24px; color: #1a1a1a; font-weight: 800; margin: 0;">$%,.2f</p>
                 </div>
                 <p>Vous pouvez consulter les détails complets et formuler votre réponse directement depuis votre portail client Rawabet.</p>
                 """.formatted(clientName, propertyTitle, amount);
@@ -237,6 +246,106 @@ public class EmailServiceImpl implements EmailService {
         } catch (Exception e) {
             log.error("Erreur lors de la génération de l'email par IA: {}", e.getMessage());
             sendNotificationEmail(to, subject, "Une mise à jour importante concernant votre dossier est disponible.");
+        }
+    }
+
+    @Override
+    public String generateEmailDraft(String prompt, Map<String, Object> context) {
+        log.info("Génération d'un brouillon d'email via IA avec contexte CRM");
+
+        Map<String, Object> fullContext = new HashMap<>(context);
+        
+        // Initialisation avec des valeurs par défaut pour éviter les erreurs de template
+        fullContext.putIfAbsent("dealStage", "Non spécifiée");
+        fullContext.putIfAbsent("aiSummary", "Aucun résumé disponible pour le moment.");
+        fullContext.putIfAbsent("recentInteractions", "Aucune interaction passée enregistrée.");
+        fullContext.putIfAbsent("clientName", context.getOrDefault("clientName", "Client"));
+
+        // Enrichir le contexte avec les données réelles du CRM si le dealId est présent
+        if (context.containsKey("dealId")) {
+            try {
+                UUID dealId = UUID.fromString(context.get("dealId").toString());
+                dealRepository.findById(dealId).ifPresent(deal -> {
+                    if (deal.getStage() != null) fullContext.put("dealStage", deal.getStage().toString());
+                    if (deal.getAiSummary() != null) fullContext.put("aiSummary", deal.getAiSummary());
+                    
+                    String recentInteractions = interactionRepository.findTop3ByDeal_IdDealOrderByOccurredAtDesc(dealId)
+                            .stream()
+                            .map(i -> "- " + i.getType() + ": " + i.getDescription())
+                            .collect(Collectors.joining("\n"));
+                    
+                    if (!recentInteractions.isBlank()) {
+                        fullContext.put("recentInteractions", recentInteractions);
+                    }
+                });
+            } catch (Exception e) {
+                log.warn("Erreur d'enrichissement du contexte : {}", e.getMessage());
+            }
+        }
+
+        String systemPrompt = """
+                Tu es un assistant de communication pour une agence immobilière de luxe "Rawabet".
+                Ta mission est de rédiger le corps d'un email professionnel, chaleureux et personnalisé.
+                
+                Données du CRM pour ce client :
+                - Nom : {clientName}
+                - Étape : {dealStage}
+                - Résumé dossier : {aiSummary}
+                - Historique récent :
+                {recentInteractions}
+                
+                CONSIGNES :
+                1. Utilise ces données pour que l'email ne soit PAS générique.
+                2. Si le prompt de l'agent est trop vague et que le CRM est vide, réponds par : "[BESOIN_INFOS] : " suivi de tes questions.
+                3. Sinon, réponds uniquement avec le contenu de l'email (pas d'objet).
+                4. Ton : Expert, luxe, empathique.
+                5. Termine TOUJOURS l'email par la signature suivante exactement :
+                
+                Conseillère en immobilier de luxe
+                Rawabet – Votre partenaire de confiance
+                +33 1 23 45 67 89 | sara@rawabet.com | www.rawabet.com
+                """;
+
+        try {
+            return chatClient.prompt()
+                    .options(OpenAiChatOptions.builder()
+                            .withModel(fastModel)
+                            .withTemperature(0.7f)
+                            .build())
+                    .system(s -> s.text(systemPrompt).params(fullContext))
+                    .user(u -> u.text(prompt).params(fullContext))
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.error("Erreur lors de la génération du brouillon par IA: {}", e.getMessage());
+            return "Désolé, une erreur est survenue lors de la génération du brouillon. Vérifiez que toutes les données du dossier sont bien remplies.";
+        }
+    }
+
+    @Override
+    public String improveSubject(String subject) {
+        log.info("Amélioration de l'objet de l'email via IA");
+
+        String systemPrompt = """
+                Tu es un assistant en communication immobilière. 
+                Ta mission est de corriger les fautes d'orthographe et d'améliorer la formulation de l'objet d'un email (Subject).
+                L'objet doit être professionnel, percutant et adapté au secteur de l'immobilier de luxe.
+                Réponds UNIQUEMENT avec l'objet corrigé, sans aucun autre texte ou ponctuation superflue.
+                """;
+
+        try {
+            return chatClient.prompt()
+                    .options(OpenAiChatOptions.builder()
+                            .withModel(fastModel)
+                            .withTemperature(0.5f)
+                            .build())
+                    .system(systemPrompt)
+                    .user(subject)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            log.error("Erreur lors de l'amélioration de l'objet: {}", e.getMessage());
+            return subject; // Retourner l'original en cas d'erreur
         }
     }
 
