@@ -111,6 +111,7 @@ public class NotificationEventListener {
 
         n8nWebhookService.triggerWorkflow("/contrat-signe", "CONTRACT_SIGNED", Map.of(
             "contractId", event.getContract().getIdContract(),
+            "dealId", deal.getIdDeal(),
             "folderId", deal.getClientFolder().getIdProfile(),
             "clientName", client.getFirstName() + " " + client.getLastName(),
             "clientEmail", client.getEmail(),
