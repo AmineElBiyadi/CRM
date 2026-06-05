@@ -153,13 +153,6 @@ function AdminDashboard() {
     <div className="space-y-6 md:space-y-8 max-w-[1400px]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="w-10 h-10 mb-4 flex items-center justify-center">
-            <img 
-              src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
-              alt="Rawabet Logo" 
-              className="w-full h-full object-contain opacity-80"
-            />
-          </div>
           <p className="text-sm text-muted-foreground">Bonjour {adminFirstName} 👋</p>
           <h1 className="text-2xl md:text-3xl font-bold mt-1">Vue d'ensemble de l'agence</h1>
         </div>
