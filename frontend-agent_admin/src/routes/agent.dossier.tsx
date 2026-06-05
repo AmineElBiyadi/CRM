@@ -1806,17 +1806,6 @@ function AgentDossierPage() {
         </NeuCard>
 
         <RagChatWidget dealId={id!} />
-
-        <NeuCard className="bg-vanilla/40">
-          <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Send size={14} /> Suivi Dossier</h3>
-          <p className="text-xs text-muted-foreground mb-3">Actions rapides basées sur le profil.</p>
-          <button
-            onClick={() => toast.info("Email de suivi copié")}
-            className="w-full py-2.5 rounded-lg bg-eerie text-ghost text-xs font-medium hover:opacity-90"
-          >
-            Générer email
-          </button>
-        </NeuCard>
       </div>
     </div>
 
