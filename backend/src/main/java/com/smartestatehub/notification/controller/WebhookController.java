@@ -77,8 +77,17 @@ public class WebhookController {
      */
     @PostMapping("/notifications/agent")
     public ResponseEntity<NotificationDto> notifyAgent(@RequestBody SystemNotificationRequest request) {
-        log.info("[WEBHOOK] n8n sending notification to agent: {}", request.getReceiverEmail());
+        log.info("[WEBHOOK] n8n sending notification to agent. Email: {}, ID: {}", 
+                request.getReceiverEmail(), request.getReceiverId());
+
+        if (request.getReceiverId() == null && 
+            (request.getReceiverEmail() == null || request.getReceiverEmail().isBlank() || request.getReceiverEmail().equalsIgnoreCase("N/A"))) {
+            log.warn("[WEBHOOK] Skipping agent notification: No valid recipient provided.");
+            return ResponseEntity.ok().build();
+        }
+
         return ResponseEntity.ok(notificationService.sendSystemNotification(
+                request.getReceiverId(),
                 request.getReceiverEmail(),
                 request.getTitle(),
                 request.getMessage()
@@ -90,8 +99,17 @@ public class WebhookController {
      */
     @PostMapping("/notifications/admin")
     public ResponseEntity<NotificationDto> notifyAdmin(@RequestBody SystemNotificationRequest request) {
-        log.info("[WEBHOOK] n8n sending notification to admin: {}", request.getReceiverEmail());
+        log.info("[WEBHOOK] n8n sending notification to admin. Email: {}, ID: {}", 
+                request.getReceiverEmail(), request.getReceiverId());
+
+        if (request.getReceiverId() == null && 
+            (request.getReceiverEmail() == null || request.getReceiverEmail().isBlank() || request.getReceiverEmail().equalsIgnoreCase("N/A"))) {
+            log.warn("[WEBHOOK] Skipping admin notification: No valid recipient provided.");
+            return ResponseEntity.ok().build();
+        }
+
         return ResponseEntity.ok(notificationService.sendSystemNotification(
+                request.getReceiverId(),
                 request.getReceiverEmail(),
                 request.getTitle(),
                 request.getMessage()
