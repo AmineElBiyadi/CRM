@@ -3,7 +3,9 @@ package com.smartestatehub.crm.controller;
 import com.smartestatehub.crm.dto.*;
 import com.smartestatehub.crm.model.Client;
 import com.smartestatehub.crm.service.ClientService;
+import com.smartestatehub.crm.service.DealService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,9 +16,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@Slf4j
 public class WorkflowController {
 
     private final ClientService clientService;
+    private final DealService dealService;
 
     @PostMapping("/clients")
     public ResponseEntity<Client> createClient(@RequestBody ClientCreateDTO dto) {
@@ -44,7 +48,8 @@ public class WorkflowController {
 
     @PostMapping("/dossiers/{id}/cloturer")
     public ResponseEntity<Void> closeDossier(@PathVariable UUID id) {
-        clientService.closeDossier(id);
+        log.info("[WEBHOOK] n8n closing deal: {}", id);
+        dealService.closeDeal(id);
         return ResponseEntity.ok().build();
     }
 
