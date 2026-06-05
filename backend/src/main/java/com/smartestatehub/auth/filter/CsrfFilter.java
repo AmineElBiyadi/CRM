@@ -41,7 +41,7 @@ public class CsrfFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        if (EXEMPT_PATHS.contains(path)) {
+        if (EXEMPT_PATHS.contains(path) || path.startsWith("/api/webhooks/")) {
             filterChain.doFilter(request, response);
             return;
         }
