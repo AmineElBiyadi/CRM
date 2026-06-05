@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
-import { LogOut, Bell, Search, Menu, X, type LucideIcon } from "lucide-react";
+import { LogOut, Bell, Menu, X, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { NotificationCenter } from "./notification-center";
 import { RagChatWidget } from "../ai/RagChatWidget";
@@ -138,7 +138,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
   return (
     <div className="min-h-screen flex bg-ghost">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 shrink-0 p-6 flex-col gap-8 sticky top-0 h-screen">
+      <aside className="hidden lg:flex w-64 shrink-0 p-6 flex-col gap-8 sticky top-0 h-screen border-r border-border/40">
         {SidebarContent}
       </aside>
 
@@ -161,7 +161,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
 
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center gap-3 md:gap-4 sticky top-0 z-20 glass rounded-none border-x-0 border-t-0">
+        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center gap-3 md:gap-4 sticky top-0 z-20 bg-ghost/80 backdrop-blur-md">
           <button
             onClick={() => setOpen(true)}
             className="lg:hidden w-10 h-10 rounded-full neu-sm flex items-center justify-center shrink-0"
@@ -169,15 +169,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
           >
             <Menu size={18} />
           </button>
-          <div className="flex-1 max-w-xl">
-            <div className="relative">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder="Rechercher…"
-                className="w-full pl-11 pr-4 py-2.5 rounded-full neu-inset bg-transparent text-sm focus:outline-none"
-              />
-            </div>
-          </div>
+          <div className="flex-1" />
           <div className="relative">
           <NotificationCenter
             notifications={notifs.map(n => ({

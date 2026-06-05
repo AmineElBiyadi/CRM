@@ -59,12 +59,16 @@ function LoginPage() {
 
       <div className="relative w-full max-w-md">
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-3 justify-center mb-8">
-          <div className="w-12 h-12 rounded-2xl neu-sm flex items-center justify-center bg-vanilla">
-            <Sparkles size={20} className="text-eerie" strokeWidth={1.8} />
+        <Link to="/" className="flex flex-col items-center gap-3 justify-center mb-8">
+          <div className="w-16 h-16 flex items-center justify-center">
+            <img 
+              src="https://res.cloudinary.com/dam3isgtd/image/upload/v1780656617/logo-rawabet-rmv_eun7jl.png" 
+              alt="Rawabet Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <div className="text-center">
-            <div className="font-bold text-lg leading-none">SmartEstateHub</div>
+            <div className="font-bold text-xl leading-none">Rawabet</div>
             <div className="text-xs text-muted-foreground mt-1">Espace Client</div>
           </div>
         </Link>

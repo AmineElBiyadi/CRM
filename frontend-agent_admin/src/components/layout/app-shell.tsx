@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
-import { Bell, Search, Menu, X, LogOut, Building2, type LucideIcon } from "lucide-react";
+import { Bell, Menu, X, LogOut, Building2, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { apiLogout, clearUser } from "@/lib/auth";
 import {
@@ -213,15 +213,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
           >
             <Menu size={18} />
           </button>
-          <div className="flex-1 max-w-xl">
-            <div className="relative">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder="Rechercher…"
-                className="w-full pl-11 pr-4 py-2.5 rounded-full neu-inset bg-transparent text-sm focus:outline-none"
-              />
-            </div>
-          </div>
+          <div className="flex-1" />
           <div className="relative ml-auto">
             <button
               onClick={() => {

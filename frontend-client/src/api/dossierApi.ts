@@ -1,29 +1,12 @@
-import axios from "axios";
-
-const API_BASE_URL = "/api/client";
-
-const getClientId = () => localStorage.getItem("client_id") || "d755eba6-106f-4f81-af56-4e4d60f16840";
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  withCredentials: true,
-});
-
-apiClient.interceptors.request.use((config) => {
-  const clientId = getClientId();
-  if (clientId) {
-    config.headers["X-Client-Id"] = clientId;
-  }
-  return config;
-});
+import apiClient from "../lib/api-client";
 
 export const dossierApi = {
   getDossiers: async () => {
-    const { data } = await apiClient.get("/dossiers");
+    const { data } = await apiClient.get("/api/client/dossiers");
     return data;
   },
   getDossierActivity: async (idFolder: string) => {
-    const { data } = await apiClient.get(`/dossiers/${idFolder}/activity`);
+    const { data } = await apiClient.get(`/api/client/dossiers/${idFolder}/activity`);
     return data;
   },
 };

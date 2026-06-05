@@ -1,21 +1,8 @@
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: "/api/auth",
-  withCredentials: true,
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import apiClient from "../lib/api-client";
 
 export const authApi = {
   login: async (credentials: any) => {
-    const { data } = await api.post(`/login-client`, credentials);
+    const { data } = await apiClient.post(`/api/auth/login-client`, credentials);
     // Sauvegarder le token et les infos client
     if (data.token) {
       localStorage.setItem('token', data.token);
@@ -27,11 +14,11 @@ export const authApi = {
     return data;
   },
   getCurrentUser: async () => {
-    const { data } = await api.get(`/me`);
+    const { data } = await apiClient.get(`/api/auth/me`);
     return data;
   },
   logout: async () => {
-    await api.post(`/logout`);
+    await apiClient.post(`/api/auth/logout`);
     localStorage.removeItem('token');
     localStorage.removeItem('client_id');
     localStorage.removeItem('user');
