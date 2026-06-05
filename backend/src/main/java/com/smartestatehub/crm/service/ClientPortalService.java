@@ -75,6 +75,7 @@ public class ClientPortalService {
                     folders.get(0).getAssignedAgent().getFirstName() + " " + folders.get(0).getAssignedAgent().getLastName())
                 .assignedAgentPhone(folders.isEmpty() || folders.get(0).getAssignedAgent() == null ? null : 
                     folders.get(0).getAssignedAgent().getPhone())
+                .googleLinked(client.getGoogleId() != null)
                 .createdAt(client.getCreatedAt())
                 .updatedAt(client.getUpdatedAt())
                 .build();

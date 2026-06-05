@@ -33,6 +33,7 @@ public class ClientPortalDataDto {
         private String source;
         private String assignedAgentName;
         private String assignedAgentPhone;
+        private boolean googleLinked;
         private java.time.LocalDateTime createdAt;
         private java.time.LocalDateTime updatedAt;
     }
