@@ -1694,8 +1694,6 @@ function AgentDossierPage() {
           <p className="text-sm font-medium">{dossier.aiRecommendedAction || "Aucune action recommandée pour le moment."}</p>
         </NeuCard>
 
-        <RagChatWidget dealId={id!} />
-
         <NeuCard>
           <h3 className="font-semibold flex items-center gap-2 text-sm mb-4">
             <FileText size={14} /> Documents ({docs.length})
@@ -1806,6 +1804,8 @@ function AgentDossierPage() {
             </div>
           </div>
         </NeuCard>
+
+        <RagChatWidget dealId={id!} />
 
         <NeuCard className="bg-vanilla/40">
           <h3 className="font-semibold text-sm mb-2 flex items-center gap-2"><Send size={14} /> Suivi Dossier</h3>
