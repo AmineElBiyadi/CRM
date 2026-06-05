@@ -7,7 +7,7 @@ import { pipelineStages } from "@/lib/mock-data";
 import { useAdminDashboard, useNotifyAdminAlert } from "@/hooks/useDashboard";
 import { getUser } from "@/lib/auth";
 import { getAdminDashboardErrorUi } from "@/lib/api-error";
-import type { AdminAlertDto } from "@/api/adminDashboardApi";
+import { AdminAlertDto, downloadWeeklyReport } from "@/api/adminDashboardApi";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -26,6 +26,9 @@ import {
   Users,
   LayoutGrid,
   Zap,
+  KanbanSquare,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +47,7 @@ function AdminDashboard() {
   const { data, isLoading, isFetching, isError, error, refetch } = useAdminDashboard(queryWeekOffset);
   const notifyAlert = useNotifyAdminAlert();
   const [notifyingId, setNotifyingId] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const isChangingWeek = isFetching && !isLoading;
   const isCalculatingWeek = isChangingWeek || targetWeekOffset !== queryWeekOffset;
 
@@ -51,6 +55,29 @@ function AdminDashboard() {
     const timeout = window.setTimeout(() => setQueryWeekOffset(targetWeekOffset), 280);
     return () => window.clearTimeout(timeout);
   }, [targetWeekOffset]);
+
+  async function handleGenerateReport() {
+    setIsGeneratingReport(true);
+    const tid = toast.loading("Intelligence Artificielle : Analyse des dossiers et génération du PDF...", { id: "report-gen" });
+    
+    try {
+      const blob = await downloadWeeklyReport();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Rapport_Strategique_${new Date().toLocaleDateString("fr-FR").replace(/\//g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success("Rapport hebdomadaire téléchargé !", { id: tid });
+    } catch (e: any) {
+      toast.error("Erreur lors de la génération : " + e.message, { id: tid });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }
 
   async function handleNotifyAgent(alert: AdminAlertDto) {
     if (!alert.agentId) {
@@ -164,7 +191,6 @@ function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-muted-foreground animate-in fade-in slide-in-from-left-4 duration-500">
-             <span className="text-lg">👋</span>
              <span className="text-sm font-medium tracking-wide uppercase">Bonjour, {adminFirstName}</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-eerie animate-in fade-in slide-in-from-left-4 duration-700">
@@ -319,33 +345,47 @@ function AdminDashboard() {
             </div>
           </NeuCard>
 
-          {/* AI Weekly Report - Prominent View */}
-          <div className="relative group animate-in fade-in slide-in-from-bottom-6 duration-1000">
-            <div className="absolute -inset-1 bg-gradient-to-r from-alice via-vanilla to-honeydew rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-            <NeuCard className="relative bg-white/80 backdrop-blur-xl border-white/60 p-8">
-              <div className="flex flex-col md:flex-row items-center gap-8">
-                <div className="w-20 h-20 rounded-[2.5rem] bg-eerie flex items-center justify-center shadow-2xl shrink-0 transform -rotate-6 group-hover:rotate-0 transition-transform duration-500">
-                  <FileText size={32} className="text-vanilla" strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 text-center md:text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-vanilla/30 text-eerie text-[10px] font-black uppercase tracking-widest mb-3">
-                    <Zap size={10} className="fill-current" /> Intelligence Artificielle
-                  </div>
-                  <h3 className="text-2xl font-black text-eerie tracking-tight">Rapport Stratégique Hebdomadaire</h3>
-                  <p className="text-muted-foreground mt-2 font-medium leading-relaxed max-w-lg">
-                    L'IA a analysé les <span className="text-eerie font-bold">{totalDossiers} dossiers</span> et les performances de la semaine. Votre synthèse stratégique est prête.
-                  </p>
-                </div>
-                <button
-                  onClick={() => toast.success("Génération du rapport IA en cours...")}
-                  className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-eerie text-ghost font-bold shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all"
-                >
-                  <FileDown size={20} />
-                  Générer le PDF
-                </button>
+          {/* AI Weekly Report - Reverted to Classic View */}
+          <NeuCard className="bg-white p-8">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Circular Icon */}
+              <div className="w-20 h-20 rounded-full bg-eerie flex items-center justify-center shadow-lg shrink-0">
+                <FileText size={32} className="text-vanilla" strokeWidth={1.5} />
               </div>
-            </NeuCard>
-          </div>
+
+              {/* Text Content */}
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                  <Zap size={14} className="fill-current text-eerie" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-eerie">Intelligence Artificielle</span>
+                </div>
+                <h3 className="text-2xl font-black text-eerie tracking-tight mb-2">Rapport Stratégique Hebdomadaire</h3>
+                <p className="text-muted-foreground text-sm font-medium leading-relaxed">
+                  L'IA a analysé les <span className="text-eerie font-bold">{totalDossiers} dossiers</span> et les performances de la semaine. Votre synthèse stratégique est prête.
+                </p>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+                className="min-w-[200px] flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-eerie text-ghost font-bold text-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-70 disabled:cursor-wait"
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Génération...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileDown size={18} />
+                    <span>Générer le PDF</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </NeuCard>
+
         </div>
 
         {/* Right Column: Alerts & Agents */}
