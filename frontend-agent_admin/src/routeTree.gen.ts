@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as AgentRouteImport } from './routes/agent'
@@ -30,6 +31,11 @@ import { Route as AdminAgentsRouteImport } from './routes/admin.agents'
 import { Route as AgentDossiersIndexRouteImport } from './routes/agent.dossiers.index'
 import { Route as AgentDossiersCreateRouteImport } from './routes/agent.dossiers.create'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/agent': typeof AgentRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/automations': typeof AdminAutomationsRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/automations': typeof AdminAutomationsRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/agent': typeof AgentRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/automations': typeof AdminAutomationsRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/design-system'
     | '/login'
+    | '/reset-password'
     | '/admin/agents'
     | '/admin/analytics'
     | '/admin/automations'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/'
     | '/design-system'
     | '/login'
+    | '/reset-password'
     | '/admin/agents'
     | '/admin/analytics'
     | '/admin/automations'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/design-system'
     | '/login'
+    | '/reset-password'
     | '/admin/agents'
     | '/admin/analytics'
     | '/admin/automations'
@@ -267,10 +279,18 @@ export interface RootRouteChildren {
   AgentRoute: typeof AgentRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -476,6 +496,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentRoute: AgentRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

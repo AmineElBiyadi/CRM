@@ -180,7 +180,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
 
   return (
     <div className="min-h-screen flex bg-ghost">
-      <aside className="hidden lg:flex w-64 shrink-0 p-6 flex-col gap-8 sticky top-0 h-screen">
+      <aside className="hidden lg:flex w-64 shrink-0 p-6 flex-col gap-8 sticky top-0 h-screen border-r border-border/40">
         {SidebarContent}
       </aside>
 
@@ -201,7 +201,7 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center gap-3 md:gap-4 sticky top-0 z-20 glass rounded-none border-x-0 border-t-0">
+        <header className="h-16 md:h-20 px-4 md:px-8 flex items-center gap-3 md:gap-4 sticky top-0 z-20 bg-ghost/80 backdrop-blur-md">
           <button
             onClick={() => setOpen(true)}
             className="lg:hidden w-10 h-10 rounded-full neu-sm flex items-center justify-center shrink-0"

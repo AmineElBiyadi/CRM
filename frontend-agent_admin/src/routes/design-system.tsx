@@ -3,7 +3,7 @@ import { useState } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge, StageBadge } from "@/components/ui/design-bits";
 import {
-  ArrowLeft, Sparkles, Bell, Check, X, Clock, Search, Upload, Loader2, Plus, ChevronRight,
+  ArrowLeft, Building2, Bell, Check, X, Clock, Search, Upload, Loader2, Plus, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,7 +79,7 @@ function DesignSystem() {
           </Link>
           <div className="h-6 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-vanilla flex items-center justify-center"><Sparkles size={14} /></div>
+            <div className="w-8 h-8 rounded-xl bg-eerie text-white flex items-center justify-center"><Building2 size={14} /></div>
             <span className="font-bold">Design System</span>
             <SoftBadge tone="info">v1.0</SoftBadge>
           </div>
@@ -100,11 +100,11 @@ function DesignSystem() {
         <div className="space-y-14 min-w-0">
           {/* Intro */}
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">SmartEstateHub</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Rawabet</p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Design System</h1>
             <p className="text-muted-foreground max-w-2xl">
               Tokens, typographie, ombres et composants — tous les états (Default, Hover, Active, Disabled, Loading)
-              du langage visuel néo-glass de SmartEstate.
+              du langage visuel néo-glass de Rawabet.
             </p>
           </div>
 
@@ -386,7 +386,7 @@ function DesignSystem() {
                 <div className="absolute inset-0 bg-eerie/60 backdrop-blur-sm" />
                 <div className="relative bg-ghost rounded-3xl max-w-md w-full p-6 md:p-7 shadow-2xl animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => setModalOpen(false)} className="absolute top-4 right-4 w-9 h-9 rounded-full neu-sm flex items-center justify-center" aria-label="Fermer"><X size={16} /></button>
-                  <div className="w-12 h-12 rounded-2xl bg-vanilla flex items-center justify-center mb-4"><Sparkles size={18} /></div>
+                  <div className="w-12 h-12 rounded-2xl bg-eerie text-white flex items-center justify-center mb-4"><Building2 size={18} /></div>
                   <h2 className="text-xl font-bold">Exemple de dialog</h2>
                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Toutes les modales du CRM partagent ce squelette : surface ghost, ombre douce, bouton de fermeture neumorphique.</p>
                   <div className="mt-6 flex gap-2">
@@ -451,7 +451,7 @@ function DesignSystem() {
           </Section>
 
           <footer className="pt-8 mt-8 border-t border-border text-center text-xs text-muted-foreground">
-            SmartEstateHub Design System · neumorphism + glass · palette douce.
+            Rawabet Design System · neumorphism + glass · palette douce.
             <Link to="/" className="ml-2 inline-flex items-center gap-1 hover:text-eerie">retour <ChevronRight size={12} /></Link>
           </footer>
         </div>

@@ -36,12 +36,12 @@ export interface Agent {
 }
 
 export const agents: Agent[] = [
-  { id: "a1", name: "Sara El Idrissi", email: "sara@smartestate.ma", phone: "+212 661 00 11 22", active: true, activeClients: 18, closedThisMonth: 4, lastActivity: "il y a 12 min" },
-  { id: "a2", name: "Mehdi Bouazza", email: "mehdi@smartestate.ma", phone: "+212 661 33 44 55", active: true, activeClients: 14, closedThisMonth: 2, lastActivity: "il y a 1h" },
-  { id: "a3", name: "Yasmine Chraibi", email: "yasmine@smartestate.ma", phone: "+212 661 66 77 88", active: true, activeClients: 22, closedThisMonth: 5, lastActivity: "il y a 3h" },
-  { id: "a4", name: "Anas Filali", email: "anas@smartestate.ma", phone: "+212 661 99 00 11", active: false, activeClients: 0, closedThisMonth: 0, lastActivity: "il y a 14j" },
-  { id: "a5", name: "Salma Berrada", email: "salma@smartestate.ma", phone: "+212 662 12 34 56", active: true, activeClients: 11, closedThisMonth: 3, lastActivity: "hier" },
-  { id: "a6", name: "Tarik Hassani", email: "tarik@smartestate.ma", phone: "+212 662 78 90 12", active: true, activeClients: 9, closedThisMonth: 1, lastActivity: "il y a 2j" },
+  { id: "a1", name: "Sara El Idrissi", email: "sara@rawabet.ma", phone: "+212 661 00 11 22", active: true, activeClients: 18, closedThisMonth: 4, lastActivity: "il y a 12 min" },
+  { id: "a2", name: "Mehdi Bouazza", email: "mehdi@rawabet.ma", phone: "+212 661 33 44 55", active: true, activeClients: 14, closedThisMonth: 2, lastActivity: "il y a 1h" },
+  { id: "a3", name: "Yasmine Chraibi", email: "yasmine@rawabet.ma", phone: "+212 661 66 77 88", active: true, activeClients: 22, closedThisMonth: 5, lastActivity: "il y a 3h" },
+  { id: "a4", name: "Anas Filali", email: "anas@rawabet.ma", phone: "+212 661 99 00 11", active: false, activeClients: 0, closedThisMonth: 0, lastActivity: "il y a 14j" },
+  { id: "a5", name: "Salma Berrada", email: "salma@rawabet.ma", phone: "+212 662 12 34 56", active: true, activeClients: 11, closedThisMonth: 3, lastActivity: "hier" },
+  { id: "a6", name: "Tarik Hassani", email: "tarik@rawabet.ma", phone: "+212 662 78 90 12", active: true, activeClients: 9, closedThisMonth: 1, lastActivity: "il y a 2j" },
 ];
 
 export interface Property {

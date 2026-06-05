@@ -5,7 +5,7 @@ server:
 
 spring:
   application:
-    name: smartestatehub
+    name: rawabet
   config:
     import: 
       - optional:file:.env[.properties]
@@ -91,3 +91,6 @@ app:
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:dam3isgtd}
     upload-preset: ${CLOUDINARY_UPLOAD_PRESET:Rawabet}
+  frontend:
+    admin-url: ${ADMIN_URL:http://localhost:5176}
+    client-url: ${CLIENT_URL:http://localhost:5174}

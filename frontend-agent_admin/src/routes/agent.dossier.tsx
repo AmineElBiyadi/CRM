@@ -36,7 +36,7 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft,
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
@@ -45,25 +45,79 @@ import { ContractForm, ContractStatusTracker } from "@/components/contract/Contr
 import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
 import { refreshLeadScore, refreshInteractionSummary, getAiRecommendations } from "@/api/aiApi";
 import { linkPropertyToDeal as apiLinkProperty } from "@/api/propertyApi";
+import { EmailModal } from "@/components/EmailModal";
+import { getUser } from "@/lib/auth";
 
 type DossierSearch = {
   id?: string;
+  from?: string;
 };
 
 const tabs = ["Interactions", "Propriétés", "Rendez-vous", "Contrats"] as const;
 
+function InteractionItem({ it, iconMap }: { it: any, iconMap: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = iconMap[it.type] || FileText;
+  const formattedDate = new Date(it.occurredAt).toLocaleString('fr-FR', { 
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+  });
+  
+  const isLong = it.description && it.description.length > 80;
+
+  return (
+    <div className="relative mb-4">
+      <div className="absolute -left-8 top-3 w-6 h-6 rounded-full bg-honeydew flex items-center justify-center ring-4 ring-ghost border border-honeydew/20">
+        <Icon size={12} className="text-eerie" />
+      </div>
+      <NeuCard size="sm">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="font-semibold text-sm">{it.type}</span>
+          <span className="text-xs text-muted-foreground">{formattedDate}{it.durationMinutes ? ` · ${it.durationMinutes} min` : ""}</span>
+        </div>
+        
+        <div className="mt-1.5">
+          <p className={`text-sm text-muted-foreground leading-relaxed ${!expanded && isLong ? "line-clamp-1" : ""}`}>
+            {it.description}
+          </p>
+          {isLong && (
+            <button 
+              onClick={() => setExpanded(!expanded)}
+              className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+            >
+              {expanded ? (
+                <><ChevronUp size={12} /> Voir moins</>
+              ) : (
+                <><ChevronDown size={12} /> Voir plus</>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="mt-2 flex items-center gap-1.5 opacity-50">
+          <Avatar name={it.agentName} size={16} />
+          <span className="text-[10px] font-medium">{it.agentName}</span>
+        </div>
+      </NeuCard>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/agent/dossier")({
   validateSearch: (search: Record<string, unknown>): DossierSearch => ({
     id: search.id as string | undefined,
+    from: search.from as string | undefined,
   }),
   component: AgentDossierPage,
 });
 
 function AgentDossierPage() {
-  const { id } = Route.useSearch();
+  const { id, from } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<typeof tabs[number]>("Interactions");
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const user = getUser();
 
   const STAGES: { value: DealStage, label: string }[] = [
     { value: 'COLD', label: 'COLD' },
@@ -595,7 +649,7 @@ function AgentDossierPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          to="/agent/dossiers"
+          to={from || "/agent/dossiers"}
           className="w-10 h-10 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors"
         >
           <ChevronLeft size={20} />
@@ -628,13 +682,12 @@ function AgentDossierPage() {
             >
               <Phone size={14} /> {dossier.clientPhone}
             </a>
-            <a 
-              href={`mailto:${dossier.clientEmail}`} 
-              className="flex items-center gap-2 hover:underline"
-              onClick={() => toast.info(`Ouverture de la messagerie pour ${dossier.clientName}`)}
+            <button 
+              onClick={() => setShowEmailModal(true)}
+              className="flex items-center gap-2 hover:underline text-left w-full"
             >
               <Mail size={14} /> {dossier.clientEmail}
-            </a>
+            </button>
           </div>
           <div className="mt-5 pt-5 border-t border-border space-y-3 text-left">
             <div>
@@ -899,30 +952,9 @@ function AgentDossierPage() {
                 <div className="text-center py-4 text-sm text-muted-foreground">Chargement de l'historique...</div>
               ) : interactions?.length === 0 ? (
                 <div className="text-center py-4 text-sm text-muted-foreground italic">Aucune interaction enregistrée.</div>
-              ) : interactions?.map((it) => {
-                const Icon = iconMap[it.type] || FileText;
-                const formattedDate = new Date(it.occurredAt).toLocaleString('fr-FR', { 
-                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
-                });
-                return (
-                  <div key={it.idInteraction} className="relative mb-4">
-                    <div className="absolute -left-8 top-3 w-6 h-6 rounded-full bg-honeydew flex items-center justify-center ring-4 ring-ghost border border-honeydew/20">
-                      <Icon size={12} className="text-eerie" />
-                    </div>
-                    <NeuCard size="sm">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <span className="font-semibold text-sm">{it.type}</span>
-                        <span className="text-xs text-muted-foreground">{formattedDate}{it.durationMinutes ? ` · ${it.durationMinutes} min` : ""}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1.5">{it.description}</p>
-                      <div className="mt-2 flex items-center gap-1.5 opacity-50">
-                        <Avatar name={it.agentName} size={16} />
-                        <span className="text-[10px] font-medium">{it.agentName}</span>
-                      </div>
-                    </NeuCard>
-                  </div>
-                );
-              })}
+              ) : interactions?.map((it) => (
+                <InteractionItem key={it.idInteraction} it={it} iconMap={iconMap} />
+              ))}
             </div>
           </>
         )}
@@ -2021,6 +2053,28 @@ function AgentDossierPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Email Modal */}
+      {showEmailModal && dossier && (
+        <EmailModal 
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          dealId={id!}
+          clientEmail={dossier.clientEmail}
+          clientName={dossier.clientName}
+          agentEmail={user?.email || ""}
+          initialSubject={`Suivi de votre dossier immobilier - ${dossier.clientName}`}
+          initialBody=""
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["interactions", id] });
+            fetchDossierData();
+            // Donner 2 secondes à l'IA pour traiter avant de rafraîchir le dossier (pour la suggestion d'étape)
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+            }, 2000);
+          }}
+        />
       )}
     </div>
   );
