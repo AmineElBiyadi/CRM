@@ -99,12 +99,12 @@ public class WebhookController {
     }
 
     /**
-     * Endpoint for n8n to close a dossier.
+     * Endpoint for n8n to close a deal.
      */
     @PostMapping("/dossiers/{id}/cloturer")
     public ResponseEntity<Void> closeDossier(@PathVariable UUID id) {
-        log.info("[WEBHOOK] n8n closing dossier: {}", id);
-        clientService.closeDossier(id);
+        log.info("[WEBHOOK] n8n closing deal: {}", id);
+        dealService.closeDeal(id);
         return ResponseEntity.ok().build();
     }
 

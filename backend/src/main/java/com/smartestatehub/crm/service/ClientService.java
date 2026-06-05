@@ -185,14 +185,6 @@ public class ClientService {
         eventPublisher.publishEvent(new ClientCreatedEvent(this, saved, tempPassword));
     }
 
-    @Transactional
-    public void closeDossier(UUID folderId) {
-        ClientFolder folder = clientFolderRepository.findById(folderId)
-                .orElseThrow(() -> new RuntimeException("Dossier introuvable."));
-        folder.setStatus(FolderStatus.CLOSED);
-        clientFolderRepository.save(folder);
-    }
-
     @Transactional(readOnly = true)
     public List<DossierListItemDto> getClientDossiers(UUID idClient, UUID agentId) {
         Client client = clientRepository.findById(idClient)

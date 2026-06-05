@@ -62,6 +62,14 @@ public class DealService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void closeDeal(UUID dealId) {
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new RuntimeException("Dossier (Deal) introuvable."));
+        deal.setStage(DealStage.CLOSED);
+        dealRepository.save(deal);
+    }
+
     @Transactional(readOnly = true)
     public List<DossierSummaryDto> getDossierListingForAgent(UUID agentId) {
         // Fetch all folders assigned to this agent
