@@ -21,6 +21,11 @@ import {
   LogIn,
   ChevronLeft,
   ChevronRight,
+  Search,
+  Plus,
+  Users,
+  LayoutGrid,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -118,8 +123,9 @@ function AdminDashboard() {
       value: String(kpis.activeDossiers),
       trend: kpis.activeDossiersTrend,
       up: kpis.activeDossiersUp,
-      icon: TrendingUp,
+      icon: LayoutGrid,
       tone: "bg-alice",
+      accent: "border-alice",
     },
     {
       label: "Clôturés ce mois",
@@ -128,6 +134,7 @@ function AdminDashboard() {
       up: kpis.closedThisMonthUp,
       icon: CheckCircle2,
       tone: "bg-honeydew",
+      accent: "border-honeydew",
     },
     {
       label: "Leads froids",
@@ -136,6 +143,7 @@ function AdminDashboard() {
       up: kpis.coldLeadsUp,
       icon: Snowflake,
       tone: "bg-vanilla",
+      accent: "border-vanilla",
     },
     {
       label: "Taux conversion",
@@ -144,302 +152,339 @@ function AdminDashboard() {
       up: kpis.conversionUp,
       icon: TrendingUp,
       tone: "bg-alice",
+      accent: "border-alice",
     },
   ];
 
   const pipelineByKey = Object.fromEntries(pipeline.map((s) => [s.key, s]));
 
   return (
-    <div className="space-y-6 md:space-y-8 max-w-[1400px]">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">Bonjour {adminFirstName} 👋</p>
-          <h1 className="text-2xl md:text-3xl font-bold mt-1">Vue d'ensemble de l'agence</h1>
+    <div className="space-y-6 md:space-y-10 max-w-[1400px] pb-10">
+      {/* Header with Welcome and Time Control */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-muted-foreground animate-in fade-in slide-in-from-left-4 duration-500">
+             <span className="text-lg">👋</span>
+             <span className="text-sm font-medium tracking-wide uppercase">Bonjour, {adminFirstName}</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-eerie animate-in fade-in slide-in-from-left-4 duration-700">
+            Tableau de bord <span className="text-muted-foreground/40 font-light">Admin</span>
+          </h1>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1">
+
+        <div className="flex flex-col items-end gap-3 animate-in fade-in slide-in-from-right-4 duration-700">
+          <div className="flex items-center gap-1.5 bg-ghost/50 p-1.5 rounded-2xl neu-inset shadow-none border border-white/40">
             <button
               type="button"
               aria-label="Semaine précédente"
               onClick={() => setTargetWeekOffset((w) => w - 1)}
-              className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
+              className="p-2 rounded-xl hover:bg-white/80 hover:shadow-sm transition-all"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={18} />
             </button>
-            <span className="relative text-xs text-muted-foreground min-w-[180px] text-center">
-              <span className={isCalculatingWeek ? "opacity-60 transition-opacity" : "transition-opacity"}>
+            <div className="px-4 min-w-[200px] text-center">
+              <span className={`text-sm font-bold block ${isCalculatingWeek ? "opacity-40" : "transition-opacity"}`}>
                 {periodLabel}
               </span>
-              {isCalculatingWeek ? (
-                <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] uppercase tracking-widest text-muted-foreground">
-                  Mise Ã  jour
+              {isCalculatingWeek && (
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 animate-pulse">
+                  Mise à jour...
                 </span>
-              ) : null}
-            </span>
+              )}
+            </div>
             <button
               type="button"
               aria-label="Semaine suivante"
               disabled={targetWeekOffset >= 0}
               onClick={() => setTargetWeekOffset((w) => Math.min(0, w + 1))}
-              className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-30"
+              className="p-2 rounded-xl hover:bg-white/80 hover:shadow-sm transition-all disabled:opacity-20"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={18} />
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTargetWeekOffset((w) => w - 10)}
-              className="text-[10px] font-medium px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              -10 semaines
-            </button>
-            <button
-              type="button"
-              onClick={() => setTargetWeekOffset(0)}
-              disabled={targetWeekOffset === 0}
-              className="text-[10px] font-medium px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-30"
-            >
-              Aujourd'hui
-            </button>
+          <div className="flex items-center gap-3">
+             <button
+                onClick={() => setTargetWeekOffset(0)}
+                disabled={targetWeekOffset === 0}
+                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg neu-sm hover:neu-pressable disabled:opacity-30 transition-all"
+              >
+                Aujourd'hui
+              </button>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                KPIs Mensuels · Période : Semaine
+              </span>
           </div>
-          <span className="text-[10px] text-muted-foreground">KPIs : mois en cours · période affichée : semaine</span>
         </div>
       </div>
 
+      {/* Quick Actions Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+         {[
+           { label: "Nouvel Agent", icon: Plus, to: "/admin/agents", tone: "bg-eerie text-ghost" },
+           { label: "Gérer Pipeline", icon: KanbanSquare, to: "/admin/pipeline", tone: "neu-sm hover:bg-alice/20" },
+           { label: "Automatisations", icon: Zap, to: "/admin/automations", tone: "neu-sm hover:bg-vanilla/20" },
+           { label: "Recherche", icon: Search, to: "/admin/recherche", tone: "neu-sm hover:bg-honeydew/20" }
+         ].map((action, i) => (
+           <Link 
+            key={i}
+            to={action.to} 
+            className={`flex items-center justify-center gap-3 p-4 rounded-2xl text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] ${action.tone}`}
+           >
+             <action.icon size={18} />
+             {action.label}
+           </Link>
+         ))}
+      </div>
+
+      {/* KPI Section */}
       <div
         key={`kpis-${periodLabel}`}
-        className={`grid grid-cols-2 lg:grid-cols-4 gap-5 transition-all duration-300 ${
-          isChangingWeek ? "opacity-70 translate-y-0.5" : "opacity-100 translate-y-0 animate-in fade-in slide-in-from-bottom-2"
+        className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-all duration-500 ${
+          isChangingWeek ? "opacity-50 scale-[0.99]" : "opacity-100 animate-in fade-in slide-in-from-bottom-4"
         }`}
-        aria-busy={isChangingWeek}
       >
-        {kpiCards.map((k) => {
+        {kpiCards.map((k, i) => {
           const Icon = k.icon;
           return (
-            <NeuCard key={k.label}>
-              <div className="flex items-start justify-between">
-                <div className={`w-10 h-10 rounded-xl ${k.tone} flex items-center justify-center`}>
-                  <Icon size={18} strokeWidth={1.8} />
+            <NeuCard 
+              key={k.label} 
+              className={`relative overflow-hidden group border-b-4 ${k.accent} hover:shadow-xl transition-all duration-500`}
+            >
+              <div className="flex items-start justify-between relative z-10">
+                <div className={`w-12 h-12 rounded-2xl ${k.tone} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500`}>
+                  <Icon size={22} strokeWidth={2} />
                 </div>
-                <span
-                  className={`text-xs flex items-center gap-1 font-medium ${k.up ? "text-[oklch(0.55_0.15_145)]" : "text-destructive"}`}
-                >
-                  {k.up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />} {k.trend}
-                </span>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${k.up ? "bg-honeydew/50 text-eerie" : "bg-destructive/10 text-destructive"}`}>
+                  {k.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />} {k.trend}
+                </div>
               </div>
-              <div className="mt-5">
-                <div className="text-3xl font-bold tracking-tight">
+              <div className="mt-8 relative z-10">
+                <div className="text-4xl font-black tracking-tighter text-eerie">
                   <CalculatingValue value={k.value} loading={isCalculatingWeek} />
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-[0.15em] mt-2 opacity-60">{k.label}</div>
               </div>
+              {/* Subtle background decoration */}
+              <div className={`absolute -right-4 -bottom-4 w-24 h-24 ${k.tone} opacity-10 rounded-full blur-3xl group-hover:opacity-20 transition-opacity`} />
             </NeuCard>
           );
         })}
       </div>
 
-      <NeuCard
-        key={`pipeline-${periodLabel}`}
-        className={`transition-all duration-300 ${
-          isChangingWeek ? "opacity-70" : "opacity-100 animate-in fade-in slide-in-from-bottom-2"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-semibold">Pipeline — vue macro</h2>
-          <span className="text-xs text-muted-foreground">{totalDossiers} dossiers répartis</span>
-        </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {pipelineStages.map((s) => {
-            const stage = pipelineByKey[s.key];
-            const count = stage?.count ?? 0;
-            return (
-              <Link
-                key={s.key}
-                to="/admin/pipeline"
-                className="neu-inset p-3 rounded-xl block hover:neu-sm transition-all"
-              >
-                <div className={`h-1.5 rounded-full ${STAGE_COLORS[s.key] ?? s.color} mb-3`} />
-                <div className="text-xs text-muted-foreground">{stage?.label ?? s.label}</div>
-                <div className="text-xl md:text-2xl font-bold mt-1">
-                  <CalculatingValue value={String(count)} loading={isCalculatingWeek} size="sm" />
-                </div>
+      {/* Main Grid: Pipeline + Performances & Alerts */}
+      <div className="grid grid-cols-12 gap-6 md:gap-8">
+        {/* Left Column: Pipeline View */}
+        <div className="col-span-12 lg:col-span-8 space-y-6 md:space-y-8">
+          <NeuCard className="overflow-hidden relative">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-black text-eerie tracking-tight uppercase">Pipeline Global</h2>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">{totalDossiers} dossiers en cours d'analyse</p>
+              </div>
+              <Link to="/admin/pipeline" className="p-2 rounded-xl neu-sm hover:neu-pressable text-xs font-bold uppercase tracking-widest">
+                Vue complète
               </Link>
-            );
-          })}
-        </div>
-      </NeuCard>
-
-      <div
-        key={`lists-${periodLabel}`}
-        className={`grid lg:grid-cols-2 gap-6 transition-all duration-300 ${
-          isChangingWeek ? "opacity-70 translate-y-0.5" : "opacity-100 translate-y-0 animate-in fade-in slide-in-from-bottom-2"
-        }`}
-      >
-        <NeuCard>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold">Performances agents</h2>
-            <Link to="/admin/agents" className="text-xs text-muted-foreground hover:text-eerie">
-              Voir tout →
-            </Link>
-          </div>
-          {agents.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Aucun agent enregistré.</p>
-          ) : (
-            <div className="space-y-3">
-              {agents.slice(0, 5).map((a) => (
-                <div
-                  key={a.id}
-                  className={`flex items-center gap-4 p-3 rounded-xl hover:bg-alice/40 cursor-pointer transition-colors ${!a.active ? "opacity-60" : ""}`}
-                >
-                  <Avatar name={a.name} size={40} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{a.name}</div>
-                    <div className="text-xs text-muted-foreground">{a.lastActivity}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm font-bold">{a.activeClients}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase">Actifs</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm font-bold text-[oklch(0.55_0.15_145)]">{a.closedThisMonth}</div>
-                    <div className="text-[10px] text-muted-foreground uppercase">Clôt.</div>
-                  </div>
-                </div>
-              ))}
             </div>
-          )}
-        </NeuCard>
-
-        <NeuCard>
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold flex items-center gap-2">
-              <AlertTriangle size={16} /> Alertes & actions
-            </h2>
-            {alerts.length > 0 && <SoftBadge tone="warn">{alerts.length}</SoftBadge>}
-          </div>
-          {alerts.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Aucune alerte pour le moment.</p>
-          ) : (
-            <div className="space-y-3">
-              {alerts.map((a) => (
-                <div key={a.alertId} className="p-4 neu-sm rounded-xl">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{a.clientName}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Agent : {a.agentName}</div>
-                      <div className="text-xs mt-2">{a.reason}</div>
-                    </div>
-                    <SoftBadge tone={a.tone === "danger" ? "danger" : "warn"}>!</SoftBadge>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={!a.agentId || notifyingId === a.alertId}
-                    onClick={() => handleNotifyAgent(a)}
-                    className="mt-3 text-xs font-medium px-3 py-1.5 rounded-lg neu-sm hover:neu-pressable disabled:opacity-50"
+            
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {pipelineStages.map((s) => {
+                const stage = pipelineByKey[s.key];
+                const count = stage?.count ?? 0;
+                const percentage = totalDossiers > 0 ? (count / totalDossiers) * 100 : 0;
+                
+                return (
+                  <Link
+                    key={s.key}
+                    to="/admin/pipeline"
+                    className="group relative p-4 rounded-2xl bg-ghost/30 border border-white/40 hover:bg-white hover:shadow-xl transition-all duration-500"
                   >
-                    {notifyingId === a.alertId ? "Envoi…" : "Alerter l'agent"}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex justify-between items-start mb-4">
+                       <div className={`w-2 h-2 rounded-full ${STAGE_COLORS[s.key] ?? s.color} shadow-[0_0_10px_rgba(0,0,0,0.1)]`} />
+                       <span className="text-[10px] font-black text-muted-foreground/40">{Math.round(percentage)}%</span>
+                    </div>
+                    <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest truncate">{stage?.label ?? s.label}</div>
+                    <div className="text-2xl font-black mt-1 text-eerie">
+                      <CalculatingValue value={String(count)} loading={isCalculatingWeek} size="sm" />
+                    </div>
+                    {/* Tiny progress bar at bottom */}
+                    <div className="absolute bottom-0 left-0 h-1 bg-ghost w-full rounded-b-2xl overflow-hidden">
+                       <div 
+                        className={`h-full ${STAGE_COLORS[s.key] ?? s.color} opacity-30 transition-all duration-1000`}
+                        style={{ width: `${percentage}%` }}
+                       />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-          )}
-        </NeuCard>
-      </div>
+          </NeuCard>
 
-      <NeuCard
-        key={`report-${periodLabel}`}
-        className={`bg-alice/40 flex flex-col md:flex-row gap-6 items-center transition-all duration-300 ${
-          isChangingWeek ? "opacity-70" : "opacity-100 animate-in fade-in slide-in-from-bottom-2"
-        }`}
-      >
-        <div className="w-14 h-14 rounded-2xl bg-vanilla flex items-center justify-center shrink-0">
-          <FileText size={22} strokeWidth={1.8} />
+          {/* AI Weekly Report - Prominent View */}
+          <div className="relative group animate-in fade-in slide-in-from-bottom-6 duration-1000">
+            <div className="absolute -inset-1 bg-gradient-to-r from-alice via-vanilla to-honeydew rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+            <NeuCard className="relative bg-white/80 backdrop-blur-xl border-white/60 p-8">
+              <div className="flex flex-col md:flex-row items-center gap-8">
+                <div className="w-20 h-20 rounded-[2.5rem] bg-eerie flex items-center justify-center shadow-2xl shrink-0 transform -rotate-6 group-hover:rotate-0 transition-transform duration-500">
+                  <FileText size={32} className="text-vanilla" strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-vanilla/30 text-eerie text-[10px] font-black uppercase tracking-widest mb-3">
+                    <Zap size={10} className="fill-current" /> Intelligence Artificielle
+                  </div>
+                  <h3 className="text-2xl font-black text-eerie tracking-tight">Rapport Stratégique Hebdomadaire</h3>
+                  <p className="text-muted-foreground mt-2 font-medium leading-relaxed max-w-lg">
+                    L'IA a analysé les <span className="text-eerie font-bold">{totalDossiers} dossiers</span> et les performances de la semaine. Votre synthèse stratégique est prête.
+                  </p>
+                </div>
+                <button
+                  onClick={() => toast.success("Génération du rapport IA en cours...")}
+                  className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-eerie text-ghost font-bold shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                >
+                  <FileDown size={20} />
+                  Générer le PDF
+                </button>
+              </div>
+            </NeuCard>
+          </div>
         </div>
-        <div className="flex-1">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Rapport hebdomadaire IA</div>
-          <h3 className="font-bold text-lg mt-1">Synthèse {periodLabel.split("·")[0]?.trim()} disponible</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            {totalDossiers} dossiers · {kpis.closedThisMonth} clôtures ce mois · {alerts.length} alerte(s)
-          </p>
+
+        {/* Right Column: Alerts & Agents */}
+        <div className="col-span-12 lg:col-span-4 space-y-6 md:space-y-8">
+          {/* Alerts Section - Higher priority */}
+          <NeuCard className="border-l-4 border-warn">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-black uppercase tracking-widest text-eerie flex items-center gap-2">
+                <AlertTriangle size={18} className="text-warn" /> Alertes Critiques
+              </h2>
+              {alerts.length > 0 && (
+                <span className="w-6 h-6 rounded-full bg-warn text-eerie flex items-center justify-center text-[10px] font-black shadow-lg animate-bounce">
+                  {alerts.length}
+                </span>
+              )}
+            </div>
+            {alerts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                <CheckCircle2 size={40} className="text-muted-foreground/30 mb-3" />
+                <p className="text-xs font-bold uppercase tracking-widest">Aucune alerte</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {alerts.map((a) => (
+                  <div key={a.alertId} className="group p-4 rounded-2xl bg-ghost/30 border border-white/60 hover:bg-white hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm text-eerie truncate">{a.clientName}</div>
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter mt-1 flex items-center gap-1.5">
+                           <Users size={10} /> {a.agentName}
+                        </div>
+                        <p className="text-xs text-eerie/70 mt-3 leading-relaxed font-medium">"{a.reason}"</p>
+                      </div>
+                      <div className={`p-1.5 rounded-lg ${a.tone === "danger" ? "bg-destructive/10 text-destructive" : "bg-warn/10 text-warn"}`}>
+                        <ShieldAlert size={16} />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!a.agentId || notifyingId === a.alertId}
+                      onClick={() => handleNotifyAgent(a)}
+                      className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest neu-sm hover:neu-pressable disabled:opacity-50 transition-all"
+                    >
+                      {notifyingId === a.alertId ? "Envoi..." : "Relancer l'agent"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </NeuCard>
+
+          {/* Agents Performances */}
+          <NeuCard>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-sm font-black uppercase tracking-widest text-eerie flex items-center gap-2">
+                <Users size={18} /> Top Agents
+              </h2>
+              <Link to="/admin/agents" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-eerie transition-colors">
+                Voir tout
+              </Link>
+            </div>
+            {agents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-10 text-center italic">Aucun agent actif.</p>
+            ) : (
+              <div className="space-y-1">
+                {agents.slice(0, 5).map((a, i) => (
+                  <div
+                    key={a.id}
+                    className={`group flex items-center gap-4 p-3 rounded-2xl hover:bg-alice/40 transition-all duration-300 ${!a.active ? "opacity-40" : ""}`}
+                  >
+                    <div className="relative">
+                       <Avatar name={a.name} size={44} className="shadow-md group-hover:scale-105 transition-transform" />
+                       {i === 0 && <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-vanilla flex items-center justify-center text-[8px] shadow-sm">🏆</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-eerie truncate">{a.name}</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 truncate">{a.lastActivity}</div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="text-xs font-black text-eerie">{a.activeClients}</div>
+                        <div className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter">Actifs</div>
+                      </div>
+                      <div className="w-px h-6 bg-border/40" />
+                      <div className="text-right">
+                        <div className="text-xs font-black text-honeydew-foreground">{a.closedThisMonth}</div>
+                        <div className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter">Clos</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </NeuCard>
         </div>
-        <button
-          onClick={() => toast.success("Téléchargement du rapport hebdomadaire…")}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90"
-        >
-          <FileDown size={16} /> Télécharger PDF
-        </button>
-      </NeuCard>
+      </div>
     </div>
   );
 }
 
 function AdminDashboardLoading() {
   return (
-    <div className="space-y-6 md:space-y-8 max-w-[1400px]" aria-busy="true">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="mt-3 h-8 w-64 rounded-lg" />
+    <div className="space-y-6 md:space-y-10 max-w-[1400px] animate-pulse" aria-busy="true">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-10 w-80 rounded-xl" />
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <Skeleton className="h-6 w-56 rounded-full" />
-          <Skeleton className="h-3 w-40" />
-        </div>
+        <Skeleton className="h-14 w-64 rounded-2xl" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <NeuCard key={i} className="h-[164px] flex flex-col justify-between">
-            <div className="flex items-start justify-between">
-              <Skeleton className="h-10 w-10 rounded-xl opacity-70" />
-              <Skeleton className="h-4 w-14 rounded-full opacity-70" />
+          <Skeleton key={i} className="h-14 rounded-2xl" />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <NeuCard key={i} className="h-44">
+            <div className="flex items-start justify-between mb-8">
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+              <Skeleton className="h-6 w-16 rounded-full" />
             </div>
-            <div>
-              <Skeleton className="h-8 w-16 rounded-lg" />
-              <Skeleton className="mt-3 h-3 w-28" />
-            </div>
+            <Skeleton className="h-10 w-24 rounded-xl mb-3" />
+            <Skeleton className="h-3 w-32" />
           </NeuCard>
         ))}
       </div>
 
-      <NeuCard>
-        <div className="flex items-center justify-between mb-6">
-          <Skeleton className="h-5 w-44" />
-          <Skeleton className="h-3 w-28" />
+      <div className="grid grid-cols-12 gap-8">
+        <div className="col-span-12 lg:col-span-8 space-y-8">
+          <NeuCard className="h-64" />
+          <NeuCard className="h-48" />
         </div>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="neu-inset p-3 rounded-xl h-24">
-              <Skeleton className="h-1.5 w-full rounded-full mb-4" />
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="mt-3 h-7 w-10 rounded-lg" />
-            </div>
-          ))}
+        <div className="col-span-12 lg:col-span-4 space-y-8">
+          <NeuCard className="h-80" />
+          <NeuCard className="h-64" />
         </div>
-      </NeuCard>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {[1, 2].map((i) => (
-          <NeuCard key={i} className="h-72">
-            <div className="mb-6 flex items-center justify-between">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-4 w-16 rounded-full" />
-            </div>
-            <div className="space-y-3">
-              {[1, 2, 3].map((row) => (
-                <div key={row} className="flex items-center gap-4 rounded-xl p-3 neu-sm shadow-none">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                  <Skeleton className="h-6 w-10 rounded-lg" />
-                </div>
-              ))}
-            </div>
-          </NeuCard>
-        ))}
       </div>
     </div>
   );
@@ -456,17 +501,18 @@ function CalculatingValue({
 }) {
   if (!loading) return <>{value}</>;
 
-  const dotClass = size === "sm" ? "h-1.5 w-1.5" : "h-2 w-2";
+  const dotClass = size === "sm" ? "h-1.5 w-1.5" : "h-2.5 w-2.5";
 
   return (
-    <span className="inline-flex min-w-[2.5ch] items-center gap-1 align-middle" aria-label="Calcul en cours">
+    <span className="inline-flex min-w-[2.5ch] items-center gap-1.5 align-middle" aria-label="Calcul en cours">
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className={`${dotClass} rounded-full bg-current opacity-70 animate-bounce`}
-          style={{ animationDelay: `${i * 120}ms` }}
+          className={`${dotClass} rounded-full bg-current opacity-40 animate-bounce`}
+          style={{ animationDelay: `${i * 150}ms` }}
         />
       ))}
     </span>
   );
 }
+

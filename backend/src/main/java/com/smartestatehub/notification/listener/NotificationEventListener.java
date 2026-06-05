@@ -3,6 +3,7 @@ package com.smartestatehub.notification.listener;
 import com.smartestatehub.crm.event.ClientConfirmedEvent;
 import com.smartestatehub.crm.event.DossierConfirmedEvent;
 import com.smartestatehub.notification.service.N8nWebhookService;
+import com.smartestatehub.notification.service.NotificationService;
 import com.smartestatehub.shared.events.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class NotificationEventListener {
 
     private final N8nWebhookService n8nWebhookService;
+    private final NotificationService notificationService;
 
     @EventListener
     public void handleAgentCreated(AgentCreatedEvent event) {
@@ -58,6 +60,16 @@ public class NotificationEventListener {
             "agentEmail", agent != null ? agent.getEmail() : "",
             "agentName", agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné"
         ));
+
+        // Direct in-app notification for the agent
+        if (agent != null) {
+            notificationService.sendSystemNotification(
+                agent.getIdUser(),
+                null,
+                "Rendez-vous planifié",
+                "Un nouveau rendez-vous (" + event.getMeeting().getType() + ") a été planifié avec " + client.getFirstName() + " " + client.getLastName()
+            );
+        }
     }
 
     @EventListener
@@ -82,6 +94,37 @@ public class NotificationEventListener {
             "agentEmail", agent != null ? agent.getEmail() : "",
             "agentName", agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné"
         ));
+
+        // Direct in-app notification for the agent
+        if (agent != null) {
+            notificationService.sendSystemNotification(
+                agent.getIdUser(),
+                null,
+                "Rendez-vous terminé",
+                "Le compte-rendu pour le rendez-vous avec " + clientName + " est prêt à être complété."
+            );
+        }
+    }
+
+    @EventListener
+    public void handleEmailSent(EmailSentEvent event) {
+        log.info("Email sent notification tracking: {}", event.getSubject());
+        
+        // Log in n8n for history tracking if needed
+        n8nWebhookService.triggerWorkflow("/email-envoye", "EMAIL_SENT", Map.of(
+            "to", event.getRecipientEmail(),
+            "subject", event.getSubject(),
+            "from", event.getSenderEmail(),
+            "dealId", event.getMetadata().getOrDefault("dealId", "N/A")
+        ));
+
+        // Direct in-app confirmation for the sender (agent)
+        notificationService.sendSystemNotification(
+            null,
+            event.getSenderEmail(),
+            "Email envoyé",
+            "Votre email avec l'objet \"" + event.getSubject() + "\" a été envoyé avec succès à " + event.getRecipientEmail()
+        );
     }
 
     @EventListener
@@ -100,6 +143,16 @@ public class NotificationEventListener {
             "agentName", agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné",
             "folderId", deal.getClientFolder().getIdProfile()
         ));
+
+        // Direct in-app notification for the agent
+        if (agent != null) {
+            notificationService.sendSystemNotification(
+                agent.getIdUser(),
+                null,
+                "Contrat envoyé",
+                "Le contrat pour " + client.getFirstName() + " " + client.getLastName() + " a été généré et envoyé par email."
+            );
+        }
     }
 
     @EventListener
@@ -107,6 +160,7 @@ public class NotificationEventListener {
         log.info("Contract signed: {}", event.getContract().getIdContract());
         var deal = event.getContract().getDeal();
         var client = deal.getClientFolder().getClient();
+        var agent = deal.getClientFolder().getAssignedAgent();
         var adminEmail = "admin@smartestatehub.com"; // Default or lookup
 
         n8nWebhookService.triggerWorkflow("/contrat-signe", "CONTRACT_SIGNED", Map.of(
@@ -117,6 +171,13 @@ public class NotificationEventListener {
             "clientEmail", client.getEmail(),
             "adminEmail", adminEmail
         ));
+
+        // Direct in-app notification for both agent and admin
+        String msg = "Le contrat pour " + client.getFirstName() + " " + client.getLastName() + " a été signé !";
+        if (agent != null) {
+            notificationService.sendSystemNotification(agent.getIdUser(), null, "Contrat signé !", msg);
+        }
+        notificationService.sendSystemNotification(null, adminEmail, "Contrat signé (Admin)", msg);
     }
 
     @EventListener
