@@ -1,3 +1,4 @@
+/* 
 package com.smartestatehub.shared;
 
 import com.smartestatehub.auth.model.InternalUser;
@@ -346,3 +347,4 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
     }
 }
+    */
