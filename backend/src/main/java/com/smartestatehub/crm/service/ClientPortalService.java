@@ -53,7 +53,7 @@ public class ClientPortalService {
                 .collect(Collectors.toList());
 
         List<Document> documents = dealIds.stream()
-                .flatMap(id -> documentRepository.findByDeal_IdDeal(id).stream())
+                .flatMap(id -> documentRepository.findByDeal_IdDealAndDeletedAtIsNull(id).stream())
                 .sorted(Comparator.comparing(Document::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
 

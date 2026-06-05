@@ -1,7 +1,7 @@
 package com.smartestatehub.ai.listener;
 
 import com.smartestatehub.ai.service.DocumentRagService;
-import com.smartestatehub.crm.event.DocumentUploadedEvent;
+import com.smartestatehub.crm.event.ContractCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -10,26 +10,24 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Écoute les téléchargements de documents pour lancer l'indexation RAG.
+ * Écoute la création de contrats pour lancer l'audit de risque automatique via l'IA.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class DocumentAiListener {
+public class ContractAiListener {
 
     private final DocumentRagService documentRagService;
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleDocumentUploaded(DocumentUploadedEvent event) {
-        var document = event.getDocument();
-        log.info("IA (RAG): Nouveau document détecté pour indexation: {}", document.getIdDocument());
-        
+    public void handleContractCreated(ContractCreatedEvent event) {
+        log.info("IA (Audit): Nouveau contrat détecté pour analyse: {}", event.getContract().getIdContract());
         try {
-            documentRagService.processDocument(document.getIdDocument());
+            documentRagService  .auditContract(event.getContract());
         } catch (Exception e) {
-            log.error("IA (RAG): Erreur lors de l'indexation du document {}: {}", 
-                    document.getIdDocument(), e.getMessage());
+            log.error("IA (Audit): Erreur lors de l'audit du contrat {}: {}", 
+                    event.getContract().getIdContract(), e.getMessage());
         }
     }
 }

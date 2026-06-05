@@ -25,9 +25,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface DocumentQueryRequest {
   dealId: string;
   query: string;
+  history?: ChatMessage[];
 }
 
 export interface ChatResponse {

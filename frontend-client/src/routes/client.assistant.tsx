@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Sparkles, ArrowUp, FileText, Loader2, Square } from "lucide-react";
 import { useClientData } from "@/hooks/use-client-data";
 import { ragApi } from "@/api/ragApi";
+import ReactMarkdown from 'react-markdown';
 
 export const Route = createFileRoute("/client/assistant")({
   component: ClientAssistant,
@@ -118,8 +119,8 @@ function ClientAssistant() {
                 ? "bg-vanilla text-eerie rounded-3xl rounded-tr-sm font-medium" 
                 : "bg-white border border-border/60 text-eerie rounded-3xl rounded-tl-sm"
             }`}>
-              <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                {m.text}
+              <div className="text-sm leading-relaxed markdown-content">
+                <ReactMarkdown>{m.text}</ReactMarkdown>
               </div>
               
               {m.sources && m.sources.length > 0 && (

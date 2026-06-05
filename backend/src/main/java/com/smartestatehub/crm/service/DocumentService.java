@@ -20,6 +20,13 @@ import java.util.stream.Collectors;
 
 import com.smartestatehub.crm.event.DocumentUploadedEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.util.StringUtils;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +45,7 @@ public class DocumentService {
                 .idDocument(doc.getIdDocument())
                 .documentType(doc.getDocumentType() != null ? doc.getDocumentType().name() : null)
                 .filePath(doc.getFilePath())
+                .localFilePath(doc.getLocalFilePath())
                 .confirmedReceived(doc.isConfirmedReceived())
                 .createdAt(doc.getCreatedAt())
                 .dealId(doc.getDeal() != null ? doc.getDeal().getIdDeal() : null)
@@ -74,6 +82,68 @@ public class DocumentService {
         Document savedDoc = documentRepository.save(doc);
         
         // Publier l'événement pour déclencher le RAG en arrière-plan
+        eventPublisher.publishEvent(new DocumentUploadedEvent(this, savedDoc));
+
+        return toDto(savedDoc);
+    }
+
+    @Transactional
+    public DocumentDto uploadDocument(UUID dealId, DocumentType type, MultipartFile file) throws IOException {
+        log.info("Traitement de l'upload local + Cloudinary pour le deal: {}, type: {}", dealId, type);
+
+        Deal deal = dealRepository.findById(dealId)
+                .orElseThrow(() -> new IllegalArgumentException("Dossier non trouvé: " + dealId));
+
+        // 1. Sauvegarde locale
+        String uploadDir = "uploads/documents";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+
+        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String filename = type.name() + "_" + UUID.randomUUID() + "_" + originalFilename;
+        Path targetLocation = Paths.get(uploadDir).toAbsolutePath().resolve(filename);
+        
+        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        String localPath = targetLocation.toString();
+        log.info("Fichier sauvegardé localement: {}", localPath);
+
+        // 2. Upload Cloudinary
+        String cloudinaryUrl = null;
+        try {
+            byte[] bytes = file.getBytes();
+            // On réutilise la logique Cloudinary existante (image/upload pour les PDF)
+            String clientName = deal.getClientFolder().getClient().getFirstName() + "_" + deal.getClientFolder().getClient().getLastName();
+            String publicId = type.name() + "_" + clientName.replace(" ", "_") + "_" + System.currentTimeMillis();
+            cloudinaryUrl = cloudinaryService.upload(bytes, publicId, "documents", "image");
+        } catch (Exception e) {
+            log.error("Échec upload Cloudinary (on continue avec le local): {}", e.getMessage());
+        }
+
+        // 3. Persistance DB
+        List<Document> existing = documentRepository.findByDeal_IdDeal(dealId);
+        Document doc = existing.stream()
+                .filter(d -> d.getDocumentType() == type && d.getFilePath() == null)
+                .findFirst()
+                .orElse(null);
+
+        if (doc != null) {
+            if (cloudinaryUrl != null) doc.setFilePath(cloudinaryUrl);
+            doc.setLocalFilePath(localPath);
+            doc.setConfirmedReceived(true);
+        } else {
+            doc = Document.builder()
+                    .deal(deal)
+                    .documentType(type)
+                    .filePath(cloudinaryUrl)
+                    .localFilePath(localPath)
+                    .confirmedReceived(true)
+                    .isEmbedded(false)
+                    .build();
+        }
+
+        Document savedDoc = documentRepository.save(doc);
+        
+        // 4. Notification RAG
         eventPublisher.publishEvent(new DocumentUploadedEvent(this, savedDoc));
 
         return toDto(savedDoc);

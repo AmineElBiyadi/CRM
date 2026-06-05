@@ -412,31 +412,18 @@ function AgentDossierPage() {
     
     setUploading(true);
     try {
-      // 1. Direct Upload to Cloudinary (Frontend)
       const formData = new FormData();
       formData.append("file", files[0]);
-      formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "Rawabet");
-      formData.append("folder", "documents");
-      
-      // Optionnel : Générer le nom comme avant
-      const clientName = (dossier?.clientName || "Document").replace(/\s+/g, '_');
-      const extension = files[0].name.split('.').pop()?.toLowerCase() || 'pdf';
-      
-      // IMPORTANT : Ne pas mettre d'extension dans le public_id si on utilise resource_type "image"
-      const publicId = `${newDocType}_${clientName}_${Date.now()}`;
-      formData.append("public_id", publicId);
+      formData.append("dealId", id);
+      formData.append("type", newDocType);
 
-      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd";
-      // On force "image" pour les PDF pour permettre la visualisation directe dans le navigateur
-      const resourceType = extension === 'pdf' ? 'image' : 'auto';
-      const resCloud = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, formData);
-      const cloudData = resCloud.data;
-      const uploadedUrl = cloudData.secure_url;
+      // Le backend gère maintenant à la fois la sauvegarde locale (pour le RAG)
+      // et l'upload vers Cloudinary (pour l'affichage frontend).
+      await api.post("/api/documents/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
 
-      // 2. Save only the URL in our Backend
-      await api.post(`/api/documents/save-info?dealId=${id}&type=${newDocType}&url=${encodeURIComponent(uploadedUrl)}`);
-
-      toast.success("Document versionné avec succès");
+      toast.success("Document versionné et archivé localement pour l'IA");
       fetchDossierData();
     } catch (e: any) {
       toast.error("Échec de l'opération : " + e.message);

@@ -25,9 +25,9 @@ public class DocumentEmbedding {
 
     /**
      * Utilisation de double[] pour stocker les vecteurs.
-     * columnDefinition="vector(1536)" permet à Hibernate de créer le bon type dans PostgreSQL.
+     * columnDefinition="vector(2048)" permet à Hibernate de créer le bon type dans PostgreSQL.
      */
-    @Column(name = "embedding", columnDefinition = "vector(1536)")
+    @Column(name = "embedding", columnDefinition = "vector(2048)")
     private double[] embedding;
 
     @ManyToOne(fetch = FetchType.LAZY)

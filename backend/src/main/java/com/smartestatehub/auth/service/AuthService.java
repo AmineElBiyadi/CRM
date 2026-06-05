@@ -11,15 +11,13 @@ import com.smartestatehub.auth.repository.UserRepository;
 import com.smartestatehub.auth.support.AuthCookies;
 import com.smartestatehub.auth.support.TokenHasher;
 import com.smartestatehub.config.JwtConfig;
+import com.smartestatehub.auth.model.Role;
 import com.smartestatehub.crm.model.Client;
 import com.smartestatehub.crm.repository.ClientRepository;
 import com.smartestatehub.notification.service.EmailService;
 import com.smartestatehub.shared.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import com.smartestatehub.auth.model.Role;
-import com.smartestatehub.crm.model.Client;
-import com.smartestatehub.crm.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -259,7 +257,7 @@ public class AuthService {
                 .rememberMe(rememberMe)
                 .revoked(false)
                 .build();
-        refreshTokenRepository.save(refreshToken);
+        refreshTokenRepository.save((RefreshToken) refreshToken);
 
         authCookies.setAccessToken(response, accessToken);
         authCookies.setRefreshToken(response, rawRefresh, rememberMe);

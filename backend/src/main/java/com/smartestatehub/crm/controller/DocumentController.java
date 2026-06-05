@@ -25,6 +25,15 @@ public class DocumentController {
 
     private final DocumentService documentService;
 
+    @PostMapping("/upload")
+    public ResponseEntity<DocumentDto> uploadDocument(
+            @RequestParam("dealId") UUID dealId,
+            @RequestParam("type") DocumentType type,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        
+        return ResponseEntity.ok(documentService.uploadDocument(dealId, type, file));
+    }
+
     @PostMapping("/save-info")
     public ResponseEntity<DocumentDto> saveDocumentInfo(
             @RequestParam("dealId") UUID dealId,
