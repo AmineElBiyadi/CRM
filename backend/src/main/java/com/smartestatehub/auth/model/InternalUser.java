@@ -36,6 +36,9 @@ public class InternalUser {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
     private String phone;
 
     @Enumerated(EnumType.STRING)

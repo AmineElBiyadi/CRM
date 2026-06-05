@@ -152,26 +152,16 @@ export function AppShell({ space, spaceLabel, user, nav, accent = "bg-vanilla" }
       </nav>
 
       <div className="mt-auto space-y-3">
-        {space === "agent" ? (
-          <Link 
-            to="/agent/profile"
-            className="neu-sm p-3 flex items-center gap-3 hover:neu-pressable transition-all group"
-          >
-            <Avatar name={user.name} size={36} />
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate group-hover:text-eerie transition-colors">{user.name}</div>
-              <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
-            </div>
-          </Link>
-        ) : (
-          <div className="neu-sm p-3 flex items-center gap-3">
-            <Avatar name={user.name} size={36} />
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate">{user.name}</div>
-              <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
-            </div>
+        <Link 
+          to={space === "admin" ? "/admin/profile" : "/agent/profile"}
+          className="neu-sm p-3 flex items-center gap-3 hover:neu-pressable transition-all group"
+        >
+          <Avatar name={user.name} size={36} />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold truncate group-hover:text-eerie transition-colors">{user.name}</div>
+            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{user.role}</div>
           </div>
-        )}
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl neu-sm hover:neu-pressable transition-all text-xs font-bold text-red-500"

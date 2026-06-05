@@ -13,6 +13,7 @@ export interface AuthUser {
   lastName: string;
   email: string;
   role: "ADMIN" | "AGENT" | "CLIENT";
+  googleLinked: boolean;
 }
 
 const fetchOpts: RequestInit = { credentials: "include" };
@@ -59,6 +60,7 @@ function mapUser(data: {
   lastName: string;
   email: string;
   role: "ADMIN" | "AGENT" | "CLIENT";
+  googleLinked: boolean;
 }): AuthUser {
   return {
     userId: data.userId,
@@ -66,6 +68,7 @@ function mapUser(data: {
     lastName: data.lastName,
     email: data.email,
     role: data.role,
+    googleLinked: data.googleLinked,
   };
 }
 
@@ -109,6 +112,39 @@ export async function apiLogin(
   const user = mapUser(data);
   saveUser(user, rememberMe);
   return user;
+}
+
+export async function apiLoginWithGoogle(
+  idToken: string,
+  portal: "ADMIN_AGENT" | "CLIENT",
+): Promise<AuthUser> {
+  const res = await authFetch("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken, portal }),
+  });
+
+  if (!res.ok) {
+    throw await parseApiErrorResponse(res);
+  }
+
+  const data = await res.json();
+  const user = mapUser(data);
+  saveUser(user, true); // Assume rememberMe for Google login
+  return user;
+}
+
+export async function apiLinkGoogle(idToken: string): Promise<string> {
+  const res = await authFetch("/api/auth/link-google", {
+    method: "POST",
+    body: JSON.stringify({ idToken }),
+  });
+
+  if (!res.ok) {
+    throw await parseApiErrorResponse(res);
+  }
+
+  const data = await res.json();
+  return data.message;
 }
 
 export async function apiForgotPassword(email: string, portal: "ADMIN_AGENT" | "CLIENT"): Promise<string> {

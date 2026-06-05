@@ -4,41 +4,31 @@ import { GoogleLogin } from "@react-oauth/google";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge } from "@/components/ui/design-bits";
 import { 
-  User, Mail, Phone, Lock, Save, 
-  TrendingUp, Star, Award, Zap, Clock,
-  CheckCircle2, AlertCircle
+  User, Mail, Lock, Save, 
+  Star, Award, CheckCircle2, AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
-import { useAgentDashboard } from "@/hooks/useDashboard";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { changePassword, forgotPassword } from "@/api/authApi";
 import { apiLinkGoogle, getUser, apiMe } from "@/lib/auth";
 
-export const Route = createFileRoute("/agent/profile")({
-  component: AgentProfile,
+export const Route = createFileRoute("/admin/profile")({
+  component: AdminProfile,
 });
 
-function AgentProfile() {
-  const { data } = useAgentDashboard();
+function AdminProfile() {
+  const user = getUser();
   const [loading, setLoading] = useState(false);
-  const [isLinked, setIsLinked] = useState(getUser()?.googleLinked || false);
+  const [isLinked, setIsLinked] = useState(user?.googleLinked || false);
   const [passwords, setPasswords] = useState({
     current: "",
     new: "",
     confirm: ""
   });
 
-  const agent = {
-    name: data?.agentFullName || "Agent",
-    role: data?.agentRole || "Agent",
-    email: data?.agentEmail || "chargement...",
-    phone: data?.agentPhone || "non renseigné",
-    since: data?.agentCreatedAt 
-      ? format(new Date(data.agentCreatedAt), 'MMMM yyyy', { locale: fr }).replace(/^\w/, (c) => c.toUpperCase())
-      : "en cours de chargement...",
-    performance: data?.kpis?.monthlyScore ? `${data.kpis.monthlyScore}%` : "0%",
-    deals: data?.kpis?.totalClosings || 0
+  const admin = {
+    name: user ? `${user.firstName} ${user.lastName}` : "Administrateur",
+    role: user?.role || "ADMIN",
+    email: user?.email || "chargement...",
   };
 
   const handleGoogleLinkSuccess = async (credentialResponse: any) => {
@@ -49,7 +39,6 @@ function AgentProfile() {
       await apiLinkGoogle(credentialResponse.credential);
       toast.success("Compte Google lié avec succès !");
       setIsLinked(true);
-      // Refresh user data
       await apiMe();
     } catch (error: any) {
       toast.error(error.message || "Erreur lors du lien avec Google");
@@ -81,39 +70,17 @@ function AgentProfile() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!agent.email || agent.email === "chargement...") {
-      toast.error("Adresse email non disponible");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await forgotPassword({
-        email: agent.email,
-        portal: "ADMIN_AGENT"
-      });
-      toast.success("Un lien de réinitialisation a été envoyé à votre adresse email professionnel.");
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Erreur lors de l'envoi du lien de réinitialisation";
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: keyof typeof passwords) => {
     setPasswords(prev => ({ ...prev, [field]: e.target.value }));
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Hero Header Card */}
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <NeuCard className="p-8 md:p-10 flex flex-col md:flex-row items-center md:items-start gap-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-vanilla/5 rounded-full -mr-16 -mt-16" />
         
         <div className="relative">
-          <Avatar name={agent.name} size={120} className="ring-4 ring-vanilla/20 shadow-xl" />
+          <Avatar name={admin.name} size={120} className="ring-4 ring-vanilla/20 shadow-xl" />
           <div className="absolute -bottom-2 -right-2 bg-vanilla p-2.5 rounded-full shadow-lg border-2 border-white/10">
             <Star size={20} className="text-eerie" fill="currentColor" />
           </div>
@@ -121,29 +88,19 @@ function AgentProfile() {
 
         <div className="flex-1 text-center md:text-left space-y-4">
           <div className="space-y-1">
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">{agent.name}</h1>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight">{admin.name}</h1>
             <p className="text-lg text-muted-foreground font-medium flex items-center justify-center md:justify-start gap-2">
-              <Award size={20} className="text-vanilla" /> {agent.role}
+              <Award size={20} className="text-vanilla" /> Administrateur Système
             </p>
-          </div>
-          
-          <div className="flex flex-wrap justify-center md:justify-start gap-3">
-            <SoftBadge tone="info" className="px-4 py-1.5 text-sm font-bold uppercase tracking-wider">
-              <TrendingUp size={14} className="mr-2 inline" /> Performance: {agent.performance}
-            </SoftBadge>
-            <SoftBadge tone="success" className="px-4 py-1.5 text-sm font-bold uppercase tracking-wider">
-              <Zap size={14} className="mr-2 inline" /> {agent.deals} Closings
-            </SoftBadge>
           </div>
         </div>
       </NeuCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Account Details Card */}
         <NeuCard className="p-8 space-y-6 flex flex-col h-full">
           <div className="flex items-center justify-between border-b border-vanilla/10 pb-4">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <User size={22} className="text-vanilla" /> Informations du compte
+              <User size={22} className="text-vanilla" /> Informations
             </h2>
           </div>
 
@@ -152,37 +109,12 @@ function AgentProfile() {
               <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Email Professionnel</label>
               <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent group transition-colors overflow-hidden">
                 <Mail size={18} className="text-vanilla/70 shrink-0" />
-                <span className="text-sm font-medium break-all">{agent.email}</span>
+                <span className="text-sm font-medium break-all">{admin.email}</span>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Téléphone</label>
-                <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
-                  <Phone size={18} className="text-vanilla/70 shrink-0" />
-                  <span className="text-sm font-medium">{agent.phone}</span>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Ancienneté</label>
-                <div className="flex items-center gap-3 p-3 rounded-xl neu-inset bg-transparent">
-                  <Clock size={18} className="text-vanilla/70 shrink-0" />
-                  <span className="text-sm font-medium">{agent.since}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 mt-auto">
-            <p className="text-xs text-muted-foreground italic leading-relaxed bg-vanilla/5 p-4 rounded-xl border border-vanilla/10">
-              Note: Ces informations sont gérées par l'administration. Pour toute modification, veuillez contacter le support technique.
-            </p>
           </div>
         </NeuCard>
 
-        {/* Security Section */}
         <NeuCard className="p-8 space-y-6">
           <div className="flex items-center justify-between border-b border-vanilla/10 pb-4">
             <h2 className="text-xl font-bold flex items-center gap-2">
@@ -225,25 +157,15 @@ function AgentProfile() {
               </div>
             </div>
 
-            <div className="pt-4 flex flex-col sm:flex-row gap-4">
-              <button 
-                disabled={loading}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-eerie text-white font-black uppercase tracking-widest text-xs hover:opacity-90 transition-all disabled:opacity-50 shadow-lg"
-              >
-                <Save size={18} /> {loading ? "Mise à jour..." : "Sauvegarder"}
-              </button>
-              <button 
-                type="button"
-                disabled={loading}
-                onClick={handleForgotPassword}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-vanilla/5 text-vanilla/60 font-black uppercase tracking-widest text-[10px] hover:bg-alice/10 hover:text-alice transition-all border border-vanilla/10 shadow-sm disabled:opacity-50"
-              >
-                Mot de passe oublié ?
-              </button>
-            </div>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full py-4 rounded-xl neu-sm hover:neu-pressable bg-eerie text-white font-bold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Save size={18} /> {loading ? "Mise à jour..." : "Enregistrer les modifications"}
+            </button>
           </form>
 
-          {/* Google Account Linking Section */}
           <div className="pt-6 border-t border-vanilla/10 space-y-4">
             <h3 className="text-sm font-black uppercase text-muted-foreground tracking-widest ml-1">Connexion Google</h3>
             
@@ -262,7 +184,7 @@ function AgentProfile() {
                   <div className="flex-1">
                     <p className="text-sm font-bold">Lier votre compte Google</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      L'email de votre compte Google doit être identique à <strong>{agent.email}</strong> pour que le lien fonctionne.
+                      L'email de votre compte Google doit être identique à <strong>{admin.email}</strong> pour que le lien fonctionne.
                     </p>
                   </div>
                 </div>

@@ -8,6 +8,11 @@ export const login = async (credentials: any) => {
   return response.data;
 };
 
+export const loginWithGoogle = async (data: { idToken: string; portal: string }) => {
+  const response = await api.post('/api/auth/google', data);
+  return response.data;
+};
+
 export const changePassword = async (passwords: { oldPassword: string; newPassword: string }) => {
   const response = await api.post('/api/auth/change-password', passwords);
   return response.data;
