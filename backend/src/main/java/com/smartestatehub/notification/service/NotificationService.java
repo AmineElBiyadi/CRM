@@ -76,12 +76,22 @@ public class NotificationService {
 
     @Transactional
     public NotificationDto sendSystemNotification(
+            UUID receiverId,
             String receiverEmail,
             String title,
             String message
     ) {
-        InternalUser receiver = userRepository.findByEmail(receiverEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Destinataire introuvable : " + receiverEmail));
+        InternalUser receiver;
+        
+        if (receiverId != null) {
+            receiver = userRepository.findById(receiverId)
+                    .orElseThrow(() -> new IllegalArgumentException("Destinataire (ID) introuvable : " + receiverId));
+        } else if (receiverEmail != null && !receiverEmail.isBlank() && !receiverEmail.equalsIgnoreCase("N/A")) {
+            receiver = userRepository.findByEmail(receiverEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("Destinataire (Email) introuvable : " + receiverEmail));
+        } else {
+            throw new IllegalArgumentException("Destinataire non spécifié ou invalide (ID ou Email requis).");
+        }
 
         Notification notification = Notification.builder()
                 .title(title)
