@@ -36,7 +36,7 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft, ChevronDown, ChevronUp
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft, ChevronDown, ChevronUp, Image as ImageIcon, Camera
 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
@@ -378,6 +378,7 @@ function AgentDossierPage() {
 
   /* documents */
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const propertyFileInputRef = useRef<HTMLInputElement>(null);
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loadingContext, setLoadingContext] = useState(true);
@@ -517,6 +518,51 @@ function AgentDossierPage() {
     mutation.mutate(request);
   };
 
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePropertyPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    setUploadingPhoto(true);
+    try {
+      const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dam3isgtd"}/image/upload`;
+      const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "Rawabet";
+
+      const uploadedUrls = [...(editForm.propertyImageUrls || [])];
+
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", CLOUDINARY_PRESET);
+        formData.append("folder", "properties");
+
+        const res = await axios.post(CLOUDINARY_URL, formData);
+        if (res.data.secure_url) {
+          uploadedUrls.push(res.data.secure_url);
+        }
+      }
+
+      setEditForm(prev => ({
+        ...prev,
+        propertyImageUrls: uploadedUrls
+      }));
+      toast.success(`${files.length} photo(s) ajoutée(s)`);
+    } catch (e: any) {
+      toast.error("Erreur lors de l'upload des photos : " + e.message);
+    } finally {
+      setUploadingPhoto(false);
+    }
+    e.target.value = "";
+  };
+
+  const handleRemovePhoto = (urlToRemove: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      propertyImageUrls: prev.propertyImageUrls?.filter(url => url !== urlToRemove)
+    }));
+  };
+
   const [isReadOnly, setIsReadOnly] = useState(true);
   const [openedViaDetails, setOpenedViaDetails] = useState(false);
 
@@ -537,6 +583,7 @@ function AgentDossierPage() {
       propertySurfaceM2: dossier.propertySurfaceM2 || 0,
       numRooms: dossier.numRooms || 0,
       propertyFloor: dossier.propertyFloor ?? -1,
+      propertyImageUrls: dossier.propertyImageUrls || [],
     });
     setIsReadOnly(true);
     setOpenedViaDetails(true);
@@ -560,6 +607,7 @@ function AgentDossierPage() {
       propertySurfaceM2: dossier.propertySurfaceM2 || 0,
       numRooms: dossier.numRooms || 0,
       propertyFloor: dossier.propertyFloor ?? -1,
+      propertyImageUrls: dossier.propertyImageUrls || [],
     });
     setIsReadOnly(false);
     setOpenedViaDetails(false);
@@ -2003,6 +2051,63 @@ function AgentDossierPage() {
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* Photo Gallery for Sellers */}
+                    <div className="col-span-1 md:col-span-2 space-y-3 mt-4">
+                      <div className="flex items-center justify-between px-1">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Photos de la Propriété</label>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => propertyFileInputRef.current?.click()}
+                            disabled={uploadingPhoto}
+                            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                          >
+                            {uploadingPhoto ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                            Ajouter des photos
+                          </button>
+                        )}
+                      </div>
+                      
+                      <input
+                        ref={propertyFileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePropertyPhotoUpload}
+                        title="Ajouter des photos"
+                      />
+
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                        {editForm.propertyImageUrls && editForm.propertyImageUrls.length > 0 ? (
+                          editForm.propertyImageUrls.map((url, idx) => (
+                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden neu-sm border border-border/20 shadow-sm">
+                              <img src={url} alt={`Propriété ${idx + 1}`} className="w-full h-full object-cover" />
+                              {!isReadOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePhoto(url)}
+                                  className="absolute top-1 right-1 w-7 h-7 rounded-lg bg-white text-warn flex items-center justify-center shadow-md hover:bg-ghost transition-all z-10 border border-border/20"
+                                  title="Supprimer la photo"
+                                >
+                                  <X size={14} strokeWidth={3} />
+                                </button>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div 
+                            onClick={() => !isReadOnly && propertyFileInputRef.current?.click()}
+                            className={`col-span-full py-10 rounded-2xl border-2 border-dashed border-border/40 flex flex-col items-center justify-center gap-2 text-muted-foreground/60 ${!isReadOnly ? 'cursor-pointer hover:border-primary/30 hover:text-primary/50 transition-all' : ''}`}
+                          >
+                            <Camera size={32} strokeWidth={1.5} />
+                            <p className="text-xs font-medium">Aucune photo enregistrée</p>
+                            {!isReadOnly && <p className="text-[10px] uppercase tracking-widest font-black">Cliquez pour ajouter</p>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

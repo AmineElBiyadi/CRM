@@ -33,6 +33,8 @@ public class DealService {
     private final ContractRepository contractRepository;
     private final DealStageUpdateRepository dealStageUpdateRepository;
     private final DealAssignmentRepository dealAssignmentRepository;
+    private final PropertyImageRepository propertyImageRepository;
+    private final PropertyRepository propertyRepository;
 
 
     @Transactional(readOnly = true)
@@ -397,6 +399,29 @@ public class DealService {
                         .findFirst()
                         .orElse(null);
                 property.setPropertyType(pType);
+            }
+
+            // Update images if provided
+            if (request.getPropertyImageUrls() != null) {
+                // Remove old images
+                if (property.getImages() != null) {
+                    propertyImageRepository.deleteAll(property.getImages());
+                    property.getImages().clear();
+                } else {
+                    property.setImages(new java.util.ArrayList<>());
+                }
+
+                // Add new images
+                int order = 1;
+                for (String url : request.getPropertyImageUrls()) {
+                    PropertyImage img = PropertyImage.builder()
+                            .imageUrl(url)
+                            .displayOrder(order++)
+                            .property(property)
+                            .build();
+                    property.getImages().add(img);
+                }
+                propertyRepository.save(property);
             }
         }
 
