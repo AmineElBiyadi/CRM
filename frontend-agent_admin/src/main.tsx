@@ -5,7 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { router } from './router'
 import './styles.css'
 
-const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com"
+const GOOGLE_CLIENT_ID = "872849833889-gomdkpkmf1cuu5f7f9fc0khlo9mp4ni0.apps.googleusercontent.com"
 
 const rootElement = document.getElementById('root')!
 if (!rootElement.innerHTML) {

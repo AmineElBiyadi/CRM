@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/login-client",
+                    "/api/auth/google",
                     "/api/auth/refresh", 
                     "/api/auth/logout", 
                     "/api/auth/me",

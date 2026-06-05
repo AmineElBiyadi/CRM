@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -61,13 +62,17 @@ public class AuthController {
             return ResponseEntity.ok(user);
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(401).body(authError(e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace(); // Log the full stack trace to the console
+            return ResponseEntity.status(500).body(authError("Erreur interne du serveur : " + e.getMessage()));
         }
     }
 
     @PostMapping("/link-google")
     public ResponseEntity<?> linkGoogle(
             @AuthenticationPrincipal String email,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
         if (email == null) {
             return ResponseEntity.status(401).body(authError("Non authentifié."));
         }
@@ -75,8 +80,12 @@ public class AuthController {
         if (idToken == null) {
             return ResponseEntity.status(400).body(authError("Le jeton Google est requis."));
         }
+        
+        // Check current role to determine which table to update
+        String role = SecurityContextHolder.getContext().getAuthentication().getAuthorities().iterator().next().getAuthority();
+        
         try {
-            authService.linkGoogleAccount(email, idToken);
+            authService.linkGoogleAccount(email, idToken, role);
             return ResponseEntity.ok(Map.of("message", "Compte Google lié avec succès."));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(400).body(authError(e.getMessage()));

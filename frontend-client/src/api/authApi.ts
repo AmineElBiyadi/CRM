@@ -16,14 +16,14 @@ api.interceptors.request.use((config) => {
 export const authApi = {
   login: async (credentials: any) => {
     const { data } = await api.post(`/login-client`, credentials);
-    // Sauvegarder le token et les infos client
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-    }
-    if (data.userId) {
-      localStorage.setItem('client_id', data.userId);
-    }
-    localStorage.setItem('user', JSON.stringify(data));
+    return saveSession(data);
+  },
+  loginWithGoogle: async (idToken: string) => {
+    const { data } = await api.post(`/google`, { idToken, portal: "CLIENT" });
+    return saveSession(data);
+  },
+  linkGoogle: async (idToken: string) => {
+    const { data } = await api.post(`/link-google`, { idToken });
     return data;
   },
   getCurrentUser: async () => {
@@ -37,3 +37,14 @@ export const authApi = {
     localStorage.removeItem('user');
   }
 };
+
+function saveSession(data: any) {
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+  }
+  if (data.userId) {
+    localStorage.setItem('client_id', data.userId);
+  }
+  localStorage.setItem('user', JSON.stringify(data));
+  return data;
+}
