@@ -1,6 +1,7 @@
 package com.smartestatehub.auth.controller;
 
 import com.smartestatehub.auth.dto.ForgotPasswordRequest;
+import com.smartestatehub.auth.dto.GoogleLoginRequest;
 import com.smartestatehub.auth.dto.LoginRequest;
 import com.smartestatehub.auth.dto.ResetPasswordRequest;
 import com.smartestatehub.auth.dto.UserInfoResponse;
@@ -48,6 +49,37 @@ public class AuthController {
             return ResponseEntity.ok(user);
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(401).body(authError(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<?> loginWithGoogle(
+            @Valid @RequestBody GoogleLoginRequest request,
+            HttpServletResponse response) {
+        try {
+            UserInfoResponse user = authService.loginWithGoogle(request.getIdToken(), request.getPortal(), response);
+            return ResponseEntity.ok(user);
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(401).body(authError(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/link-google")
+    public ResponseEntity<?> linkGoogle(
+            @AuthenticationPrincipal String email,
+            @RequestBody Map<String, String> body) {
+        if (email == null) {
+            return ResponseEntity.status(401).body(authError("Non authentifié."));
+        }
+        String idToken = body.get("idToken");
+        if (idToken == null) {
+            return ResponseEntity.status(400).body(authError("Le jeton Google est requis."));
+        }
+        try {
+            authService.linkGoogleAccount(email, idToken);
+            return ResponseEntity.ok(Map.of("message", "Compte Google lié avec succès."));
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(400).body(authError(e.getMessage()));
         }
     }
 

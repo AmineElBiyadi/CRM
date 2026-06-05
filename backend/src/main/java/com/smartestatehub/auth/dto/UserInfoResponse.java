@@ -19,4 +19,5 @@ public class UserInfoResponse {
     private String lastName;
     private String email;
     private String token;
+    private boolean googleLinked;
 }

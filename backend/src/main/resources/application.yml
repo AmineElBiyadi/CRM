@@ -93,6 +93,8 @@ app:
     api-key: ${CLOUDINARY_API_KEY}
     api-secret: ${CLOUDINARY_API_SECRET}
     upload-preset: ${CLOUDINARY_UPLOAD_PRESET:Rawabet}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:922332096000-kg9tmttlcoabk1kh2sm13ss1n64kupdd.apps.googleusercontent.com}
   frontend:
     admin-url: ${ADMIN_URL:http://localhost:5176}
     client-url: ${CLIENT_URL:http://localhost:5174}

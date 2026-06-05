@@ -1,5 +1,9 @@
 package com.smartestatehub.auth.service;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 import com.smartestatehub.auth.dto.LoginRequest;
 import com.smartestatehub.auth.dto.UserInfoResponse;
 import com.smartestatehub.auth.model.InternalUser;
@@ -19,12 +23,16 @@ import com.smartestatehub.shared.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Optional;
 
 @Service
@@ -41,6 +49,9 @@ public class AuthService {
     private final TokenHasher tokenHasher;
     private final AuthCookies authCookies;
     private final EmailService emailService;
+
+    @Value("${app.google.client-id}")
+    private String googleClientId;
 
     @Transactional
     public UserInfoResponse login(LoginRequest request, HttpServletResponse response) {
@@ -98,6 +109,95 @@ public class AuthService {
         }
 
         throw new BadCredentialsException("Session invalide.");
+    }
+
+    @Transactional
+    public UserInfoResponse loginWithGoogle(String idToken, String portal, HttpServletResponse response) {
+        GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
+        String email = payload.getEmail();
+        String googleId = payload.getSubject();
+
+        if ("ADMIN_AGENT".equals(portal)) {
+            InternalUser user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new BadCredentialsException("Aucun compte associé à cet email Google."));
+            
+            if (user.getDeletedAt() != null) {
+                throw new BadCredentialsException("Ce compte est désactivé.");
+            }
+
+            // Check if account is linked
+            if (user.getGoogleId() == null || !user.getGoogleId().equals(googleId)) {
+                throw new BadCredentialsException("Ce compte n'est pas encore lié à Google. Veuillez le lier depuis votre profil.");
+            }
+
+            refreshTokenRepository.revokeAllForUser(user.getIdUser());
+            String token = issueSession(user, true, response);
+            return toUserInfo(user, token);
+        } else if ("CLIENT".equals(portal)) {
+            Client client = clientRepository.findByEmail(email)
+                    .orElseThrow(() -> new BadCredentialsException("Aucun compte client associé à cet email Google."));
+
+            if (client.getDeletedAt() != null) {
+                throw new BadCredentialsException("Votre compte est inactif.");
+            }
+
+            // Check if account is linked
+            if (client.getGoogleId() == null || !client.getGoogleId().equals(googleId)) {
+                throw new BadCredentialsException("Votre compte n'est pas encore lié à Google. Veuillez le lier depuis votre espace client.");
+            }
+
+            refreshTokenRepository.revokeAllForClient(client.getIdClient());
+            String token = issueClientSession(client, true, response);
+            return toUserInfo(client, token);
+        }
+
+        throw new BadCredentialsException("Type de portail invalide.");
+    }
+
+    @Transactional
+    public void linkGoogleAccount(String email, String idToken) {
+        GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
+        String googleEmail = payload.getEmail();
+        String googleId = payload.getSubject();
+
+        if (!email.equalsIgnoreCase(googleEmail)) {
+            throw new BadCredentialsException("L'email Google (" + googleEmail + ") ne correspond pas à l'email de votre compte (" + email + ").");
+        }
+
+        Optional<InternalUser> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            InternalUser user = userOpt.get();
+            user.setGoogleId(googleId);
+            userRepository.save(user);
+            return;
+        }
+
+        Optional<Client> clientOpt = clientRepository.findByEmail(email);
+        if (clientOpt.isPresent()) {
+            Client client = clientOpt.get();
+            client.setGoogleId(googleId);
+            clientRepository.save(client);
+            return;
+        }
+
+        throw new BadCredentialsException("Utilisateur introuvable.");
+    }
+
+    private GoogleIdToken.Payload verifyGoogleToken(String idToken) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            GoogleIdToken token = verifier.verify(idToken);
+            if (token != null) {
+                return token.getPayload();
+            } else {
+                throw new BadCredentialsException("Jeton Google invalide.");
+            }
+        } catch (GeneralSecurityException | IOException e) {
+            throw new BadCredentialsException("Erreur lors de la vérification du jeton Google.");
+        }
     }
 
     @Transactional
@@ -286,6 +386,7 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .token(token)
+                .googleLinked(user.getGoogleId() != null)
                 .build();
     }
 
@@ -297,6 +398,7 @@ public class AuthService {
                 .lastName(client.getLastName())
                 .email(client.getEmail())
                 .token(token)
+                .googleLinked(client.getGoogleId() != null)
                 .build();
     }
 }

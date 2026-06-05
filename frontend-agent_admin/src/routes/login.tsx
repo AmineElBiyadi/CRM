@@ -1,10 +1,11 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Building2, Mail, Lock, ArrowRight, Eye, EyeOff, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api-error";
-import { apiLogin, tryRestoreSession, apiForgotPassword } from "@/lib/auth";
+import { apiLogin, tryRestoreSession, apiForgotPassword, apiLoginWithGoogle } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
@@ -72,6 +73,33 @@ function LoginPage() {
         toast.error(`${err.message}${detail}`);
       } else {
         toast.error(err instanceof Error ? err.message : "Identifiants incorrects.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSuccess(credentialResponse: any) {
+    if (!credentialResponse.credential) {
+      toast.error("Erreur d'authentification Google.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const user = await apiLoginWithGoogle(credentialResponse.credential, "ADMIN_AGENT");
+      toast.success(`Bienvenue, ${user.firstName} !`);
+      if (user.role === "ADMIN") {
+        navigate({ to: "/admin" });
+      } else {
+        navigate({ to: "/agent" });
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        toast.error(err.message);
+      } else if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("Échec de la connexion avec Google.");
       }
     } finally {
       setLoading(false);
@@ -222,19 +250,16 @@ function LoginPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  className="neu-sm neu-pressable py-2.5 text-sm font-medium rounded-md cursor-pointer"
-                >
-                  Google
-                </button>
-                <button
-                  type="button"
-                  className="neu-sm neu-pressable py-2.5 text-sm font-medium rounded-md cursor-pointer"
-                >
-                  Apple
-                </button>
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => toast.error("Échec de la connexion Google.")}
+                  useOneTap
+                  theme="filled_blue"
+                  shape="rectangular"
+                  text="continue_with"
+                  locale="fr"
+                />
               </div>
             </>
           )}

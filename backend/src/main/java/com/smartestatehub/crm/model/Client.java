@@ -39,6 +39,9 @@ public class Client {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
     private String phone;
 
     @Column(name = "deletion_reason")
