@@ -391,7 +391,7 @@ public class DocumentRagService {
                 .collect(Collectors.joining("\n"));
 
         String contratsInfo = clientData.getContracts().stream()
-                .map(c -> String.format("- Contrat %s : Statut %s, Prix %s MAD", c.getIdContract(), c.getStatus(), c.getAgreedPrice()))
+                .map(c -> String.format("- Contrat %s : Statut %s, Prix %s $", c.getIdContract(), c.getStatus(), c.getAgreedPrice()))
                 .collect(Collectors.joining("\n"));
 
         String docsInfo = clientData.getDocuments().stream()

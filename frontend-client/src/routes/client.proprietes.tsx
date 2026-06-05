@@ -34,7 +34,7 @@ function ClientProperties() {
     });
   };
 
-  const formatPrice = (p?: number) => p ? new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 }).format(p) : "P.A.";
+  const formatPrice = (p?: number) => p ? new Intl.NumberFormat('fr-MA', { style: 'currency', currency: '$', maximumFractionDigits: 0 }).format(p) : "P.A.";
 
   return (
     <div className="space-y-6 max-w-[1200px]">

@@ -52,6 +52,12 @@ public class InteractionSummaryService {
         Deal deal = dealRepository.findById(dealId)
                 .orElseThrow(() -> new RuntimeException("Deal not found: " + dealId));
 
+        if (deal.getClientFolder() == null || deal.getClientFolder().getClient() == null) {
+            deal.setAiSummary("Impossible de générer un résumé : données client manquantes.");
+            dealRepository.save(deal);
+            return;
+        }
+
         List<Interaction> interactions = interactionRepository.findByDeal_IdDeal(dealId);
         
         if (interactions.isEmpty()) {

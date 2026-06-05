@@ -31,7 +31,7 @@ const CITIES = [
 
 type GroupedTypes = Record<string, string[]>;
 
-function RecherchePage() {
+export function RecherchePage() {
   const routeSearch = useSearch({ strict: false }) as any;
   const dealId = routeSearch?.dealId as string | undefined;
 

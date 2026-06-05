@@ -482,7 +482,7 @@ public class ClientPortalService {
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("CONTRACT")
                     .title("Contrat " + (c.getStatus() != null ? c.getStatus().name() : "Brouillon"))
-                    .description("Prix convenu : " + c.getAgreedPrice() + " MAD")
+                    .description("Prix convenu : " + c.getAgreedPrice() + " $")
                     .date(c.getCreatedAt() != null ? c.getCreatedAt().format(iso) : null)
                     .build());
         }

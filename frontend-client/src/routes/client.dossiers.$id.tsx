@@ -175,8 +175,8 @@ function DossierDetailPage() {
   ) || [];
 
   const formatCurrency = (amount?: number) => {
-    if (amount === undefined || amount === null) return "-- MAD";
-    return amount.toLocaleString("fr-MA") + " MAD";
+    if (amount === undefined || amount === null) return "-- $";
+    return amount.toLocaleString("fr-MA") + " $";
   };
 
   const formatDate = (dateStr?: string) => {
