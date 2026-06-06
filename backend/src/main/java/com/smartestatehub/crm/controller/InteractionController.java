@@ -24,7 +24,21 @@ public class InteractionController {
     @PostMapping
     public InteractionDto createInteraction(
             @RequestBody CreateInteractionRequest request,
-            @RequestHeader("X-Agent-Id") UUID agentId) {
-        return interactionService.saveInteraction(request, agentId);
+            @RequestHeader(value = "X-Agent-Id", required = false) UUID agentId,
+            java.security.Principal principal) {
+        String email = principal != null ? principal.getName() : null;
+        return interactionService.saveInteraction(request, agentId, email);
+    }
+
+    @PutMapping("/{id}")
+    public InteractionDto updateInteraction(
+            @PathVariable UUID id,
+            @RequestBody CreateInteractionRequest request) {
+        return interactionService.updateInteraction(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteInteraction(@PathVariable UUID id) {
+        interactionService.deleteInteraction(id);
     }
 }

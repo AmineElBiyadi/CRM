@@ -3,11 +3,17 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchAdminAnalytics, type AdminAnalyticsDto, type AdminAnalyticsMonthDto, type AdminAnalyticsPeriodType } from "@/api/adminDashboardApi";
+import { fetchAdminAnalytics, downloadPeriodicReport, type AdminAnalyticsDto, type AdminAnalyticsMonthDto, type AdminAnalyticsPeriodType } from "@/api/adminDashboardApi";
 import { ApiError } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, FileDown, ShieldAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, ShieldAlert, Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const Route = createFileRoute("/admin/analytics")({
   component: AnalyticsPage,
@@ -69,8 +75,26 @@ function ConversionChart({ data }: { data: AdminAnalyticsMonthDto[] }) {
       <path d={area} fill="url(#analytics-conversion-fill)" />
       <path d={path} fill="none" stroke="oklch(0.24 0 0)" strokeWidth={2.5} strokeLinecap="round" />
       {points.map(([x, y], i) => (
-        <g key={`${data[i].label}-${i}`}>
-          <circle cx={x} cy={y} r={4} fill="oklch(0.94 0.085 105)" stroke="oklch(0.24 0 0)" strokeWidth={2} />
+        <g key={`${data[i].label}-${i}`} className="group/point">
+          <circle 
+            cx={x} 
+            cy={y} 
+            r={4} 
+            fill="oklch(0.94 0.085 105)" 
+            stroke="oklch(0.24 0 0)" 
+            strokeWidth={2} 
+            className="transition-transform group-hover/point:scale-150 cursor-pointer"
+          />
+          <text
+            x={x}
+            y={y - 12}
+            textAnchor="middle"
+            fontSize="10"
+            fontWeight="bold"
+            className="opacity-0 group-hover/point:opacity-100 transition-opacity fill-eerie pointer-events-none"
+          >
+            {data[i].conversionRatePercent}%
+          </text>
           <text
             x={x}
             y={h + 15}
@@ -218,9 +242,69 @@ function PeriodNavigator({
       >
         <ChevronLeft size={16} />
       </button>
-      <span className="min-w-[8rem] text-center text-sm font-semibold capitalize">
-        {formatMonthYear(year, month)}
-      </span>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="px-3 h-8 rounded-lg neu-sm flex items-center gap-2 hover:bg-ghost transition-colors"
+          >
+            <CalendarIcon size={14} className="text-muted-foreground" />
+            <span className="text-sm font-semibold capitalize min-w-[7rem]">
+              {formatMonthYear(year, month)}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-3 neu-card border-none" align="center">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Choisir un mois</span>
+              <div className="flex gap-1">
+                <button 
+                  onClick={() => onYearChange(year-1)}
+                  className="p-1 hover:bg-ghost rounded transition-colors disabled:opacity-30"
+                  disabled={year <= minYear}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-sm font-bold w-10 text-center">{year}</span>
+                <button 
+                  onClick={() => onYearChange(year+1)}
+                  className="p-1 hover:bg-ghost rounded transition-colors disabled:opacity-30"
+                  disabled={year >= maxYear}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {MONTH_NAMES.map((name, i) => {
+                const m = i + 1;
+                const isSelected = month === m;
+                const isFuture = year === currentYear && m > currentMonth;
+                
+                return (
+                  <button
+                    key={name}
+                    disabled={isFuture}
+                    onClick={() => onMonthChange(year, m)}
+                    className={cn(
+                      "py-1.5 rounded-md text-[11px] font-medium transition-all text-center",
+                      isSelected 
+                        ? "bg-eerie text-ghost shadow-sm" 
+                        : "hover:bg-ghost text-muted-foreground hover:text-eerie",
+                      isFuture && "opacity-20 cursor-not-allowed"
+                    )}
+                  >
+                    {name.slice(0, 4)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
       <button
         type="button"
         disabled={!canGoNextMonth}
@@ -273,7 +357,35 @@ function AnalyticsPage() {
     queryKey: ["admin-analytics", queryParams],
     queryFn: () => fetchAdminAnalytics(queryParams),
     staleTime: 60_000,
+    placeholderData: keepPreviousData,
   });
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  async function handleExportPdf() {
+    setIsExporting(true);
+    const tid = toast.loading("Génération du rapport PDF par l'IA en cours...");
+    try {
+      const blob = await downloadPeriodicReport({
+        periodType,
+        year,
+        month: periodType === "month" ? month : undefined
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Analyse_Strategique_${periodType}_${year}${month ? '_' + month : ''}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Rapport AI exporté avec succès !", { id: tid });
+    } catch (err) {
+      toast.error("Erreur lors de l'exportation du PDF par l'IA", { id: tid });
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   const availableYears = data?.availableYears ?? [now.getFullYear()];
 
@@ -313,15 +425,17 @@ function AnalyticsPage() {
         </div>
         <button
           type="button"
-          onClick={() => toast.success("Export PDF généré (3.2 MB)")}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90"
+          onClick={handleExportPdf}
+          disabled={isExporting}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-eerie text-ghost text-sm font-medium hover:opacity-90 disabled:opacity-50"
         >
-          <FileDown size={16} /> Exporter PDF
+          {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />} 
+          Exporter PDF
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <NeuCard className={cn(isFetching && "opacity-80 transition-opacity")}>
+      <div className={cn("grid lg:grid-cols-2 gap-6 transition-opacity duration-300", isFetching && "opacity-60 pointer-events-none")}>
+        <NeuCard>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="font-semibold">{data.conversionTitle}</h2>
@@ -365,7 +479,7 @@ function AnalyticsPage() {
         </NeuCard>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-5">
+      <div className={cn("grid md:grid-cols-3 gap-5 transition-opacity duration-300", isFetching && "opacity-60 pointer-events-none")}>
         <NeuCard>
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Durée moyenne</div>
           <div className="mt-3 text-4xl font-bold">

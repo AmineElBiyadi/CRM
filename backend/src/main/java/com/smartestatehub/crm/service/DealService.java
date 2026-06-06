@@ -514,12 +514,34 @@ public class DealService {
     }
 
     @Transactional
-    public DossierDetailDto updateDealStage(UUID dealId, DealStage newStage, UUID userId) {
-        Deal deal = dealRepository.findById(dealId)
-                .orElseThrow(() -> new RuntimeException("Dossier not found: " + dealId));
+    public DossierDetailDto updateDealStage(UUID id, DealStage newStage, UUID userId) {
+        // Handle both deal ID and folder ID
+        Optional<Deal> dealOpt = dealRepository.findById(id);
+        Deal deal;
+        if (dealOpt.isPresent()) {
+            deal = dealOpt.get();
+        } else {
+            ClientFolder folder = clientFolderRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Dossier/Folder not found: " + id));
+            deal = folder.getDeals().stream()
+                    .filter(d -> d.getDeletedAt() == null)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("No active deal found for folder: " + id));
+        }
         
-        InternalUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        InternalUser user = null;
+        if (userId != null) {
+            user = userRepository.findById(userId).orElse(null);
+        }
+        
+        // Fallback to assigned agent if user (admin) not found or userId is null
+        if (user == null) {
+            user = deal.getClientFolder().getAssignedAgent();
+        }
+
+        if (user == null) {
+            throw new RuntimeException("No user found to log the stage update");
+        }
 
         DealStage oldStage = deal.getStage();
         deal.setStage(newStage);

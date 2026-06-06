@@ -37,6 +37,7 @@ export interface ClientProfile {
   source: string;
   assignedAgentName: string;
   assignedAgentPhone?: string;
+  googleLinked: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -208,6 +209,19 @@ export function useClientData() {
     },
   });
 
+  const linkGoogle = useMutation({
+    mutationFn: async (idToken: string) => {
+      const token = localStorage.getItem('token');
+      await axios.post("/api/auth/link-google", { idToken }, { 
+        headers: { 
+          Authorization: `Bearer ${token}` 
+        },
+        withCredentials: true 
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clientPortalData"] }),
+  });
+
   return {
     data,
     isLoading,
@@ -222,7 +236,13 @@ export function useClientData() {
     rejectOffer,
     withdrawOffer,
     updatePassword,
+    linkGoogle,
   };
+}
+
+export function useLinkGoogle() {
+  const { linkGoogle } = useClientData();
+  return linkGoogle;
 }
 
 export function useMeetingActions() {

@@ -1,6 +1,7 @@
 import { ensureAuthenticated } from "@/lib/auth";
 import { ApiError } from "@/lib/api-error";
 import { apiFetch } from "@/utils/api";
+import apiClient from "@/lib/api-client";
 import type { DealStage, DossierDetail } from "./dossiersApi";
 
 export interface AdminKpiDto {
@@ -282,15 +283,15 @@ async function requireAdmin() {
   if (!user) {
     throw ApiError.client(
       "NOT_AUTHENTICATED",
-      "Vous n'Ãªtes pas connectÃ©.",
-      "Connectez-vous avec un compte administrateur pour accÃ©der Ã  cette page.",
+      "Vous n'êtes pas connecté.",
+      "Connectez-vous avec un compte administrateur pour accéder à cette page.",
     );
   }
   if (user.role !== "ADMIN") {
     throw ApiError.client(
       "WRONG_ROLE",
-      "Cet espace est rÃ©servÃ© aux administrateurs.",
-      `Vous Ãªtes connectÃ© en tant qu'${user.role === "AGENT" ? "agent" : "client"} (${user.email}).`,
+      "Cet espace est réservé aux administrateurs.",
+      `Vous êtes connecté en tant qu'${user.role === "AGENT" ? "agent" : "client"} (${user.email}).`,
     );
   }
 }
@@ -300,4 +301,26 @@ export async function updateAdminDealStage(id: string, stage: DealStage): Promis
   return apiFetch(`/api/admin/dashboard/dossiers/${id}/stage?stage=${stage}`, {
     method: "PATCH",
   }) as Promise<DossierDetail>;
+}
+export async function downloadWeeklyReport(): Promise<Blob> {
+  const user = await ensureAuthenticated();
+  if (!user) throw ApiError.client("NOT_AUTHENTICATED", "Non connecté");
+
+  const response = await apiClient.get("/api/ai/reports/weekly", {
+    responseType: "blob",
+  });
+
+  return response.data;
+}
+
+export async function downloadPeriodicReport(params: AdminAnalyticsParams): Promise<Blob> {
+  const user = await ensureAuthenticated();
+  if (!user) throw ApiError.client("NOT_AUTHENTICATED", "Non connecté");
+
+  const response = await apiClient.get("/api/ai/reports/periodic", {
+    params,
+    responseType: "blob",
+  });
+
+  return response.data;
 }

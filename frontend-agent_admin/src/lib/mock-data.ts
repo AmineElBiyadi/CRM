@@ -14,14 +14,14 @@ export interface Client {
 }
 
 export const clients: Client[] = [
-  { id: "1", name: "Karim Benchekroun", type: "Acheteur", email: "karim.b@mail.com", phone: "+212 661 12 34 56", budget: "2.4M MAD", source: "Site web", agent: "Sara El Idrissi", stage: "chaud", score: 86, lastInteraction: "il y a 2j", recommendation: "Proposer 3 biens à Anfa cette semaine" },
-  { id: "2", name: "Leila Tazi", type: "Vendeur", email: "leila.t@mail.com", phone: "+212 662 99 88 77", budget: "5.0M MAD", source: "Recommandation", agent: "Sara El Idrissi", stage: "negociation", score: 78, lastInteraction: "hier", recommendation: "Relancer pour signature compromis" },
-  { id: "3", name: "Youssef Amrani", type: "Acheteur", email: "youssef.a@mail.com", phone: "+212 663 45 67 89", budget: "1.2M MAD", source: "Facebook Ads", agent: "Mehdi Bouazza", stage: "tiede", score: 62, lastInteraction: "il y a 5j", recommendation: "Envoyer sélection appartements Maarif" },
-  { id: "4", name: "Nadia Cherkaoui", type: "Acheteur", email: "nadia.c@mail.com", phone: "+212 664 11 22 33", budget: "3.8M MAD", source: "Site web", agent: "Sara El Idrissi", stage: "froid", score: 34, lastInteraction: "il y a 12j", recommendation: "Email de réveil personnalisé" },
-  { id: "5", name: "Omar Slaoui", type: "Vendeur", email: "omar.s@mail.com", phone: "+212 665 77 88 99", budget: "8.5M MAD", source: "LinkedIn", agent: "Mehdi Bouazza", stage: "cloture", score: 95, lastInteraction: "il y a 1j", recommendation: "Demander recommandation et avis" },
-  { id: "6", name: "Imane Bennani", type: "Acheteur", email: "imane.b@mail.com", phone: "+212 666 33 44 55", budget: "1.8M MAD", source: "Bouche-à-oreille", agent: "Sara El Idrissi", stage: "chaud", score: 81, lastInteraction: "il y a 3j", recommendation: "Planifier visite ce week-end" },
-  { id: "7", name: "Hicham Drissi", type: "Acheteur", email: "hicham.d@mail.com", phone: "+212 667 22 11 00", budget: "2.0M MAD", source: "Instagram", agent: "Mehdi Bouazza", stage: "perdu", score: 12, lastInteraction: "il y a 28j", recommendation: "Marquer perdu — concurrent" },
-  { id: "8", name: "Fatima Ouali", type: "Vendeur", email: "fatima.o@mail.com", phone: "+212 668 55 66 77", budget: "4.2M MAD", source: "Site web", agent: "Yasmine Chraibi", stage: "negociation", score: 73, lastInteraction: "il y a 4j", recommendation: "Préparer contre-proposition" },
+  { id: "1", name: "Karim Benchekroun", type: "Acheteur", email: "karim.b@mail.com", phone: "+212 661 12 34 56", budget: "2.4M $", source: "Site web", agent: "Sara El Idrissi", stage: "chaud", score: 86, lastInteraction: "il y a 2j", recommendation: "Proposer 3 biens à Anfa cette semaine" },
+  { id: "2", name: "Leila Tazi", type: "Vendeur", email: "leila.t@mail.com", phone: "+212 662 99 88 77", budget: "5.0M $", source: "Recommandation", agent: "Sara El Idrissi", stage: "negociation", score: 78, lastInteraction: "hier", recommendation: "Relancer pour signature compromis" },
+  { id: "3", name: "Youssef Amrani", type: "Acheteur", email: "youssef.a@mail.com", phone: "+212 663 45 67 89", budget: "1.2M $", source: "Facebook Ads", agent: "Mehdi Bouazza", stage: "tiede", score: 62, lastInteraction: "il y a 5j", recommendation: "Envoyer sélection appartements Maarif" },
+  { id: "4", name: "Nadia Cherkaoui", type: "Acheteur", email: "nadia.c@mail.com", phone: "+212 664 11 22 33", budget: "3.8M $", source: "Site web", agent: "Sara El Idrissi", stage: "froid", score: 34, lastInteraction: "il y a 12j", recommendation: "Email de réveil personnalisé" },
+  { id: "5", name: "Omar Slaoui", type: "Vendeur", email: "omar.s@mail.com", phone: "+212 665 77 88 99", budget: "8.5M $", source: "LinkedIn", agent: "Mehdi Bouazza", stage: "cloture", score: 95, lastInteraction: "il y a 1j", recommendation: "Demander recommandation et avis" },
+  { id: "6", name: "Imane Bennani", type: "Acheteur", email: "imane.b@mail.com", phone: "+212 666 33 44 55", budget: "1.8M $", source: "Bouche-à-oreille", agent: "Sara El Idrissi", stage: "chaud", score: 81, lastInteraction: "il y a 3j", recommendation: "Planifier visite ce week-end" },
+  { id: "7", name: "Hicham Drissi", type: "Acheteur", email: "hicham.d@mail.com", phone: "+212 667 22 11 00", budget: "2.0M $", source: "Instagram", agent: "Mehdi Bouazza", stage: "perdu", score: 12, lastInteraction: "il y a 28j", recommendation: "Marquer perdu — concurrent" },
+  { id: "8", name: "Fatima Ouali", type: "Vendeur", email: "fatima.o@mail.com", phone: "+212 668 55 66 77", budget: "4.2M $", source: "Site web", agent: "Yasmine Chraibi", stage: "negociation", score: 73, lastInteraction: "il y a 4j", recommendation: "Préparer contre-proposition" },
 ];
 
 export interface Agent {
@@ -58,10 +58,10 @@ export interface Property {
 }
 
 export const properties: Property[] = [
-  { id: "p1", address: "Résidence Al Manar, Anfa", city: "Casablanca", price: "2.3M MAD", surface: "120 m²", rooms: 3, floor: "5ème", status: "Visitée", image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600", source: "Mubawab" },
-  { id: "p2", address: "Villa Bois de Boulogne", city: "Casablanca", price: "5.8M MAD", surface: "320 m²", rooms: 5, floor: "RDC + 1", status: "En examen", image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600", source: "Avito" },
-  { id: "p3", address: "Appt. Maarif Extension", city: "Casablanca", price: "1.4M MAD", surface: "85 m²", rooms: 2, floor: "3ème", status: "Proposée", image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600", source: "Mubawab" },
-  { id: "p4", address: "Duplex Gauthier", city: "Casablanca", price: "3.2M MAD", surface: "180 m²", rooms: 4, floor: "6/7", status: "En examen", image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600", source: "Sarouty" },
+  { id: "p1", address: "Résidence Al Manar, Anfa", city: "Casablanca", price: "2.3M $", surface: "120 m²", rooms: 3, floor: "5ème", status: "Visitée", image: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=600", source: "Mubawab" },
+  { id: "p2", address: "Villa Bois de Boulogne", city: "Casablanca", price: "5.8M $", surface: "320 m²", rooms: 5, floor: "RDC + 1", status: "En examen", image: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=600", source: "Avito" },
+  { id: "p3", address: "Appt. Maarif Extension", city: "Casablanca", price: "1.4M $", surface: "85 m²", rooms: 2, floor: "3ème", status: "Proposée", image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=600", source: "Mubawab" },
+  { id: "p4", address: "Duplex Gauthier", city: "Casablanca", price: "3.2M $", surface: "180 m²", rooms: 4, floor: "6/7", status: "En examen", image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=600", source: "Sarouty" },
 ];
 
 export const pipelineStages = [

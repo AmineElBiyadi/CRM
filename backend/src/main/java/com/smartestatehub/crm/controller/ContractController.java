@@ -34,6 +34,16 @@ public class ContractController {
     }
 
     /**
+     * POST /api/contracts/{contractId}/analyze
+     * Analyse les risques d'un brouillon de contrat en tenant compte du contexte du dossier.
+     */
+    @PostMapping("/{contractId}/analyze")
+    public ResponseEntity<Map<String, String>> analyzeDraft(@PathVariable("contractId") UUID contractId) {
+        String analysis = contractRiskService.analyzeContractDraft(contractId);
+        return ResponseEntity.ok(Map.of("analysis", analysis));
+    }
+
+    /**
      * POST /api/contracts?dealId={dealId}
      * Crée un nouveau contrat et son calendrier de paiement associé.
      */

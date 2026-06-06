@@ -4,6 +4,7 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Sparkles, Mail, Lock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { authApi } from "@/api/authApi";
+import { GoogleLogin } from "@react-oauth/google";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: () => {
@@ -44,6 +45,21 @@ function LoginPage() {
       navigate({ to: "/client" });
     } catch (error: any) {
       const message = error.response?.data?.message || "Identifiants incorrects.";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSuccess(credentialResponse: any) {
+    if (!credentialResponse.credential) return;
+    setLoading(true);
+    try {
+      await authApi.loginWithGoogle(credentialResponse.credential);
+      toast.success("Bienvenue avec Google !");
+      navigate({ to: "/client" });
+    } catch (error: any) {
+      const message = error.response?.data?.message || "Échec de la connexion Google.";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -136,19 +152,15 @@ function LoginPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              className="neu-sm neu-pressable py-2.5 text-sm font-medium rounded-md cursor-pointer"
-            >
-              Google
-            </button>
-            <button
-              type="button"
-              className="neu-sm neu-pressable py-2.5 text-sm font-medium rounded-md cursor-pointer"
-            >
-              Apple
-            </button>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => toast.error("Échec de la connexion Google")}
+              useOneTap
+              theme="outline"
+              shape="rectangular"
+              locale="fr"
+            />
           </div>
         </NeuCard>
 

@@ -52,5 +52,8 @@ export const workflowApi = {
   getPropertyTypes: async (): Promise<PropertyType[]> => {
     const { data } = await api.get<PropertyType[]>('/api/property-types');
     return data;
+  },
+  checkEmail: async (email: string): Promise<void> => {
+    await api.get('/api/public/onboarding/check-email', { params: { email } });
   }
 };

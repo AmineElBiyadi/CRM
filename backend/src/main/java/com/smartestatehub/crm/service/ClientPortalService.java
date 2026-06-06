@@ -35,12 +35,13 @@ public class ClientPortalService {
 
         List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
         List<Deal> deals = folders.stream()
-                .flatMap(f -> f.getDeals() != null ? f.getDeals().stream() : java.util.stream.Stream.empty())
+                .flatMap(f -> f.getDeals().stream())
                 .filter(d -> d.getDeletedAt() == null)
                 .collect(Collectors.toList());
 
         List<UUID> dealIds = deals.stream().map(Deal::getIdDeal).collect(Collectors.toList());
 
+        
         // Aggregate related entities
         List<Interaction> interactions = dealIds.stream()
                 .flatMap(id -> interactionRepository.findByDeal_IdDeal(id).stream())
@@ -120,7 +121,7 @@ public class ClientPortalService {
 
         List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
         List<Deal> deals = folders.stream()
-                .flatMap(f -> f.getDeals() != null ? f.getDeals().stream() : java.util.stream.Stream.empty())
+                .flatMap(f -> f.getDeals().stream())
                 .filter(d -> d.getDeletedAt() == null)
                 .collect(Collectors.toList());
 
@@ -137,7 +138,7 @@ public class ClientPortalService {
         ClientFolder folder = clientFolderRepository.findByIdProfileAndClient_IdClient(idFolder, clientId)
                 .orElseThrow(() -> new RuntimeException("Dossier not found for client: " + idFolder));
 
-        List<Deal> deals = (folder.getDeals() != null ? folder.getDeals() : new java.util.ArrayList<Deal>()).stream()
+        List<Deal> deals = folder.getDeals().stream()
                 .filter(d -> d.getDeletedAt() == null)
                 .collect(Collectors.toList());
 
@@ -160,6 +161,7 @@ public class ClientPortalService {
                 .collect(Collectors.toList());
 
         return buildTimeline(interactions, meetings, documents, contracts, deals).stream()
+                .limit(5) // Get only the last 5 events
                 .collect(Collectors.toList());
     }
 
@@ -186,9 +188,7 @@ public class ClientPortalService {
                 .aiRecommendedAction(deal.getAiRecommendedAction())
                 .aiSummary(deal.getAiSummary())
                 .isUrgent(deal.getIsUrgent())
-                    .status(folder.getStatus().name())
                 .lastInteractionAt(deal.getLastInteractionAt())
-                .createdAt(deal.getCreatedAt())
                 .build();
 
         if (folder.getClientType() == ClientType.BUYER && folder.getBuyerFolder() != null) {

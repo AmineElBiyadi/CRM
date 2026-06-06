@@ -182,6 +182,15 @@ export const logInteraction = async (request: CreateInteractionRequest): Promise
   return response.data;
 };
 
+export const updateInteraction = async (id: string, request: CreateInteractionRequest): Promise<InteractionItem> => {
+  const response = await api.put<InteractionItem>(`/api/agent/interactions/${id}`, request);
+  return response.data;
+};
+
+export const deleteInteraction = async (id: string): Promise<void> => {
+  await api.delete(`/api/agent/interactions/${id}`);
+};
+
 export const updateDealStage = async (idDeal: string, stage: DealStage): Promise<DossierDetail> => {
   const response = await api.patch<DossierDetail>(`/api/agent/dossiers/${idDeal}/stage?stage=${stage}`);
   return response.data;

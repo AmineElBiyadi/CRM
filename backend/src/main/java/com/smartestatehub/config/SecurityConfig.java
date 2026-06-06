@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/login-client",
+                    "/api/auth/google",
                     "/api/auth/refresh", 
                     "/api/auth/logout", 
                     "/api/auth/me",
@@ -74,10 +75,10 @@ public class SecurityConfig {
                     "/api/crm/**",
                     "/api/documents/**",
                     "/api/properties/**",
-                    "/api/property-types/**",
                     "/api/contracts/**",
                     "/api/offers/**",
-                    "/api/emails/**"
+                    "/api/emails/**",
+                    "/api/ai/**"
                 ).hasAnyRole("AGENT", "ADMIN", "CLIENT")
                 .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "AGENT", "ADMIN")
                 .requestMatchers("/api/rag/**").hasAnyRole("AGENT", "ADMIN", "CLIENT")

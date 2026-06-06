@@ -23,6 +23,7 @@ import com.smartestatehub.shared.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +38,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final RefreshTokenRepository refreshTokenRepository;
@@ -117,37 +119,59 @@ public class AuthService {
         String email = payload.getEmail();
         String googleId = payload.getSubject();
 
+        log.info("[AUTH] Attempting Google login for email: {}, googleId: {}, portal: {}", email, googleId, portal);
+
         if ("ADMIN_AGENT".equals(portal)) {
             InternalUser user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new BadCredentialsException("Aucun compte associé à cet email Google."));
+                    .orElseThrow(() -> {
+                        log.warn("[AUTH] No user found for Google email: {}", email);
+                        return new BadCredentialsException("Aucun compte associé à cet email Google.");
+                    });
             
             if (user.getDeletedAt() != null) {
+                log.warn("[AUTH] User {} is deleted, login aborted.", email);
                 throw new BadCredentialsException("Ce compte est désactivé.");
             }
 
             // Check if account is linked
+            log.info("[AUTH] User {} found. Database googleId: {}, Incoming googleId: {}", 
+                    email, user.getGoogleId(), googleId);
+
             if (user.getGoogleId() == null || !user.getGoogleId().equals(googleId)) {
+                log.warn("[AUTH] Google ID mismatch for user {}. DB: {}, Token: {}", 
+                        email, user.getGoogleId(), googleId);
                 throw new BadCredentialsException("Ce compte n'est pas encore lié à Google. Veuillez le lier depuis votre profil.");
             }
 
             refreshTokenRepository.revokeAllForUser(user.getIdUser());
             String token = issueSession(user, true, response);
+            log.info("[AUTH] Google login successful for user: {}", email);
             return toUserInfo(user, token);
         } else if ("CLIENT".equals(portal)) {
             Client client = clientRepository.findByEmail(email)
-                    .orElseThrow(() -> new BadCredentialsException("Aucun compte client associé à cet email Google."));
+                    .orElseThrow(() -> {
+                        log.warn("[AUTH] No client found for Google email: {}", email);
+                        return new BadCredentialsException("Aucun compte client associé à cet email Google.");
+                    });
 
             if (client.getDeletedAt() != null) {
+                log.warn("[AUTH] Client {} is deleted, login aborted.", email);
                 throw new BadCredentialsException("Votre compte est inactif.");
             }
 
             // Check if account is linked
+            log.info("[AUTH] Client {} found. Database googleId: {}, Incoming googleId: {}", 
+                    email, client.getGoogleId(), googleId);
+
             if (client.getGoogleId() == null || !client.getGoogleId().equals(googleId)) {
+                log.warn("[AUTH] Google ID mismatch for client {}. DB: {}, Token: {}", 
+                        email, client.getGoogleId(), googleId);
                 throw new BadCredentialsException("Votre compte n'est pas encore lié à Google. Veuillez le lier depuis votre espace client.");
             }
 
             refreshTokenRepository.revokeAllForClient(client.getIdClient());
             String token = issueClientSession(client, true, response);
+            log.info("[AUTH] Google login successful for client: {}", email);
             return toUserInfo(client, token);
         }
 
@@ -155,48 +179,61 @@ public class AuthService {
     }
 
     @Transactional
-    public void linkGoogleAccount(String email, String idToken) {
+    public void linkGoogleAccount(String email, String idToken, String role) {
         GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
         String googleEmail = payload.getEmail();
         String googleId = payload.getSubject();
 
+        log.info("[AUTH] Linking Google account for email: {}. Role: {}, Google Email: {}, Google ID: {}", 
+                email, role, googleEmail, googleId);
+
         if (!email.equalsIgnoreCase(googleEmail)) {
+            log.warn("[AUTH] Email mismatch during linking. Account: {}, Google: {}", email, googleEmail);
             throw new BadCredentialsException("L'email Google (" + googleEmail + ") ne correspond pas à l'email de votre compte (" + email + ").");
         }
 
-        Optional<InternalUser> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isPresent()) {
-            InternalUser user = userOpt.get();
-            user.setGoogleId(googleId);
-            userRepository.save(user);
-            return;
-        }
-
-        Optional<Client> clientOpt = clientRepository.findByEmail(email);
-        if (clientOpt.isPresent()) {
-            Client client = clientOpt.get();
+        // Use role to decide which table to update
+        if ("ROLE_CLIENT".equals(role)) {
+            Client client = clientRepository.findByEmail(email)
+                    .orElseThrow(() -> new BadCredentialsException("Client introuvable."));
             client.setGoogleId(googleId);
             clientRepository.save(client);
-            return;
+            log.info("[AUTH] Google account linked for Client: {}", email);
+        } else {
+            InternalUser user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new BadCredentialsException("Utilisateur interne introuvable."));
+            user.setGoogleId(googleId);
+            userRepository.save(user);
+            log.info("[AUTH] Google account linked for InternalUser: {}", email);
         }
-
-        throw new BadCredentialsException("Utilisateur introuvable.");
     }
 
     private GoogleIdToken.Payload verifyGoogleToken(String idToken) {
         try {
+            if (googleClientId == null || googleClientId.isBlank()) {
+                log.error("[AUTH] googleClientId is not configured!");
+                throw new BadCredentialsException("Configuration Google manquante sur le serveur.");
+            }
+
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
                     .setAudience(Collections.singletonList(googleClientId))
                     .build();
 
+            log.info("[AUTH] Verifying Google token with client ID: {}", googleClientId);
             GoogleIdToken token = verifier.verify(idToken);
             if (token != null) {
                 return token.getPayload();
             } else {
-                throw new BadCredentialsException("Jeton Google invalide.");
+                log.warn("[AUTH] Google token verification returned null for token: {}", 
+                        idToken.substring(0, Math.min(idToken.length(), 20)) + "...");
+                throw new BadCredentialsException("Jeton Google invalide ou expiré.");
             }
         } catch (GeneralSecurityException | IOException e) {
+            log.error("[AUTH] Security/IO error during Google token verification: {}", e.getMessage());
             throw new BadCredentialsException("Erreur lors de la vérification du jeton Google.");
+        } catch (Exception e) {
+            log.error("[AUTH] Unexpected error during Google token verification", e);
+            throw e;
         }
     }
 

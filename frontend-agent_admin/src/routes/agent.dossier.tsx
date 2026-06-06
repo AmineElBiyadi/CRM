@@ -31,7 +31,7 @@ import { getPropertiesByDeal } from "@/api/propertyApi";
 // @ts-ignore
 import { acceptOffer as apiAcceptOffer } from "@/api/offerApi";
 // @ts-ignore
-import { deleteContract as apiDeleteContract } from "@/api/contractApi";
+import { deleteContract as apiDeleteContract, analyzeContract } from "@/api/contractApi";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
@@ -48,6 +48,8 @@ import { RagChatWidget } from "@/components/ai/RagChatWidget";
 import { linkPropertyToDeal as apiLinkProperty } from "@/api/propertyApi";
 import { EmailModal } from "@/components/EmailModal";
 import { getUser } from "@/lib/auth";
+// @ts-ignore
+import ReactMarkdown from 'react-markdown';
 
 type DossierSearch = {
   id?: string;
@@ -175,6 +177,8 @@ function AgentDossierPage() {
   const [rescheduleTime, setRescheduleTime] = useState("");
 
   const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+  const [analyzingContractId, setAnalyzingContractId] = useState<string | null>(null);
+  const [aiModalContractId, setAiModalContractId] = useState<string | null>(null);
 
   const floorOptions = [
     { value: -1, label: "Indifférent" },
@@ -492,6 +496,21 @@ function AgentDossierPage() {
       toast.success("Contrat supprimé");
     } catch (e: any) {
       toast.error("Erreur : " + e.message);
+    }
+  };
+
+  const handleAnalyzeContract = async (contractId: string) => {
+    setAnalyzingContractId(contractId);
+    try {
+      const { analysis } = await analyzeContract(contractId);
+      setContracts((prev) =>
+        prev.map((c) => (c.idContract === contractId ? { ...c, aiRiskSummary: analysis } : c))
+      );
+      toast.success("Analyse IA terminée !");
+    } catch (e: any) {
+      toast.error("Échec de l'analyse : " + e.message);
+    } finally {
+      setAnalyzingContractId(null);
     }
   };
 
@@ -1620,6 +1639,56 @@ function AgentDossierPage() {
                     onStatusChange={(status: string) => handleStatusChange(c.idContract, status)}
                   />
 
+                  {/* Analyse IA */}
+                  <div className="mt-8 pt-6 border-t border-border/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles size={12} className="text-primary" /> Analyse des risques IA
+                      </p>
+                    </div>
+
+                    {c.aiRiskSummary ? (
+                      <div className="p-4 rounded-2xl bg-alice/30 border border-alice/50 animate-in fade-in duration-500 space-y-2">
+                        <p className="text-sm text-eerie/80 line-clamp-2 leading-relaxed">{c.aiRiskSummary.replace(/[#*_`]/g, '')}</p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setAiModalContractId(c.idContract)}
+                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-80 transition-all"
+                          >
+                            Voir l'analyse complète →
+                          </button>
+                          {c.status === "DRAFT" && (
+                            <button
+                              onClick={() => handleAnalyzeContract(c.idContract)}
+                              disabled={analyzingContractId === c.idContract}
+                              className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-eerie transition-all disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {analyzingContractId === c.idContract ? <><Loader2 size={10} className="animate-spin" /> En cours…</> : <><RefreshCw size={10}/> Ré-analyser</>}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => c.status === "DRAFT" && handleAnalyzeContract(c.idContract)}
+                        disabled={analyzingContractId === c.idContract || c.status !== "DRAFT"}
+                        className={`w-full py-3 px-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 transition-all text-sm font-semibold ${
+                          c.status === "DRAFT"
+                            ? "border-primary/30 text-primary hover:bg-primary/5 cursor-pointer disabled:opacity-60"
+                            : "border-border/30 text-muted-foreground/40 cursor-not-allowed"
+                        }`}
+                      >
+                        {analyzingContractId === c.idContract ? (
+                          <><Loader2 size={14} className="animate-spin" /> Analyse en cours…</>
+                        ) : c.status === "DRAFT" ? (
+                          <><Sparkles size={14} /> Analyser les risques avec l'IA</>
+                        ) : (
+                          <><AlertCircle size={14} /> Analyse uniquement pour les brouillons</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
                   {/* Calendrier de paiement */}
                   {c.payments && c.payments.length > 0 && (
                     <div className="mt-5">
@@ -1808,6 +1877,51 @@ function AgentDossierPage() {
         <RagChatWidget dealId={id!} />
       </div>
     </div>
+
+    {/* AI Risk Analysis Modal */}
+      {aiModalContractId && (() => {
+        const c = contracts.find(c => c.idContract === aiModalContractId);
+        if (!c?.aiRiskSummary) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setAiModalContractId(null)}>
+            <div className="absolute inset-0 bg-eerie/70 backdrop-blur-md" />
+            <div
+              className="relative bg-ghost rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 pb-4 border-b border-border/30 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-alice flex items-center justify-center text-primary">
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base">Analyse des Risques IA</h3>
+                    <p className="text-xs text-muted-foreground">Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()}</p>
+                  </div>
+                </div>
+                <button onClick={() => setAiModalContractId(null)} className="w-9 h-9 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="overflow-y-auto soft-scroll p-6 prose prose-sm max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-li:my-1 text-eerie/80">
+                <ReactMarkdown>{c.aiRiskSummary}</ReactMarkdown>
+              </div>
+              <div className="shrink-0 p-4 border-t border-border/30 flex gap-2">
+                {c.status === "DRAFT" && (
+                  <button
+                    onClick={() => handleAnalyzeContract(c.idContract)}
+                    disabled={analyzingContractId === c.idContract}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl neu-sm text-xs font-bold hover:bg-alice transition-all disabled:opacity-50"
+                  >
+                    {analyzingContractId === c.idContract ? <><Loader2 size={12} className="animate-spin" /> En cours…</> : <><RefreshCw size={12} /> Ré-analyser</>}
+                  </button>
+                )}
+                <button onClick={() => setAiModalContractId(null)} className="flex-1 py-2 rounded-xl bg-eerie text-ghost text-xs font-bold hover:opacity-90 transition-all">Fermer</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     {/* Modale : Nouveau contrat (formulaire guidé) */}
       {showContractForm && (

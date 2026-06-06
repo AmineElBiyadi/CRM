@@ -7,14 +7,18 @@ import {
   fetchDossierDetail, 
   fetchInteractions, 
   logInteraction as apiLogInteraction,
+  updateInteraction as apiUpdateInteraction,
+  deleteInteraction as apiDeleteInteraction,
   fetchPropertyTypes,
   updateDossier as apiUpdateDossier,
   updateDealStage as apiUpdateDealStage,
+  dismissStageSuggestion as apiDismissStageSuggestion,
   type InteractionType,
   type CreateInteractionRequest,
   type UpdateDossierRequest,
   type DealStage,
-  type AssignmentHistory
+  type AssignmentHistory,
+  type InteractionItem
 } from "@/api/dossiersApi";
 import {
   fetchDealMeetings,
@@ -34,17 +38,102 @@ import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, LeadScore, SoftBadge } from "@/components/ui/design-bits";
 import {
   Phone, Mail, MapPin, Sparkles, RefreshCw, Plus, FileText, CalendarDays, Building2,
-  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft,
-  History, UserMinus, UserPlus, Image as ImageIcon, Camera
+  Send, X, Upload, Paperclip, Loader2, Eye, Clock, FileSignature, Check, Trash2, CalendarRange, CheckCircle2, AlertCircle, RotateCcw, ChevronLeft, ChevronDown, ChevronUp,
+  History, UserMinus, UserPlus, Image as ImageIcon, Camera, Pencil, TrendingUp, ShieldAlert
 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
 import { ContractForm, ContractStatusTracker } from "@/components/contract/ContractForm";
 // @ts-ignore
-import { getContractsByDeal, updateContractStatus, markPaymentPaid } from "@/api/contractApi";
+import { getContractsByDeal, updateContractStatus, markPaymentPaid, deleteContract as apiDeleteContract, analyzeContract } from "@/api/contractApi";
+import { refreshLeadScore, refreshInteractionSummary, getAiRecommendations } from "@/api/aiApi";
+import { linkPropertyToDeal as apiLinkProperty } from "@/api/propertyApi";
+import { RagChatWidget } from "@/components/ai/RagChatWidget";
+import { EmailModal } from "@/components/EmailModal";
+import { getUser } from "@/lib/auth";
 import { updateAdminDealStage } from "@/api/adminDashboardApi";
+import ReactMarkdown from 'react-markdown';
 
 const tabs = ["Interactions", "Propriétés", "Rendez-vous", "Contrats"] as const;
+
+function InteractionItem({ 
+  it, 
+  iconMap, 
+  isAdmin, 
+  onEdit, 
+  onDelete 
+}: { 
+  it: InteractionItem, 
+  iconMap: any, 
+  isAdmin?: boolean, 
+  onEdit?: (it: InteractionItem) => void, 
+  onDelete?: (id: string) => void 
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const Icon = iconMap[it.type] || FileText;
+  const formattedDate = new Date(it.occurredAt).toLocaleString('fr-FR', { 
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+  });
+  
+  const isLong = it.description && it.description.length > 80;
+
+  return (
+    <div className="relative mb-4">
+      <div className="absolute -left-8 top-3 w-6 h-6 rounded-full bg-honeydew flex items-center justify-center ring-4 ring-ghost border border-honeydew/20">
+        <Icon size={12} className="text-eerie" />
+      </div>
+      <NeuCard size="sm">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="font-semibold text-sm">{it.type}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{formattedDate}{it.durationMinutes ? ` · ${it.durationMinutes} min` : ""}</span>
+            {isAdmin && (
+              <div className="flex items-center gap-1.5 border-l pl-3 border-border">
+                <button 
+                  onClick={() => onEdit?.(it)}
+                  className="p-1 hover:text-eerie transition-colors"
+                  title="Modifier"
+                >
+                  <Pencil size={12} />
+                </button>
+                <button 
+                  onClick={() => onDelete?.(it.idInteraction)}
+                  className="p-1 hover:text-warn transition-colors"
+                  title="Supprimer"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="mt-1.5">
+          <p className={`text-sm text-muted-foreground leading-relaxed ${!expanded && isLong ? "line-clamp-1" : ""}`}>
+            {it.description}
+          </p>
+          {isLong && (
+            <button 
+              onClick={() => setExpanded(!expanded)}
+              className="mt-1 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 transition-colors"
+            >
+              {expanded ? (
+                <><ChevronUp size={12} /> Voir moins</>
+              ) : (
+                <><ChevronDown size={12} /> Voir plus</>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="mt-2 flex items-center gap-1.5 opacity-50">
+          <Avatar name={it.agentName} size={16} />
+          <span className="text-[10px] font-medium">{it.agentName}</span>
+        </div>
+      </NeuCard>
+    </div>
+  );
+}
 
 export function DossierDetailPage({
   dossierId,
@@ -62,6 +151,7 @@ export function DossierDetailPage({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<string>("Interactions");
+  const user = getUser();
   
   const currentTabs = isAdmin 
     ? ["Interactions", "Propriétés", "Rendez-vous", "Contrats", "Historique"]
@@ -79,6 +169,10 @@ export function DossierDetailPage({
   const [logging, setLogging] = useState(false);
   const [showContractForm, setShowContractForm] = useState(false);
   const [editingDossier, setEditingDossier] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [editingInteractionId, setEditingInteractionId] = useState<string | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [openedViaDetails, setOpenedViaDetails] = useState(false);
   const [editForm, setEditForm] = useState<UpdateDossierRequest>({
     type: "BUYER",
     budgetMin: 0,
@@ -94,7 +188,10 @@ export function DossierDetailPage({
     propertySurfaceM2: 0,
     numRooms: 0,
     propertyFloor: 0,
+    propertyImageUrls: [],
   });
+
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
 
   const [propDetail, setPropDetail] = useState<any | null>(null);
   const [contracts, setContracts] = useState<any[]>([]);
@@ -172,6 +269,81 @@ export function DossierDetailPage({
     }
   });
 
+  const updateInteractionMutation = useMutation({
+    mutationFn: ({ idInteraction, request }: { idInteraction: string, request: CreateInteractionRequest }) => 
+      apiUpdateInteraction(idInteraction, request),
+    onSuccess: () => {
+      toast.success("Interaction mise à jour");
+      queryClient.invalidateQueries({ queryKey: ["interactions", id] });
+      setEditingInteractionId(null);
+      setLogging(false);
+      setNewDesc("");
+      setNewDurationHrs(0);
+      setNewDurationMins(0);
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour");
+    }
+  });
+
+  const deleteInteractionMutation = useMutation({
+    mutationFn: apiDeleteInteraction,
+    onSuccess: () => {
+      toast.success("Interaction supprimée");
+      queryClient.invalidateQueries({ queryKey: ["interactions", id] });
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression");
+    }
+  });
+
+  const aiRefreshMutation = useMutation({
+    mutationFn: refreshLeadScore,
+    onSuccess: () => {
+      toast.success("Score IA mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: (e: any) => {
+      toast.error("Échec du rafraîchissement IA : " + e.message);
+    }
+  });
+
+  const aiSummaryRefreshMutation = useMutation({
+    mutationFn: refreshInteractionSummary,
+    onSuccess: () => {
+      toast.success("Résumé IA mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: (e: any) => {
+      toast.error("Échec du rafraîchissement du résumé : " + e.message);
+    }
+  });
+
+  const dismissSuggestionMutation = useMutation({
+    mutationFn: apiDismissStageSuggestion,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dossier", id] });
+    },
+    onError: (e: any) => {
+      toast.error("Erreur lors du rejet de la suggestion : " + e.message);
+    }
+  });
+
+  const aiRecommendationMutation = useMutation({
+    mutationFn: (dealId: string) => getAiRecommendations(dealId),
+    onSuccess: (data) => {
+      setAiRecommendations(data);
+      if (data && data.length > 0) {
+        toast.success(`${data.length} recommandations trouvées !`);
+      } else {
+        toast.info("Aucune recommandation trouvée.");
+      }
+    },
+    onError: (e: any) => {
+      toast.error("Échec de la recommandation IA : " + e.message);
+    }
+  });
+
   const meetingMutation = useMutation({
     mutationFn: apiCreateMeeting,
     onSuccess: () => {
@@ -244,6 +416,32 @@ export function DossierDetailPage({
     },
     onError: (e: any) => {
       toast.error("Erreur : " + e.message);
+    }
+  });
+
+  const linkPropertyMutation = useMutation({
+    mutationFn: ({ dealId, prop }: { dealId: string, prop: any }) => {
+      const linkRequest = {
+        externalId: prop.propertyId || prop.id,
+        title: prop.title,
+        address: prop.address || prop.title,
+        city: prop.city || dossier?.preferredArea || "",
+        price: prop.price,
+        surfaceM2: prop.sizeM2 || prop.surfaceM2,
+        numRooms: prop.beds || prop.numRooms,
+        listingUrl: prop.listingUrl,
+        propertyTypeSpecific: prop.type,
+        imageUrls: [prop.imageUrl]
+      };
+      return apiLinkProperty(dealId, linkRequest);
+    },
+    onSuccess: () => {
+      toast.success("Propriété liée au dossier !");
+      queryClient.invalidateQueries({ queryKey: ["deal-properties", id] });
+      fetchDossierData();
+    },
+    onError: (e: any) => {
+      toast.error("Erreur lors de la liaison : " + e.message);
     }
   });
 
@@ -354,6 +552,35 @@ export function DossierDetailPage({
     }
   };
 
+  const handleDeleteContract = async (contractId: string) => {
+    if (!confirm("Voulez-vous vraiment supprimer ce brouillon de contrat ?")) return;
+    try {
+      await apiDeleteContract(contractId);
+      setContracts((prev) => prev.filter((c) => c.idContract !== contractId));
+      toast.success("Contrat supprimé");
+    } catch (e: any) {
+      toast.error("Erreur : " + e.message);
+    }
+  };
+
+  const [analyzingContractId, setAnalyzingContractId] = useState<string | null>(null);
+  const [aiModalContractId, setAiModalContractId] = useState<string | null>(null);
+
+  const handleAnalyzeContract = async (contractId: string) => {
+    setAnalyzingContractId(contractId);
+    try {
+      const { analysis } = await analyzeContract(contractId);
+      setContracts((prev) =>
+        prev.map((c) => (c.idContract === contractId ? { ...c, aiRiskSummary: analysis } : c))
+      );
+      toast.success("Analyse IA terminée !");
+    } catch (e: any) {
+      toast.error("Échec de l'analyse : " + e.message);
+    } finally {
+      setAnalyzingContractId(null);
+    }
+  };
+
   const handleLogInteraction = () => {
     if (!newDesc.trim()) {
       toast.error("Veuillez saisir une description");
@@ -368,7 +595,30 @@ export function DossierDetailPage({
       occurredAt: occurredAt,
       durationMinutes: totalMinutes > 0 ? totalMinutes : undefined,
     };
-    mutation.mutate(request);
+    
+    if (editingInteractionId) {
+      updateInteractionMutation.mutate({ idInteraction: editingInteractionId, request });
+    } else {
+      mutation.mutate(request);
+    }
+  };
+
+  const handleEditInteraction = (it: InteractionItem) => {
+    setNewType(it.type);
+    const date = new Date(it.occurredAt);
+    setNewDate(date.toISOString().split('T')[0]);
+    setNewTime(date.toTimeString().split(' ')[0].substring(0, 5));
+    setNewDurationHrs(Math.floor((it.durationMinutes || 0) / 60));
+    setNewDurationMins((it.durationMinutes || 0) % 60);
+    setNewDesc(it.description);
+    setEditingInteractionId(it.idInteraction);
+    setLogging(true);
+  };
+
+  const handleDeleteInteraction = (id: string) => {
+    if (window.confirm("Supprimer cette interaction ?")) {
+      deleteInteractionMutation.mutate(id);
+    }
   };
 
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -435,6 +685,32 @@ export function DossierDetailPage({
       propertyFloor: dossier.propertyFloor ?? -1,
       propertyImageUrls: dossier.propertyImageUrls || [],
     });
+    setIsReadOnly(true);
+    setOpenedViaDetails(true);
+    setEditingDossier(true);
+  };
+
+  const handleOpenDirectEdit = () => {
+    if (!dossier) return;
+    setEditForm({
+      type: dossier.clientType,
+      budgetMin: dossier.budgetMin,
+      budgetMax: dossier.budgetMax,
+      preferredArea: dossier.preferredArea,
+      preferredSizeM2: dossier.preferredSizeM2,
+      preferredFloor: dossier.preferredFloor ?? -1,
+      propertySpecificType: dossier.propertyType,
+      propertyTitle: dossier.propertyTitle || "",
+      address: dossier.address || "",
+      city: dossier.city || "",
+      askingPrice: dossier.askingPrice || 0,
+      propertySurfaceM2: dossier.propertySurfaceM2 || 0,
+      numRooms: dossier.numRooms || 0,
+      propertyFloor: dossier.propertyFloor ?? -1,
+      propertyImageUrls: dossier.propertyImageUrls || [],
+    });
+    setIsReadOnly(false);
+    setOpenedViaDetails(false);
     setEditingDossier(true);
   };
 
@@ -500,7 +776,7 @@ export function DossierDetailPage({
       <div className="col-span-12 lg:col-span-3 space-y-5">
         <NeuCard className="text-center relative group">
           <button 
-            onClick={handleOpenEdit}
+            onClick={handleOpenDirectEdit}
             className="absolute top-4 right-4 p-2 rounded-xl neu-sm text-muted-foreground hover:text-eerie hover:bg-alice/50 transition-all opacity-0 group-hover:opacity-100"
             title="Modifier le dossier"
           >
@@ -509,31 +785,26 @@ export function DossierDetailPage({
           <Avatar name={dossier.clientName} size={88} />
           <h2 className="font-bold text-lg mt-3">{dossier.clientName}</h2>
           <SoftBadge tone="info" className="mt-1">{dossier.clientType === 'BUYER' ? 'Acheteur' : 'Vendeur'}</SoftBadge>
-          <div className="mt-2">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-              dossier.stage === 'CLOSED' ? 'bg-green-100 text-green-700' :
-              dossier.stage === 'LOST'   ? 'bg-red-100 text-red-600' :
-              dossier.stage === 'HOT'    ? 'bg-orange-100 text-orange-600' :
-              dossier.stage === 'WARM'   ? 'bg-yellow-100 text-yellow-600' :
-              dossier.stage === 'NEGOTIATION' ? 'bg-purple-100 text-purple-600' :
-              'bg-blue-100 text-blue-600'
-            }`}>
-              {dossier.stage}
-            </span>
-          </div>
           <div className="text-left mt-5 space-y-2 text-sm">
-            <a href={`tel:${dossier.clientPhone}`} className="flex items-center gap-2 hover:underline">
+            <a 
+              href={`tel:${dossier.clientPhone}`} 
+              className="flex items-center gap-2 hover:underline"
+              onClick={() => toast.info(`Appel vers ${dossier.clientPhone}…`)}
+            >
               <Phone size={14} /> {dossier.clientPhone}
             </a>
-            <a href={`mailto:${dossier.clientEmail}`} className="flex items-center gap-2 hover:underline">
+            <button 
+              onClick={() => setShowEmailModal(true)}
+              className="flex items-center gap-2 hover:underline text-left w-full"
+            >
               <Mail size={14} /> {dossier.clientEmail}
-            </a>
+            </button>
           </div>
           <div className="mt-5 pt-5 border-t border-border space-y-3 text-left">
             <div>
               <div className="text-xs text-muted-foreground">Budget</div>
               <div className="text-xl font-bold">
-                {(dossier.budgetMin || 0).toLocaleString()} - {(dossier.budgetMax || 0).toLocaleString()} MAD
+                {(dossier.budgetMin || 0).toLocaleString()} - {(dossier.budgetMax || 0).toLocaleString()} $
               </div>
             </div>
             <div>
@@ -551,13 +822,25 @@ export function DossierDetailPage({
               onClick={handleOpenEdit}
               className="w-full mt-4 py-2.5 rounded-xl neu-sm text-xs font-bold text-muted-foreground hover:text-eerie hover:bg-alice/50 transition-all flex items-center justify-center gap-2"
             >
-              <RotateCcw size={12} className="rotate-45" /> Modifier dossier
+              <FileText size={12} /> Détails du dossier
             </button>
           </div>
         </NeuCard>
 
         <NeuCard className="text-center bg-alice/40">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Lead Score IA</div>
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+              <Sparkles size={12} className="text-primary" /> Lead Score IA
+            </div>
+            <button 
+              onClick={() => aiRefreshMutation.mutate(id!)}
+              disabled={aiRefreshMutation.isPending}
+              className="p-1 hover:bg-alice rounded-full transition-all disabled:opacity-50"
+              title="Recalculer le score"
+            >
+              <RefreshCw size={14} className={`text-muted-foreground ${aiRefreshMutation.isPending ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <div className="my-4 flex justify-center">
             <LeadScore score={dossier.aiLeadScore || 0} size={120} />
           </div>
@@ -569,6 +852,50 @@ export function DossierDetailPage({
 
       {/* Center — activity */}
       <div className="col-span-12 lg:col-span-6 space-y-5">
+        {/* AI Stage Suggestion Banner */}
+        {dossier.aiStageSuggestion && dossier.aiStageSuggestion !== dossier.stage && (
+          <NeuCard size="sm" className="bg-white border-2 border-[#CFDECA] shadow-xl overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-4 text-[#CFDECA] opacity-30 group-hover:opacity-50 transition-opacity">
+              <Sparkles size={80} />
+            </div>
+            <div className="p-4 relative z-10">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#CFDECA] text-eerie flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Sparkles size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#CFDECA]">Suggestion IA</span>
+                  </div>
+                  <h3 className="text-base font-bold text-eerie mt-0.5">
+                    Passer à l'étape <span className="px-2 py-0.5 bg-[#CFDECA] text-eerie rounded-lg ml-1">{dossier.aiStageSuggestion}</span> ?
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed font-medium">
+                    "{dossier.aiStageSuggestionReason}"
+                  </p>
+                  <div className="flex gap-3 mt-5">
+                    <button
+                      onClick={() => stageMutation.mutate({ id: id!, stage: dossier.aiStageSuggestion! })}
+                      disabled={stageMutation.isPending}
+                      className="px-6 py-2.5 bg-[#CFDECA] text-eerie text-xs font-bold uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
+                    >
+                      {stageMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                      Confirmer le changement
+                    </button>
+                    <button
+                      onClick={() => dismissSuggestionMutation.mutate(id!)}
+                      disabled={dismissSuggestionMutation.isPending}
+                      className="px-6 py-2.5 bg-alice/50 text-muted-foreground text-xs font-bold uppercase tracking-widest rounded-xl hover:text-eerie hover:bg-[#CFDECA]/30 transition-all"
+                    >
+                      Ignorer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </NeuCard>
+        )}
+
         {/* Pipeline Status Bar */}
         <NeuCard size="sm" className="p-1 px-1.5 md:p-1.5">
           <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar py-1">
@@ -613,18 +940,23 @@ export function DossierDetailPage({
         </NeuCard>
 
         {tab === "Interactions" && (
-          <>
-            {!isAdmin && (
-              <NeuCard>
+          <div className="space-y-5">
+            <NeuCard>
               {!logging ? (
                 <button
-                  onClick={() => setLogging(true)}
+                  onClick={() => {
+                    setEditingInteractionId(null);
+                    setLogging(true);
+                  }}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-eerie text-ghost text-sm font-medium hover:opacity-90"
                 >
-                  <Plus size={16} /> Logger une interaction
+                  <Plus size={16} /> {isAdmin ? "Ajouter une note/interaction" : "Logger une interaction"}
                 </button>
               ) : (
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-sm font-bold">{editingInteractionId ? "Modifier l'interaction" : "Nouvelle interaction"}</h3>
+                  </div>
                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {[
                       { label: "Appel", value: "CALL" },
@@ -724,12 +1056,15 @@ export function DossierDetailPage({
                       {mutation.isPending && <Loader2 size={16} className="animate-spin" />}
                       Sauvegarder
                     </button>
-                    <button onClick={() => setLogging(false)} className="px-5 py-2.5 rounded-lg neu-sm text-sm">Annuler</button>
+                    <button onClick={() => {
+                      setLogging(false);
+                      setEditingInteractionId(null);
+                      setNewDesc("");
+                    }} className="px-5 py-2.5 rounded-lg neu-sm text-sm">Annuler</button>
                   </div>
                 </div>
               )}
             </NeuCard>
-            )}
             
             <div className="relative pl-8 mt-6">
               <div className="absolute left-3 top-2 bottom-2 w-px bg-border " />
@@ -750,7 +1085,27 @@ export function DossierDetailPage({
                     <NeuCard size="sm">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <span className="font-semibold text-sm">{it.type}</span>
-                        <span className="text-xs text-muted-foreground">{formattedDate}{it.durationMinutes ? ` · ${it.durationMinutes} min` : ""}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground">{formattedDate}{it.durationMinutes ? ` · ${it.durationMinutes} min` : ""}</span>
+                          {isAdmin && (
+                            <div className="flex items-center gap-1.5 border-l pl-3 border-border">
+                              <button 
+                                onClick={() => handleEditInteraction(it)}
+                                className="p-1 hover:text-eerie transition-colors"
+                                title="Modifier"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteInteraction(it.idInteraction)}
+                                className="p-1 hover:text-warn transition-colors"
+                                title="Supprimer"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1.5">{it.description}</p>
                       <div className="mt-2 flex items-center gap-1.5 opacity-50">
@@ -762,15 +1117,20 @@ export function DossierDetailPage({
                 );
               })}
             </div>
-          </>
+            {isAdmin && (
+              <div className="pt-4">
+                <RagChatWidget dealId={id!} />
+              </div>
+            )}
+          </div>
         )}
 
         {tab === "Propriétés" && (
           <>
-            {!isAdmin && (
-              <div className="flex gap-3 flex-wrap">
+            {(dossier.clientType === 'BUYER' || !isAdmin) && (
+              <div className="flex gap-3 flex-wrap mb-4">
                 <Link 
-                  to="/agent/recherche" 
+                  to={isAdmin ? "/admin/recherche" : "/agent/recherche"} 
                   search={{ 
                     dealId: id,
                     city: dossier.preferredArea || dossier.city || "",
@@ -783,50 +1143,167 @@ export function DossierDetailPage({
                   <Building2 size={16} /> Rechercher biens
                 </Link>
                 <button
-                  onClick={() => toast.success("Données synchronisées avec la DB")}
-                  className="flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl bg-vanilla text-eerie text-sm font-medium hover:opacity-90"
+                  onClick={() => aiRecommendationMutation.mutate(id!)}
+                  disabled={aiRecommendationMutation.isPending}
+                  className={`flex-1 min-w-[180px] flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${
+                    aiRecommendationMutation.isPending ? "bg-vanilla/50 cursor-wait" : "bg-vanilla text-eerie hover:opacity-90 active:scale-[0.98]"
+                  } text-sm font-medium shadow-md`}
                 >
-                  <Sparkles size={16} /> Recommandation IA
+                  {aiRecommendationMutation.isPending ? (
+                    <><Loader2 size={16} className="animate-spin" /> Analyse en cours...</>
+                  ) : (
+                    <><Sparkles size={16} /> {aiRecommendations.length > 0 ? `${aiRecommendations.length} recommandations trouvées` : "Demander une recommandation IA"}</>
+                  )}
                 </button>
               </div>
             )}
-            <div className="grid sm:grid-cols-2 gap-4">
-              {linkedProperties.map((p) => (
-                <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
-                  <div className="relative">
-                    <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
-                    {p.offerStatus === 'ACCEPTED' && (
-                      <div className="absolute top-2 right-2 bg-honeydew text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
-                        <Check size={10} /> ACCEPTEE
+
+            {/* AI Recommendations Section */}
+            {aiRecommendations.length > 0 && tab === "Propriétés" && (
+              <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-2 mb-4 px-1">
+                  <Sparkles size={18} className="text-primary" />
+                  <h3 className="font-bold text-eerie">Recommandations IA pour {dossier.clientName}</h3>
+                </div>
+                <div className="grid gap-4">
+                  {aiRecommendations.map((rec: any) => (
+                    <NeuCard key={rec.propertyId} className="border-2 border-primary/10 overflow-hidden">
+                      <div className="flex flex-col md:flex-row gap-5">
+                        <div className="w-full md:w-48 h-32 shrink-0 relative">
+                          <img 
+                            src={rec.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} 
+                            alt={rec.title} 
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                          <div className="absolute top-2 left-2 bg-eerie text-ghost text-[10px] font-black px-2 py-1 rounded-lg shadow-xl">
+                            TOP #{rec.rank}
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-bold text-base text-eerie">{rec.title}</h4>
+                              <p className="text-xs text-muted-foreground">{rec.type} · {rec.sizeM2}m² · {rec.beds} ch.</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-black text-primary text-lg">{rec.price?.toLocaleString()} $</div>
+                            </div>
+                          </div>
+                          
+                          <div className="bg-alice/40 p-3 rounded-xl border border-alice relative">
+                             <div className="text-[10px] font-black uppercase tracking-widest text-eerie mb-1">Justification IA</div>
+                             <p className="text-sm italic leading-relaxed text-eerie font-medium">
+                               "{rec.justification}"
+                             </p>
+                          </div>
+
+                          <div className="flex gap-3 pt-1">
+                            <button
+                              onClick={() => linkPropertyMutation.mutate({ dealId: id!, prop: rec })}
+                              disabled={linkPropertyMutation.isPending}
+                              className="flex-1 py-2 rounded-lg bg-eerie text-ghost text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                            >
+                              {linkPropertyMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                              Lier ce bien au dossier
+                            </button>
+                            {rec.title ? (
+                              <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rec.title)}`}
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 rounded-lg neu-sm text-xs font-bold hover:bg-alice/50 transition-all flex items-center justify-center gap-2"
+                              >
+                                <MapPin size={14} /> Voir sur Maps
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="font-medium text-sm">{p.address}</div>
-                  <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
-                    <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'info')}>
-                      {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Négociation")}
-                    </SoftBadge>
-                  </div>
-                  
-                  {p.offerStatus === 'PENDING' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        acceptOfferMutation.mutate(p.idOffer);
-                      }}
-                      disabled={acceptOfferMutation.isPending}
-                      className="w-full mt-3 py-2 rounded-lg bg-honeydew text-eerie text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                    >
-                      {acceptOfferMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                      Accepter l'offre
-                    </button>
+                    </NeuCard>
+                  ))}
+                </div>
+                <div className="mt-4 flex justify-center">
+                   <button 
+                    onClick={() => setAiRecommendations([])}
+                    className="text-xs font-bold text-muted-foreground hover:text-warn transition-colors flex items-center gap-1.5"
+                   >
+                     <X size={12} /> Effacer les recommandations
+                   </button>
+                </div>
+                <div className="h-px bg-border/20 my-8 w-full" />
+              </div>
+            )}
+            
+            <div className="grid sm:grid-cols-2 gap-4">
+              {dossier.clientType === 'SELLER' ? (
+                // Pour un vendeur, on affiche uniquement sa propriété à vendre
+                dossier.address ? (
+                  <NeuCard size="sm" pressable onClick={() => setPropDetail({
+                    address: dossier.address,
+                    title: dossier.propertyTitle,
+                    city: dossier.city,
+                    price: dossier.askingPrice,
+                    surfaceM2: dossier.propertySurfaceM2,
+                    numRooms: dossier.numRooms,
+                    imageUrls: dossier.propertyImageUrls
+                  })}>
+                    <div className="relative">
+                      <img src={dossier.propertyImageUrls?.[0] || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={dossier.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                      <div className="absolute top-2 right-2 bg-vanilla text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                        BIEN À VENDRE
+                      </div>
+                    </div>
+                    <div className="font-medium text-sm">{dossier.propertyTitle || dossier.address}</div>
+                    <div className="text-xs text-muted-foreground">{dossier.propertySurfaceM2} m² · {dossier.numRooms} pcs</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="font-bold text-sm">{dossier.askingPrice?.toLocaleString('en-US')} $</span>
+                      <SoftBadge tone="success">En vente</SoftBadge>
+                    </div>
+                  </NeuCard>
+                ) : (
+                  <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété enregistrée pour ce vendeur.</p>
+                )
+              ) : (
+                // Pour un acheteur, on affiche les propriétés liées/proposées
+                <>
+                  {linkedProperties.map((p: any) => (
+                    <NeuCard key={p.idProperty} size="sm" pressable onClick={() => setPropDetail(p)}>
+                      <div className="relative">
+                        <img src={p.imageUrls?.[0] || p.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80"} alt={p.address} className="w-full h-32 object-cover rounded-lg mb-3" />
+                        {p.offerStatus === 'ACCEPTED' && (
+                          <div className="absolute top-2 right-2 bg-honeydew text-eerie text-[10px] font-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-1">
+                            <Check size={10} /> ACCEPTEE
+                          </div>
+                        )}
+                      </div>
+                      <div className="font-medium text-sm">{p.address}</div>
+                      <div className="text-xs text-muted-foreground">{p.surfaceM2} m² · {p.numRooms} pcs</div>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="font-bold text-sm">{p.price?.toLocaleString('en-US')} $</span>
+                        <SoftBadge tone={p.isAvailable ? "success" : (p.offerStatus === 'ACCEPTED' ? 'success' : 'warn')}>
+                          {p.offerStatus === 'ACCEPTED' ? "Vendu" : (p.isAvailable ? "Disponible" : "Rejetée")}
+                        </SoftBadge>
+                      </div>
+                      
+                      {p.offerStatus === 'PENDING' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            acceptOfferMutation.mutate(p.idOffer);
+                          }}
+                          disabled={acceptOfferMutation.isPending}
+                          className="w-full mt-3 py-2 rounded-lg bg-honeydew text-eerie text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                        >
+                          {acceptOfferMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                          Accepter l'offre
+                        </button>
+                      )}
+                    </NeuCard>
+                  ))}
+                  {linkedProperties.length === 0 && !loadingContext && (
+                    <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
                   )}
-                </NeuCard>
-              ))}
-              {linkedProperties.length === 0 && !loadingContext && (
-                <p className="col-span-2 text-center py-10 text-xs text-muted-foreground">Aucune propriété liée à ce dossier.</p>
+                </>
               )}
             </div>
           </>
@@ -834,8 +1311,7 @@ export function DossierDetailPage({
 
         {tab === "Rendez-vous" && (
           <div className="space-y-4">
-            {!isAdmin && (
-              <NeuCard>
+            <NeuCard>
                 {!planningMeeting ? (
                   <button
                     onClick={() => setPlanningMeeting(true)}
@@ -935,7 +1411,6 @@ export function DossierDetailPage({
                   </div>
                 )}
               </NeuCard>
-            )}
 
             {/* Status Navigation Bar */}
             <div className="flex justify-center gap-1.5 overflow-x-auto no-scrollbar py-1">
@@ -1197,34 +1672,34 @@ export function DossierDetailPage({
                 })()
               )}
             </div>
-            <Link to="/agent/agenda" className="w-full mt-2 py-2 text-xs text-muted-foreground hover:text-eerie transition-colors flex items-center justify-center gap-1.5">
-              Voir tout l'agenda
-            </Link>
+            {!isAdmin && (
+              <Link to="/agent/agenda" className="w-full mt-2 py-2 text-xs text-muted-foreground hover:text-eerie transition-colors flex items-center justify-center gap-1.5">
+                Voir tout l'agenda
+              </Link>
+            )}
           </div>
         )}
 
         {tab === "Contrats" && (
           <div className="space-y-4">
-            {!isAdmin && (
-              <button
-                onClick={() => {
-                  if (!acceptedProperty) {
-                    toast.warning("Veuillez d'abord accepter une offre de propriété pour ce dossier.");
-                    setTab("Propriétés");
-                    return;
-                  }
-                  setPropDetail(acceptedProperty);
-                  setShowContractForm(true);
-                }}
-                className={`w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                  acceptedProperty 
-                  ? "bg-eerie text-ghost hover:opacity-90 shadow-lg" 
-                  : "bg-alice text-muted-foreground/60 cursor-not-allowed"
-                }`}
-              >
-                <Plus size={16} /> Nouveau contrat {!acceptedProperty && "(Sélectionnez un bien d'abord)"}
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (!acceptedProperty) {
+                  toast.warning("Veuillez d'abord accepter une offre de propriété pour ce dossier.");
+                  setTab("Propriétés");
+                  return;
+                }
+                setPropDetail(acceptedProperty);
+                setShowContractForm(true);
+              }}
+              className={`w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                acceptedProperty 
+                ? "bg-eerie text-ghost hover:opacity-90 shadow-lg" 
+                : "bg-alice text-muted-foreground/60 cursor-not-allowed"
+              }`}
+            >
+              <Plus size={16} /> Nouveau contrat {!acceptedProperty && "(Sélectionnez un bien d'abord)"}
+            </button>
 
             {/* Historique des contrats depuis l'API */}
             {loadingContext ? (
@@ -1246,18 +1721,29 @@ export function DossierDetailPage({
                         <FileSignature size={16} /> {index === 0 ? "Contrat en cours" : "Contrat archivé"}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M MAD
+                        Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M $
                       </p>
                     </div>
-                    {c.pdfUrl && (
-                      <button
-                        onClick={() => window.open(c.pdfUrl, '_blank')}
-                        className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
-                        title="Aperçu du PDF"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {c.status === "DRAFT" && (
+                        <button
+                          onClick={() => handleDeleteContract(c.idContract)}
+                          className="p-2 rounded-lg neu-sm hover:neu-pressable text-warn transition-all flex items-center justify-center shrink-0"
+                          title="Supprimer le brouillon"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      {c.pdfUrl && (
+                        <button
+                          onClick={() => window.open(c.pdfUrl, '_blank')}
+                          className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
+                          title="Aperçu du PDF"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Tracker statut */}
@@ -1265,6 +1751,56 @@ export function DossierDetailPage({
                     contract={c}
                     onStatusChange={(status: string) => handleStatusChange(c.idContract, status)}
                   />
+
+                  {/* Analyse IA */}
+                  <div className="mt-8 pt-6 border-t border-border/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles size={12} className="text-primary" /> Analyse des risques IA
+                      </p>
+                    </div>
+
+                    {c.aiRiskSummary ? (
+                      <div className="p-4 rounded-2xl bg-alice/30 border border-alice/50 animate-in fade-in duration-500 space-y-2">
+                        <p className="text-sm text-eerie/80 line-clamp-2 leading-relaxed">{c.aiRiskSummary.replace(/[#*_`]/g, '')}</p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setAiModalContractId(c.idContract)}
+                            className="text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-80 transition-all"
+                          >
+                            Voir l'analyse complète →
+                          </button>
+                          {c.status === "DRAFT" && (
+                            <button
+                              onClick={() => handleAnalyzeContract(c.idContract)}
+                              disabled={analyzingContractId === c.idContract}
+                              className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-eerie transition-all disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {analyzingContractId === c.idContract ? <><Loader2 size={10} className="animate-spin" /> En cours…</> : <><RefreshCw size={10}/> Ré-analyser</>}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => c.status === "DRAFT" && handleAnalyzeContract(c.idContract)}
+                        disabled={analyzingContractId === c.idContract || c.status !== "DRAFT"}
+                        className={`w-full py-3 px-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-2 transition-all text-sm font-semibold ${
+                          c.status === "DRAFT"
+                            ? "border-primary/30 text-primary hover:bg-primary/5 cursor-pointer disabled:opacity-60"
+                            : "border-border/30 text-muted-foreground/40 cursor-not-allowed"
+                        }`}
+                      >
+                        {analyzingContractId === c.idContract ? (
+                          <><Loader2 size={14} className="animate-spin" /> Analyse en cours…</>
+                        ) : c.status === "DRAFT" ? (
+                          <><Sparkles size={14} /> Analyser les risques avec l'IA</>
+                        ) : (
+                          <><ShieldAlert size={14} /> Analyse uniquement pour les brouillons</>
+                        )}
+                      </button>
+                    )}
+                  </div>
 
                   {/* Calendrier de paiement */}
                   {c.payments && c.payments.length > 0 && (
@@ -1292,7 +1828,7 @@ export function DossierDetailPage({
                               <div className="text-xs text-muted-foreground">{p.dueDate}</div>
                             </div>
                             <div className="text-sm font-bold shrink-0">
-                              {(p.amount || 0).toLocaleString("fr-MA")} MAD
+                              {(p.amount || 0).toLocaleString("fr-MA")} $
                             </div>
                             {!p.isPaid && !isAdmin && (
                                <button 
@@ -1424,16 +1960,14 @@ export function DossierDetailPage({
                       <Eye size={11} />
                     </button>
                   )}
-                  {!isAdmin && (
-                    <button
-                      onClick={() => handleDeleteDocument(f.idDocument || f.id)}
-                      className="w-6 h-6 rounded flex items-center justify-center hover:bg-warn/10 text-warn/70 hover:text-warn"
-                      aria-label="Supprimer"
-                      title="Supprimer le document"
-                    >
-                      <X size={11} />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleDeleteDocument(f.idDocument || f.id)}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-warn/10 text-warn/70 hover:text-warn"
+                    aria-label="Supprimer"
+                    title="Supprimer le document"
+                  >
+                    <X size={11} />
+                  </button>
                 </div>
               </div>
             )})}
@@ -1445,53 +1979,51 @@ export function DossierDetailPage({
             )}
           </div>
 
-          {!isAdmin && (
-            <div className="mt-4 space-y-2">
-              <label htmlFor="new-doc-type" className="sr-only">Type de document</label>
-              <select
-                id="new-doc-type"
-                value={newDocType}
-                onChange={(e) => setNewDocType(e.target.value)}
-                className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
-                title="Type de document"
+          <div className="mt-4 space-y-2">
+            <label htmlFor="new-doc-type" className="sr-only">Type de document</label>
+            <select
+              id="new-doc-type"
+              value={newDocType}
+              onChange={(e) => setNewDocType(e.target.value)}
+              className="w-full px-3 py-2 neu-inset rounded-lg bg-transparent text-sm cursor-pointer"
+              title="Type de document"
+            >
+              <option value="INCOM_CERT">Certificat de revenus</option>
+              <option value="BANK_STATMENT">Relevé bancaire</option>
+              <option value="NATIONAL_ID">Carte d'identité</option>
+              <option value="PROOF_OF_ADDRESS">Justificatif de domicile</option>
+              <option value="CONTRACT_SIGNED">Contrat signé</option>
+              <option value="OTHER">Autre</option>
+            </select>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple={false}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={handleFileUpload}
+              title="Choisir un fichier"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
               >
-                <option value="INCOM_CERT">Certificat de revenus</option>
-                <option value="BANK_STATMENT">Relevé bancaire</option>
-                <option value="NATIONAL_ID">Carte d'identité</option>
-                <option value="PROOF_OF_ADDRESS">Justificatif de domicile</option>
-                <option value="CONTRACT_SIGNED">Contrat signé</option>
-                <option value="OTHER">Autre</option>
-              </select>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple={false}
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                className="hidden"
-                onChange={handleFileUpload}
-                title="Choisir un fichier"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="py-2.5 rounded-lg neu-sm hover:neu-pressable text-xs font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {uploading ? (
-                    <><Loader2 size={12} className="animate-spin" /> Upload…</>
-                  ) : (
-                    <><Upload size={12} /> Ajouter</>
-                  )}
-                </button>
-                <button
-                  onClick={handleRequestDocument}
-                  className="py-2.5 rounded-lg bg-alice text-eerie text-xs font-medium hover:bg-alice/80 flex items-center justify-center gap-2"
-                >
-                  <Plus size={12} /> Demander
-                </button>
-              </div>
+                {uploading ? (
+                  <><Loader2 size={12} className="animate-spin" /> Upload…</>
+                ) : (
+                  <><Upload size={12} /> Ajouter</>
+                )}
+              </button>
+              <button
+                onClick={handleRequestDocument}
+                className="py-2.5 rounded-lg bg-alice text-eerie text-xs font-medium hover:bg-alice/80 flex items-center justify-center gap-2"
+              >
+                <Plus size={12} /> Demander
+              </button>
             </div>
-          )}
+          </div>
         </NeuCard>
 
 
@@ -1522,6 +2054,51 @@ export function DossierDetailPage({
           </div>
         </div>
       )}
+
+      {/* AI Risk Analysis Modal */}
+      {aiModalContractId && (() => {
+        const c = contracts.find(c => c.idContract === aiModalContractId);
+        if (!c?.aiRiskSummary) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setAiModalContractId(null)}>
+            <div className="absolute inset-0 bg-eerie/70 backdrop-blur-md" />
+            <div
+              className="relative bg-ghost rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 pb-4 border-b border-border/30 shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-alice flex items-center justify-center text-primary">
+                    <Sparkles size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base">Analyse des Risques IA</h3>
+                    <p className="text-xs text-muted-foreground">R\u00e9f : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()}</p>
+                  </div>
+                </div>
+                <button onClick={() => setAiModalContractId(null)} className="w-9 h-9 rounded-full neu-sm flex items-center justify-center hover:bg-alice transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="overflow-y-auto soft-scroll p-6 prose prose-sm max-w-none prose-headings:font-bold prose-p:leading-relaxed prose-li:my-1 text-eerie/80">
+                <ReactMarkdown>{c.aiRiskSummary}</ReactMarkdown>
+              </div>
+              <div className="shrink-0 p-4 border-t border-border/30 flex gap-2">
+                {c.status === "DRAFT" && (
+                  <button
+                    onClick={() => handleAnalyzeContract(c.idContract)}
+                    disabled={analyzingContractId === c.idContract}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl neu-sm text-xs font-bold hover:bg-alice transition-all disabled:opacity-50"
+                  >
+                    {analyzingContractId === c.idContract ? <><Loader2 size={12} className="animate-spin" /> En cours\u2026</> : <><RefreshCw size={12} /> R\u00e9-analyser</>}
+                  </button>
+                )}
+                <button onClick={() => setAiModalContractId(null)} className="flex-1 py-2 rounded-xl bg-eerie text-ghost text-xs font-bold hover:opacity-90 transition-all">Fermer</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Property quick view */}
       {propDetail && (
@@ -1571,7 +2148,7 @@ export function DossierDetailPage({
               {dossier.clientType === 'BUYER' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label htmlFor="edit-budget-min" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum (MAD)</label>
+                    <label htmlFor="edit-budget-min" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Minimum ($)</label>
                     <input 
                       id="edit-budget-min"
                       type="number"
@@ -1582,7 +2159,7 @@ export function DossierDetailPage({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="edit-budget-max" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum (MAD)</label>
+                    <label htmlFor="edit-budget-max" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Budget Maximum ($)</label>
                     <input 
                       id="edit-budget-max"
                       type="number"
@@ -1678,7 +2255,7 @@ export function DossierDetailPage({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="edit-asking-price" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé (MAD)</label>
+                    <label htmlFor="edit-asking-price" className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-1">Prix Demandé ($)</label>
                     <input 
                       id="edit-asking-price"
                       type="number"

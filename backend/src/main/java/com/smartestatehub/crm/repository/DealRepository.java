@@ -108,16 +108,28 @@ public interface DealRepository extends JpaRepository<Deal, UUID> {
             """)
     List<Object[]> countDealsGroupedByClientSource();
 
-    @Query("""
-            SELECT d FROM Deal d
-            WHERE d.deletedAt IS NULL AND d.stage = :stage
-            """)
+    @Query("SELECT d FROM Deal d WHERE d.deletedAt IS NULL AND d.stage = :stage")
     List<Deal> findByDeletedAtIsNullAndStage(@Param("stage") DealStage stage);
 
     @Query("SELECT MIN(d.createdAt) FROM Deal d WHERE d.deletedAt IS NULL")
     LocalDateTime findEarliestDealCreatedAt();
 
+    @Query("SELECT d FROM Deal d WHERE d.deletedAt IS NULL AND d.stage = :stage AND d.updatedAt >= :from AND d.updatedAt < :to")
+    List<Deal> findDealsClosedBetween(@Param("stage") DealStage stage, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query("""
+            SELECT c.source, COUNT(d)
+            FROM Deal d
+            JOIN d.clientFolder cf
+            JOIN cf.client c
+            WHERE d.deletedAt IS NULL
+              AND d.createdAt >= :from AND d.createdAt < :to
+            GROUP BY c.source
+            """)
+    List<Object[]> countDealsGroupedByClientSourceBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
     long countByClientFolder_AssignedAgent_IdUserAndStageAndDeletedAtIsNull(UUID agentId, DealStage stage);
+
     @Query("""
             SELECT d FROM Deal d
             JOIN FETCH d.clientFolder cf

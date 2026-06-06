@@ -23,7 +23,7 @@ function ClientContracts() {
 
   const contracts = data?.contracts || [];
 
-  const formatPrice = (p?: number) => p ? new Intl.NumberFormat('fr-MA', { style: 'currency', currency: 'MAD', maximumFractionDigits: 0 }).format(p) : "--";
+  const formatPrice = (p?: number) => p ? new Intl.NumberFormat('fr-MA', { style: 'currency', currency: '$', maximumFractionDigits: 0 }).format(p) : "--";
 
   return (
     <div className="space-y-8 max-w-[1000px]">

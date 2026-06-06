@@ -4,12 +4,15 @@ import com.smartestatehub.notification.dto.SendEmailRequest;
 import com.smartestatehub.notification.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.smartestatehub.shared.events.EmailSentEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.Map;
 
 @RestController
@@ -19,16 +22,29 @@ import java.util.Map;
 public class EmailController {
 
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @PostMapping("/send")
-    public ResponseEntity<Void> sendEmail(@RequestBody SendEmailRequest request) {
-        log.info("Requête d'envoi d'email vers {}", request.getClientEmail());
+    public ResponseEntity<Void> sendEmail(@RequestBody SendEmailRequest request, Principal principal) {
+        log.info("Requête d'envoi d'email vers {} par {}", request.getClientEmail(), principal != null ? principal.getName() : "Inconnu");
         try {
             emailService.sendCustomEmail(
                     request.getClientEmail(),
                     request.getSubject(),
                     request.getBody()
             );
+
+            // Publish event for in-app notification and n8n logging
+            if (principal != null) {
+                eventPublisher.publishEvent(new EmailSentEvent(
+                        this,
+                        request.getClientEmail(),
+                        request.getSubject(),
+                        principal.getName(),
+                        Map.of("dealId", request.getDealId() != null ? request.getDealId() : "N/A")
+                ));
+            }
+
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Erreur lors de l'envoi de l'email: {}", e.getMessage());
