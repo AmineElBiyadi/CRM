@@ -41,6 +41,7 @@ public class ClientPortalService {
 
         List<UUID> dealIds = deals.stream().map(Deal::getIdDeal).collect(Collectors.toList());
 
+        
         // Aggregate related entities
         List<Interaction> interactions = dealIds.stream()
                 .flatMap(id -> interactionRepository.findByDeal_IdDeal(id).stream())
