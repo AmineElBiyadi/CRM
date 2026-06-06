@@ -51,7 +51,7 @@ public class ClientService {
         if (clientRepository.findByEmail(request.email()).isPresent()) {
             throw new RuntimeException("EMAIL_TAKEN");
         }
-        
+
         Optional<Client> existingPhone = clientRepository.findByPhone(request.phone());
         if (existingPhone.isPresent()) {
             return existingPhone.get();
@@ -82,17 +82,17 @@ public class ClientService {
         CreateDossierRequest dealRequest = new CreateDossierRequest();
         dealRequest.setIdClient(client.getIdClient());
         dealRequest.setType(request.clientType());
-        
+
         if (request.clientType() == ClientType.BUYER) {
             dealRequest.setBudgetMin(request.budgetMin());
             dealRequest.setBudgetMax(request.budgetMax());
             dealRequest.setPreferredArea(request.preferredArea());
             dealRequest.setSurfaceM2(request.preferredSizeM2());
             dealRequest.setFloor(request.preferredFloor());
-            
+
             if (request.propertyTypeId() != null) {
                 propertyTypeRepository.findById(request.propertyTypeId())
-                    .ifPresent(pt -> dealRequest.setPropertySpecificType(pt.getSpecificType()));
+                        .ifPresent(pt -> dealRequest.setPropertySpecificType(pt.getSpecificType()));
             }
         } else {
             dealRequest.setPropertyTitle(request.propertyTitle());
@@ -102,16 +102,16 @@ public class ClientService {
             dealRequest.setPropertySurfaceM2(request.surfaceM2());
             dealRequest.setNumRooms(request.numRooms());
             dealRequest.setPropertyFloor(request.floor());
-            
+
             if (request.propertyTypeId() != null) {
                 propertyTypeRepository.findById(request.propertyTypeId())
-                    .ifPresent(pt -> dealRequest.setPropertySpecificType(pt.getSpecificType()));
+                        .ifPresent(pt -> dealRequest.setPropertySpecificType(pt.getSpecificType()));
             }
         }
 
         // Call DealService to handle the complex creation
         DossierSummaryDto summary = dealService.createDossier(dealRequest, agent.getIdUser());
-        
+
         // Retrieve the created folder and fix fields for public onboarding
         ClientFolder folder = clientFolderRepository.findById(summary.getIdProfile())
                 .orElseThrow(() -> new RuntimeException("Failed to retrieve created folder"));
@@ -123,12 +123,20 @@ public class ClientService {
     }
 
     private InternalUser findSmartAgent(DossierStep3Request request) {
+        // Priorité aux agents (Role.AGENT)
         List<InternalUser> agents = userRepository.findAll().stream()
-                .filter(u -> (u.getRole() == Role.AGENT || u.getRole() == Role.ADMIN) && u.getDeletedAt() == null)
+                .filter(u -> u.getRole() == Role.AGENT && u.getDeletedAt() == null)
                 .toList();
 
+        // Si aucun agent n'est trouvé, on se replie sur les admins pour éviter un crash
         if (agents.isEmpty()) {
-            throw new RuntimeException("No agent available for assignment");
+            agents = userRepository.findAll().stream()
+                    .filter(u -> u.getRole() == Role.ADMIN && u.getDeletedAt() == null)
+                    .toList();
+        }
+
+        if (agents.isEmpty()) {
+            throw new RuntimeException("No agent or admin available for assignment");
         }
 
         // Calculate score for each agent
@@ -142,8 +150,9 @@ public class ClientService {
     }
 
     private long calculateAgentScore(InternalUser agent, DossierStep3Request request) {
-        List<ClientFolder> agentFolders = clientFolderRepository.findByAssignedAgent_IdUserAndDeletedAtIsNull(agent.getIdUser());
-        
+        List<ClientFolder> agentFolders = clientFolderRepository
+                .findByAssignedAgent_IdUserAndDeletedAtIsNull(agent.getIdUser());
+
         // 1. Load Score (10 points per active dossier)
         long loadScore = agentFolders.stream()
                 .filter(f -> f.getStatus() == FolderStatus.ACTIVE)
@@ -151,7 +160,7 @@ public class ClientService {
 
         // 2. Specialization Score (Bonus points for matching city or property type)
         long specializationBonus = 0;
-        
+
         String targetCity = request.clientType() == ClientType.SELLER ? request.city() : request.preferredArea();
         UUID targetTypeId = request.propertyTypeId();
 
@@ -166,7 +175,8 @@ public class ClientService {
                         }
                     }
                 }
-                if (folder.getBuyerFolder() != null && targetCity.equalsIgnoreCase(folder.getBuyerFolder().getPreferredArea())) {
+                if (folder.getBuyerFolder() != null
+                        && targetCity.equalsIgnoreCase(folder.getBuyerFolder().getPreferredArea())) {
                     specializationBonus += 2;
                 }
             }
@@ -175,14 +185,15 @@ public class ClientService {
             if (targetTypeId != null) {
                 if (folder.getSellerFolder() != null && folder.getSellerFolder().getProperties() != null) {
                     for (Property p : folder.getSellerFolder().getProperties()) {
-                        if (p.getPropertyType() != null && targetTypeId.equals(p.getPropertyType().getIdPropertyType())) {
+                        if (p.getPropertyType() != null
+                                && targetTypeId.equals(p.getPropertyType().getIdPropertyType())) {
                             specializationBonus += 3;
                             break;
                         }
                     }
                 }
-                if (folder.getBuyerFolder() != null && folder.getBuyerFolder().getPropertyType() != null 
-                    && targetTypeId.equals(folder.getBuyerFolder().getPropertyType().getIdPropertyType())) {
+                if (folder.getBuyerFolder() != null && folder.getBuyerFolder().getPropertyType() != null
+                        && targetTypeId.equals(folder.getBuyerFolder().getPropertyType().getIdPropertyType())) {
                     specializationBonus += 3;
                 }
             }
@@ -198,9 +209,11 @@ public class ClientService {
         return clients.stream()
                 .map(c -> {
                     int folderCount = (int) c.getClientFolders().stream()
-                            .filter(f -> (f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId)) || 
-                                         (f.getCreatedByAgent() != null && f.getCreatedByAgent().getIdUser().equals(agentId)))
-                            .flatMap(f -> f.getDeals().stream())
+                            .filter(f -> (f.getAssignedAgent() != null
+                                    && f.getAssignedAgent().getIdUser().equals(agentId)) ||
+                                    (f.getCreatedByAgent() != null
+                                            && f.getCreatedByAgent().getIdUser().equals(agentId)))
+                            .flatMap(f -> (f.getDeals() != null ? f.getDeals() : new java.util.ArrayList<Deal>()).stream())
                             .filter(d -> d.getDeletedAt() == null)
                             .count();
                     boolean isNew = (c.getStatus() == ClientStatus.PENDING);
@@ -282,7 +295,7 @@ public class ClientService {
                 .orElseThrow(() -> new RuntimeException("Agent not found"));
 
         InternalUser oldAgent = folder.getAssignedAgent();
-        
+
         // Si l'agent change, on journalise
         if (oldAgent == null || !oldAgent.getIdUser().equals(agentId)) {
             folder.setAssignedAgent(newAgent);
@@ -292,7 +305,8 @@ public class ClientService {
             if (folder.getDeals() != null) {
                 for (Deal deal : folder.getDeals()) {
                     // 1. Clore l'ancienne affectation si elle existe
-                    List<DealAssignment> activeAssignments = dealAssignmentRepository.findByDeal_IdDealAndUnassignedAtIsNull(deal.getIdDeal());
+                    List<DealAssignment> activeAssignments = dealAssignmentRepository
+                            .findByDeal_IdDealAndUnassignedAtIsNull(deal.getIdDeal());
                     for (DealAssignment da : activeAssignments) {
                         da.setUnassignedAt(LocalDateTime.now());
                         dealAssignmentRepository.save(da);
@@ -313,7 +327,8 @@ public class ClientService {
     @Transactional(readOnly = true)
     public Optional<Client> findExistingClient(String email, String phone) {
         var byEmail = clientRepository.findByEmail(email);
-        if (byEmail.isPresent()) return byEmail;
+        if (byEmail.isPresent())
+            return byEmail;
         return clientRepository.findByPhone(phone);
     }
 
@@ -326,7 +341,7 @@ public class ClientService {
         InternalUser agent = userRepository.findById(agentId)
                 .orElseThrow(() -> new RuntimeException("Agent not found: " + agentId));
 
-        String tempPassword = "Pass" + (int)(Math.random() * 9000 + 1000);
+        String tempPassword = "Pass" + (int) (Math.random() * 9000 + 1000);
 
         Client client = Client.builder()
                 .firstName(request.firstName())
@@ -350,19 +365,19 @@ public class ClientService {
 
         return client.getClientFolders().stream()
                 .filter(f -> f.getAssignedAgent() != null && f.getAssignedAgent().getIdUser().equals(agentId))
-                .flatMap(f -> f.getDeals().stream())
+                .flatMap(f -> (f.getDeals() != null ? f.getDeals() : new java.util.ArrayList<Deal>()).stream())
                 .filter(d -> d.getDeletedAt() == null)
-                    .map(d -> DossierListItemDto.builder()
-                            .idDeal(d.getIdDeal())
-                            .type(d.getClientFolder().getClientType())
-                            .stage(d.getStage())
-                            .aiLeadScore(d.getAiLeadScore())
-                            .lastInteractionAt(d.getLastInteractionAt())
-                            .isUrgent(d.getIsUrgent())
-                            .newDossier(d.getClientFolder().getStatus() == FolderStatus.PENDING)
-                            .createdAt(d.getCreatedAt())
-                            .build())
-                    .collect(Collectors.toList());
+                .map(d -> DossierListItemDto.builder()
+                        .idDeal(d.getIdDeal())
+                        .type(d.getClientFolder().getClientType())
+                        .stage(d.getStage())
+                        .aiLeadScore(d.getAiLeadScore())
+                        .lastInteractionAt(d.getLastInteractionAt())
+                        .isUrgent(d.getIsUrgent())
+                        .newDossier(d.getClientFolder().getStatus() == FolderStatus.PENDING)
+                        .createdAt(d.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
