@@ -35,7 +35,7 @@ public class ClientPortalService {
 
         List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
         List<Deal> deals = folders.stream()
-                .flatMap(f -> f.getDeals() != null ? f.getDeals().stream() : java.util.stream.Stream.empty())
+                .flatMap(f -> f.getDeals().stream())
                 .filter(d -> d.getDeletedAt() == null)
                 .collect(Collectors.toList());
 
@@ -75,7 +75,6 @@ public class ClientPortalService {
                     folders.get(0).getAssignedAgent().getFirstName() + " " + folders.get(0).getAssignedAgent().getLastName())
                 .assignedAgentPhone(folders.isEmpty() || folders.get(0).getAssignedAgent() == null ? null : 
                     folders.get(0).getAssignedAgent().getPhone())
-                .googleLinked(client.getGoogleId() != null)
                 .createdAt(client.getCreatedAt())
                 .updatedAt(client.getUpdatedAt())
                 .build();
@@ -121,7 +120,7 @@ public class ClientPortalService {
 
         List<ClientFolder> folders = clientFolderRepository.findByClient_IdClient(clientId);
         List<Deal> deals = folders.stream()
-                .flatMap(f -> f.getDeals() != null ? f.getDeals().stream() : java.util.stream.Stream.empty())
+                .flatMap(f -> f.getDeals().stream())
                 .filter(d -> d.getDeletedAt() == null)
                 .collect(Collectors.toList());
 
@@ -138,7 +137,7 @@ public class ClientPortalService {
         ClientFolder folder = clientFolderRepository.findByIdProfileAndClient_IdClient(idFolder, clientId)
                 .orElseThrow(() -> new RuntimeException("Dossier not found for client: " + idFolder));
 
-        List<Deal> deals = (folder.getDeals() != null ? folder.getDeals() : new java.util.ArrayList<Deal>()).stream()
+        List<Deal> deals = folder.getDeals().stream()
                 .filter(d -> d.getDeletedAt() == null)
                 .collect(Collectors.toList());
 
@@ -161,6 +160,7 @@ public class ClientPortalService {
                 .collect(Collectors.toList());
 
         return buildTimeline(interactions, meetings, documents, contracts, deals).stream()
+                .limit(5) // Get only the last 5 events
                 .collect(Collectors.toList());
     }
 
@@ -187,9 +187,7 @@ public class ClientPortalService {
                 .aiRecommendedAction(deal.getAiRecommendedAction())
                 .aiSummary(deal.getAiSummary())
                 .isUrgent(deal.getIsUrgent())
-                    .status(folder.getStatus().name())
                 .lastInteractionAt(deal.getLastInteractionAt())
-                .createdAt(deal.getCreatedAt())
                 .build();
 
         if (folder.getClientType() == ClientType.BUYER && folder.getBuyerFolder() != null) {
@@ -483,7 +481,7 @@ public class ClientPortalService {
             events.add(ClientPortalDataDto.TimelineEvent.builder()
                     .type("CONTRACT")
                     .title("Contrat " + (c.getStatus() != null ? c.getStatus().name() : "Brouillon"))
-                    .description("Prix convenu : " + c.getAgreedPrice() + " $")
+                    .description("Prix convenu : " + c.getAgreedPrice() + " MAD")
                     .date(c.getCreatedAt() != null ? c.getCreatedAt().format(iso) : null)
                     .build());
         }
