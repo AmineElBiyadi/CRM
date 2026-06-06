@@ -20,7 +20,6 @@ import { Route as ClientProfilRouteImport } from './routes/client.profil'
 import { Route as ClientDossiersRouteImport } from './routes/client.dossiers'
 import { Route as ClientDocumentsRouteImport } from './routes/client.documents'
 import { Route as ClientContratsRouteImport } from './routes/client.contrats'
-import { Route as ClientChronologieRouteImport } from './routes/client.chronologie'
 import { Route as ClientAssistantRouteImport } from './routes/client.assistant'
 import { Route as ClientDossiersIndexRouteImport } from './routes/client.dossiers.index'
 import { Route as ClientDossiersIdRouteImport } from './routes/client.dossiers.$id'
@@ -80,11 +79,6 @@ const ClientContratsRoute = ClientContratsRouteImport.update({
   path: '/contrats',
   getParentRoute: () => ClientRoute,
 } as any)
-const ClientChronologieRoute = ClientChronologieRouteImport.update({
-  id: '/chronologie',
-  path: '/chronologie',
-  getParentRoute: () => ClientRoute,
-} as any)
 const ClientAssistantRoute = ClientAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
@@ -107,7 +101,6 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
-  '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
   '/client/dossiers': typeof ClientDossiersRouteWithChildren
@@ -123,7 +116,6 @@ export interface FileRoutesByTo {
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
-  '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
   '/client/profil': typeof ClientProfilRoute
@@ -140,7 +132,6 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/client/assistant': typeof ClientAssistantRoute
-  '/client/chronologie': typeof ClientChronologieRoute
   '/client/contrats': typeof ClientContratsRoute
   '/client/documents': typeof ClientDocumentsRoute
   '/client/dossiers': typeof ClientDossiersRouteWithChildren
@@ -159,7 +150,6 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/login'
     | '/client/assistant'
-    | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
     | '/client/dossiers'
@@ -175,7 +165,6 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/login'
     | '/client/assistant'
-    | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
     | '/client/profil'
@@ -191,7 +180,6 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/login'
     | '/client/assistant'
-    | '/client/chronologie'
     | '/client/contrats'
     | '/client/documents'
     | '/client/dossiers'
@@ -289,13 +277,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientContratsRouteImport
       parentRoute: typeof ClientRoute
     }
-    '/client/chronologie': {
-      id: '/client/chronologie'
-      path: '/chronologie'
-      fullPath: '/client/chronologie'
-      preLoaderRoute: typeof ClientChronologieRouteImport
-      parentRoute: typeof ClientRoute
-    }
     '/client/assistant': {
       id: '/client/assistant'
       path: '/assistant'
@@ -336,7 +317,6 @@ const ClientDossiersRouteWithChildren = ClientDossiersRoute._addFileChildren(
 
 interface ClientRouteChildren {
   ClientAssistantRoute: typeof ClientAssistantRoute
-  ClientChronologieRoute: typeof ClientChronologieRoute
   ClientContratsRoute: typeof ClientContratsRoute
   ClientDocumentsRoute: typeof ClientDocumentsRoute
   ClientDossiersRoute: typeof ClientDossiersRouteWithChildren
@@ -348,7 +328,6 @@ interface ClientRouteChildren {
 
 const ClientRouteChildren: ClientRouteChildren = {
   ClientAssistantRoute: ClientAssistantRoute,
-  ClientChronologieRoute: ClientChronologieRoute,
   ClientContratsRoute: ClientContratsRoute,
   ClientDocumentsRoute: ClientDocumentsRoute,
   ClientDossiersRoute: ClientDossiersRouteWithChildren,

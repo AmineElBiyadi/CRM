@@ -56,6 +56,8 @@ public class DossierDetailDto {
     // Computed fields for client portal
     private String visitStatus; // "VISITED" | "VISIT_PLANNED" | "PROPOSED"
     private String clientFriendlyAction; // Mapped from aiRecommendedAction
+    private String status;
+    private LocalDateTime createdAt;
 
     // Collections for detail view
     private List<PropertyDto.Response> properties;

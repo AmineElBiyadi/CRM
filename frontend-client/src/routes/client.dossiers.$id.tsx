@@ -390,62 +390,21 @@ function DossierDetailPage() {
             )}
           </NeuCard>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            {/* AI Recommandation Card */}
-            <NeuCard className="p-8 bg-eerie text-white border-none shadow-xl overflow-hidden relative group">
-              <div className="absolute -right-12 -top-12 w-40 h-40 bg-vanilla/10 rounded-full blur-3xl group-hover:bg-vanilla/20 transition-all duration-1000" />
-
-              <div className="flex flex-col justify-between gap-6 mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-vanilla/20 rounded-xl">
-                    <TrendingUp size={20} className="text-vanilla" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-tight">Analyse Stratégique IA</h3>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 w-fit">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-white/60">Score</span>
-                  <span className="text-xl font-black text-vanilla">{dossier.aiLeadScore || '--'}%</span>
-                </div>
-              </div>
-
-              <div className="space-y-6 relative z-10">
-                <div className="p-4 bg-white/5 rounded-xl border border-white/5 backdrop-blur-sm">
-                  <p className="text-[9px] font-bold text-vanilla mb-2 flex items-center gap-2 uppercase tracking-widest">
-                    <Info size={10} /> Résumé
-                  </p>
-                  <p className="text-xs leading-relaxed text-white/80 font-medium italic">
-                    "{dossier.aiSummary || "Analyse en cours..."}"
-                  </p>
-                </div>
-
-                {dossier.aiRecommendedAction && (
-                  <div className="flex items-start gap-3 p-4 bg-vanilla/10 rounded-xl border border-vanilla/20">
-                    <AlertTriangle className="text-vanilla shrink-0" size={16} />
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-vanilla mb-1">Action</p>
-                      <p className="text-xs font-black text-white">{dossier.aiRecommendedAction}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </NeuCard>
-
-            {/* Quick Activity Feed */}
-            <NeuCard className="p-6 space-y-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-eerie flex items-center gap-2 border-b border-border/40 pb-4">
-                <History size={18} className="text-vanilla" /> Activité récente
-              </h3>
-              <div className="space-y-6">
-                {loadingActivity ? (
-                  [1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)
-                ) : !activity || activity.length === 0 ? (
-                  <p className="text-[10px] font-bold text-muted-foreground text-center py-4 uppercase tracking-widest">Aucun historique</p>
-                ) : (
-                  activity.slice(0, 5).map((event: any, i: number) => (
+          {/* Quick Activity Feed (Full Width in main column) */}
+          <NeuCard className="p-6 space-y-6 mt-8">
+            <h3 className="text-sm font-black uppercase tracking-widest text-eerie flex items-center gap-2 border-b border-border/40 pb-4">
+              <History size={18} className="text-vanilla" /> Activité récente
+            </h3>
+            <div className="space-y-6">
+              {loadingActivity ? (
+                [1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)
+              ) : !activity || activity.length === 0 ? (
+                <p className="text-[10px] font-bold text-muted-foreground text-center py-4 uppercase tracking-widest">Aucun historique</p>
+              ) : (
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {activity.map((event: any, i: number) => (
                     <div key={i} className="flex gap-3 relative">
-                      {i < Math.min(activity.length, 5) - 1 && (
+                      {i < activity.length - 1 && (
                         <div className="absolute left-[13px] top-8 bottom-[-24px] w-[1px] bg-border/40" />
                       )}
                       <div className="w-7 h-7 rounded-full bg-alice flex items-center justify-center text-muted-foreground shrink-0 z-10 border border-white">
@@ -460,17 +419,11 @@ function DossierDetailPage() {
                         <p className="text-[9px] font-bold text-muted-foreground/60">{formatDate(event.date)}</p>
                       </div>
                     </div>
-                  ))
-                )}
-                <Link
-                  to="/client/chronologie"
-                  className="block text-center py-3 border-t border-border/40 text-[9px] font-black text-muted-foreground hover:text-vanilla uppercase tracking-widest transition-colors"
-                >
-                  Voir tout l'historique
-                </Link>
-              </div>
-            </NeuCard>
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </NeuCard>
         </div>
 
         {/* Sidebar: Meetings */}

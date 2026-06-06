@@ -171,7 +171,7 @@ function ClientProfilePage() {
                   </div>
                   <div className="flex flex-col items-start">
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Membre depuis</span>
-                    <span className="font-semibold">{profile?.createdAt ? format(new Date(profile.createdAt), "MMMM yyyy", { locale: fr }) : "..."}</span>
+                    <span className="font-semibold">{profile?.createdAt && new Date(profile.createdAt).getTime() > 0 ? format(new Date(profile.createdAt), "MMMM yyyy", { locale: fr }) : "..."}</span>
                   </div>
                 </div>
               </div>
@@ -280,7 +280,7 @@ function ClientProfilePage() {
                       <div className="flex flex-col">
                         <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Dernière mise à jour</span>
                         <p className="text-xs text-eerie/60 italic mt-1 font-medium">
-                          {profile?.updatedAt ? format(new Date(profile.updatedAt), "d MMMM yyyy 'à' HH:mm", { locale: fr }) : "Aucune"}
+                          {profile?.updatedAt && new Date(profile.updatedAt).getTime() > 0 ? format(new Date(profile.updatedAt), "d MMMM yyyy 'à' HH:mm", { locale: fr }) : "Aucune"}
                         </p>
                       </div>
                       <button
