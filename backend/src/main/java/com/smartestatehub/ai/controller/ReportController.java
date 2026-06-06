@@ -25,4 +25,19 @@ public class ReportController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfContent);
     }
+
+    @GetMapping("/periodic")
+    public ResponseEntity<byte[]> downloadPeriodicReport(
+            @org.springframework.web.bind.annotation.RequestParam String periodType,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer year,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer month) {
+        
+        byte[] pdfContent = weeklyReportService.generatePeriodicReportPdf(periodType, year, month);
+        String filename = "rapport-" + periodType + (year != null ? "-" + year : "") + (month != null ? "-" + month : "") + ".pdf";
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfContent);
+    }
 }

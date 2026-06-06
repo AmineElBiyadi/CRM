@@ -248,7 +248,6 @@ function AdminDashboard() {
          {[
            { label: "Nouvel Agent", icon: Plus, to: "/admin/agents", tone: "bg-eerie text-ghost" },
            { label: "Gérer Pipeline", icon: KanbanSquare, to: "/admin/pipeline", tone: "neu-sm hover:bg-alice/20" },
-           { label: "Automatisations", icon: Zap, to: "/admin/automations", tone: "neu-sm hover:bg-vanilla/20" },
            { label: "Recherche", icon: Search, to: "/admin/recherche", tone: "neu-sm hover:bg-honeydew/20" }
          ].map((action, i) => (
            <Link 

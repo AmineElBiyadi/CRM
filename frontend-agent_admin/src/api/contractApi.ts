@@ -50,3 +50,9 @@ export async function markPaymentPaid(contractId: string, paymentId: string) {
   const res = await apiClient.patch(`/api/contracts/${contractId}/payments/${paymentId}/paid`);
   return res.data;
 }
+
+/** Analyser les risques d'un brouillon de contrat */
+export async function analyzeContract(contractId: string): Promise<{ analysis: string }> {
+  const res = await apiClient.post(`/api/contracts/${contractId}/analyze`);
+  return res.data;
+}

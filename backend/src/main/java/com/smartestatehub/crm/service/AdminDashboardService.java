@@ -340,19 +340,26 @@ public class AdminDashboardService {
 
         List<AdminAnalyticsMonthDto> conversionSeries;
         String conversionTitle;
+        LocalDateTime from;
+        LocalDateTime to;
         if ("month".equals(normalizedPeriod)) {
             selectedMonth = clampMonth(selectedMonth, selectedYear, today);
+            LocalDate start = LocalDate.of(selectedYear, selectedMonth, 1);
+            from = start.atStartOfDay();
+            to = start.plusMonths(1).atStartOfDay();
             conversionSeries = buildConversionByWeeks(selectedYear, selectedMonth);
             conversionTitle = "Conversion des leads — " + capitalizeMonthLabel(selectedYear, selectedMonth);
         } else {
+            from = LocalDate.of(selectedYear, 1, 1).atStartOfDay();
+            to = LocalDate.of(selectedYear + 1, 1, 1).atStartOfDay();
             conversionSeries = buildConversionByYear(selectedYear);
             conversionTitle = "Conversion des leads — " + selectedYear;
         }
 
-        List<AdminAnalyticsFunnelDto> funnel = buildFunnel();
-        long averageDaysToClose = computeAverageDaysToClose();
-        List<AdminAnalyticsSourceDto> acquisitionSources = buildAcquisitionSources();
-        AdminAnalyticsTopAgentDto topAgent = buildTopAgent();
+        List<AdminAnalyticsFunnelDto> funnel = buildFunnel(from, to);
+        long averageDaysToClose = computeAverageDaysToClose(from, to);
+        List<AdminAnalyticsSourceDto> acquisitionSources = buildAcquisitionSources(from, to);
+        AdminAnalyticsTopAgentDto topAgent = buildTopAgent(normalizedPeriod, selectedYear, selectedMonth, from, to);
 
         return new AdminAnalyticsDto(
                 conversionSeries,
@@ -452,13 +459,13 @@ public class AdminDashboardService {
         return capitalize(date.format(fmt));
     }
 
-    private List<AdminAnalyticsFunnelDto> buildFunnel() {
-        long warm = dealRepository.countByDeletedAtIsNullAndStage(DealStage.WARM);
-        long hot = dealRepository.countByDeletedAtIsNullAndStage(DealStage.HOT);
-        long negotiation = dealRepository.countByDeletedAtIsNullAndStage(DealStage.NEGOTIATION);
-        long closed = dealRepository.countByDeletedAtIsNullAndStage(DealStage.CLOSED);
+    private List<AdminAnalyticsFunnelDto> buildFunnel(LocalDateTime from, LocalDateTime to) {
+        long warm = dealRepository.countByStageCreatedBetween(DealStage.WARM, from, to);
+        long hot = dealRepository.countByStageCreatedBetween(DealStage.HOT, from, to);
+        long negotiation = dealRepository.countByStageCreatedBetween(DealStage.NEGOTIATION, from, to);
+        long closed = dealRepository.countClosedBetween(DealStage.CLOSED, from, to);
 
-        long leads = dealRepository.countByDeletedAtIsNull();
+        long leads = dealRepository.countCreatedBetween(from, to);
         long qualified = warm + hot + negotiation + closed;
         long visit = hot + negotiation + closed;
         long nego = negotiation + closed;
@@ -472,8 +479,8 @@ public class AdminDashboardService {
         );
     }
 
-    private long computeAverageDaysToClose() {
-        List<Deal> closedDeals = dealRepository.findByDeletedAtIsNullAndStage(DealStage.CLOSED);
+    private long computeAverageDaysToClose(LocalDateTime from, LocalDateTime to) {
+        List<Deal> closedDeals = dealRepository.findDealsClosedBetween(DealStage.CLOSED, from, to);
         if (closedDeals.isEmpty()) {
             return 0L;
         }
@@ -487,8 +494,8 @@ public class AdminDashboardService {
         return Math.round(avg);
     }
 
-    private List<AdminAnalyticsSourceDto> buildAcquisitionSources() {
-        List<Object[]> rows = dealRepository.countDealsGroupedByClientSource().stream()
+    private List<AdminAnalyticsSourceDto> buildAcquisitionSources(LocalDateTime from, LocalDateTime to) {
+        List<Object[]> rows = dealRepository.countDealsGroupedByClientSourceBetween(from, to).stream()
                 .sorted((a, b) -> Long.compare(((Number) b[1]).longValue(), ((Number) a[1]).longValue()))
                 .toList();
         if (rows.isEmpty()) {
@@ -543,11 +550,10 @@ public class AdminDashboardService {
         return sources;
     }
 
-    private AdminAnalyticsTopAgentDto buildTopAgent() {
-        LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
-        LocalDateTime from = monthStart.atStartOfDay();
-        LocalDateTime to = monthStart.plusMonths(1).atStartOfDay();
-        String periodLabel = capitalizeMonthLabel(monthStart.getYear(), monthStart.getMonthValue());
+    private AdminAnalyticsTopAgentDto buildTopAgent(String periodType, int year, Integer month, LocalDateTime from, LocalDateTime to) {
+        String periodLabel = "month".equals(periodType)
+                ? capitalizeMonthLabel(year, month)
+                : String.valueOf(year);
         LocalDateTime recentThreshold = LocalDateTime.now().minusDays(7);
 
         List<InternalUser> agents = userRepository.findByRoleAndDeletedAtIsNullOrderByLastNameAsc(Role.AGENT);

@@ -1,6 +1,7 @@
 import { ensureAuthenticated } from "@/lib/auth";
 import { ApiError } from "@/lib/api-error";
 import { apiFetch } from "@/utils/api";
+import apiClient from "@/lib/api-client";
 import type { DealStage, DossierDetail } from "./dossiersApi";
 
 export interface AdminKpiDto {
@@ -301,17 +302,25 @@ export async function updateAdminDealStage(id: string, stage: DealStage): Promis
     method: "PATCH",
   }) as Promise<DossierDetail>;
 }
-
 export async function downloadWeeklyReport(): Promise<Blob> {
   const user = await ensureAuthenticated();
   if (!user) throw ApiError.client("NOT_AUTHENTICATED", "Non connecté");
 
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/api/ai/reports/weekly`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
+  const response = await apiClient.get("/api/ai/reports/weekly", {
+    responseType: "blob",
   });
 
-  if (!response.ok) throw new Error("Échec du téléchargement du rapport");
-  return response.blob();
+  return response.data;
+}
+
+export async function downloadPeriodicReport(params: AdminAnalyticsParams): Promise<Blob> {
+  const user = await ensureAuthenticated();
+  if (!user) throw ApiError.client("NOT_AUTHENTICATED", "Non connecté");
+
+  const response = await apiClient.get("/api/ai/reports/periodic", {
+    params,
+    responseType: "blob",
+  });
+
+  return response.data;
 }

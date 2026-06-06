@@ -27,7 +27,6 @@ import { Route as AdminRechercheRouteImport } from './routes/admin.recherche'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminDossierRouteImport } from './routes/admin.dossier'
-import { Route as AdminAutomationsRouteImport } from './routes/admin.automations'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAgentsRouteImport } from './routes/admin.agents'
 import { Route as AgentDossiersIndexRouteImport } from './routes/agent.dossiers.index'
@@ -123,11 +122,6 @@ const AdminDossierRoute = AdminDossierRouteImport.update({
   path: '/dossier',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAutomationsRoute = AdminAutomationsRouteImport.update({
-  id: '/automations',
-  path: '/automations',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -158,7 +152,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/automations': typeof AdminAutomationsRoute
   '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/profile': typeof AdminProfileRoute
@@ -181,7 +174,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/automations': typeof AdminAutomationsRoute
   '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/profile': typeof AdminProfileRoute
@@ -206,7 +198,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/admin/agents': typeof AdminAgentsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
-  '/admin/automations': typeof AdminAutomationsRoute
   '/admin/dossier': typeof AdminDossierRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/profile': typeof AdminProfileRoute
@@ -233,7 +224,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/agents'
     | '/admin/analytics'
-    | '/admin/automations'
     | '/admin/dossier'
     | '/admin/pipeline'
     | '/admin/profile'
@@ -256,7 +246,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/agents'
     | '/admin/analytics'
-    | '/admin/automations'
     | '/admin/dossier'
     | '/admin/pipeline'
     | '/admin/profile'
@@ -280,7 +269,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin/agents'
     | '/admin/analytics'
-    | '/admin/automations'
     | '/admin/dossier'
     | '/admin/pipeline'
     | '/admin/profile'
@@ -434,13 +422,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDossierRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/automations': {
-      id: '/admin/automations'
-      path: '/automations'
-      fullPath: '/admin/automations'
-      preLoaderRoute: typeof AdminAutomationsRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/analytics': {
       id: '/admin/analytics'
       path: '/analytics'
@@ -475,7 +456,6 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAgentsRoute: typeof AdminAgentsRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
-  AdminAutomationsRoute: typeof AdminAutomationsRoute
   AdminDossierRoute: typeof AdminDossierRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProfileRoute: typeof AdminProfileRoute
@@ -486,7 +466,6 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAgentsRoute: AdminAgentsRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
-  AdminAutomationsRoute: AdminAutomationsRoute,
   AdminDossierRoute: AdminDossierRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProfileRoute: AdminProfileRoute,
