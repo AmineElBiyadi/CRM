@@ -90,15 +90,21 @@ public class NotificationEventListener {
         var deal = event.getContract().getDeal();
         var client = deal.getClientFolder().getClient();
         var agent = deal.getClientFolder().getAssignedAgent();
+        
+        // Récupérer le nom du bien s'il existe dans le résumé ou les offres
+        String propertyName = "Votre bien immobilier";
+        if (event.getContract().getAiRiskSummary() != null && event.getContract().getAiRiskSummary().contains("Propriété:")) {
+            propertyName = event.getContract().getAiRiskSummary().split("Propriété:")[1].split("-")[0].trim();
+        }
 
         n8nWebhookService.triggerWorkflow("/contrat-envoye", "CONTRACT_SENT", Map.of(
-            "contractId", event.getContract().getIdContract(),
-            "pdfUrl", event.getContract().getPdfUrl() != null ? event.getContract().getPdfUrl() : "",
             "clientEmail", client.getEmail(),
             "clientName", client.getFirstName() + " " + client.getLastName(),
             "agentEmail", agent != null ? agent.getEmail() : "",
             "agentName", agent != null ? agent.getFirstName() + " " + agent.getLastName() : "Non assigné",
-            "folderId", deal.getClientFolder().getIdProfile()
+            "folderId", deal.getClientFolder().getIdProfile(),
+            "propertyName", propertyName,
+            "pdfUrl", event.getContract().getPdfUrl() != null ? event.getContract().getPdfUrl() : ""
         ));
     }
 

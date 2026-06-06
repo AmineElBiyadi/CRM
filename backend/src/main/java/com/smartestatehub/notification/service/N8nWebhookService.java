@@ -33,11 +33,9 @@ public class N8nWebhookService {
             String path = endpointPath.startsWith("/") ? endpointPath.substring(1) : endpointPath;
             String fullUrl = n8nBaseUrl.endsWith("/") ? n8nBaseUrl + path : n8nBaseUrl + "/" + path;
 
-            Map<String, Object> payload = Map.of(
-                "event", eventType,
-                "data", data,
-                "timestamp", System.currentTimeMillis()
-            );
+            java.util.Map<String, Object> payload = new java.util.HashMap<>(data);
+            payload.put("event", eventType);
+            payload.put("timestamp", System.currentTimeMillis());
             
             log.info("[n8n] Triggering workflow for event: {} at URL: {}", eventType, fullUrl);
             restTemplate.postForEntity(fullUrl, payload, Void.class);

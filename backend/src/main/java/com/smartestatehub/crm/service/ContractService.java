@@ -149,21 +149,7 @@ public class ContractService {
         contract.setStatus(newStatus);
         if (newStatus == ContractStatus.SENT) {
             contract.setSentAt(LocalDateTime.now());
-            // Envoi email au client
-            if (contract.getDeal() != null && contract.getDeal().getClientFolder() != null && contract.getDeal().getClientFolder().getClient() != null) {
-                String clientEmail = contract.getDeal().getClientFolder().getClient().getEmail();
-                String clientName = contract.getDeal().getClientFolder().getClient().getFirstName() + " "
-                        + contract.getDeal().getClientFolder().getClient().getLastName();
-                String pdfUrl = contract.getPdfUrl() != null ? contract.getPdfUrl() : "#";
-                if (clientEmail != null && !clientEmail.isBlank()) {
-                    try {
-                        emailService.sendContractReadyEmail(clientEmail, clientName, pdfUrl);
-                        log.info("Email contrat envoyé à {}", clientEmail);
-                    } catch (Exception e) {
-                        log.warn("Email non envoyé pour contrat {}: {}", contractId, e.getMessage());
-                    }
-                }
-            }
+            // L'envoi de l'email est maintenant géré par n8n via l'événement ContractSentEvent
             eventPublisher.publishEvent(new ContractSentEvent(this, contract));
         } else if (newStatus == ContractStatus.RECEIVED_SIGNED) {
             contract.setSignedAt(LocalDateTime.now());

@@ -168,20 +168,8 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendContractReadyEmail(String to, String clientName, String pdfUrl) {
-        String subject = "Votre contrat est prêt à signer — Rawabet";
-        String content = """
-                <h2>Bonjour %s,</h2>
-                <p>Votre conseiller Rawabet vient de finaliser la préparation de votre contrat immobilier.</p>
-                <p>Il est désormais disponible pour votre relecture et signature électronique sécurisée.</p>
-                <div class="button-container">
-                    <a href="%s" target="_blank" class="button">
-                        Consulter le contrat (PDF)
-                    </a>
-                </div>
-                <p style="font-size: 13px; color: #64748b;">Si vous avez la moindre question, n'hésitez pas à contacter directement votre agent. Ce lien est accessible pendant 30 jours.</p>
-                """.formatted(clientName, pdfUrl);
-
-        sendEmail(to, subject, wrapWithTemplate(content));
+        log.info("[BACKEND EMAIL BYPASSED] L'envoi de l'email de contrat pour {} est désormais géré par n8n.", to);
+        // Cette méthode est neutralisée pour éviter les doublons avec le workflow n8n
     }
 
     @Override
