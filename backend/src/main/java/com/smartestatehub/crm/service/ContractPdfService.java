@@ -8,7 +8,14 @@ import org.springframework.stereotype.Service;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -20,10 +27,11 @@ public class ContractPdfService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**
-     * Génère le PDF du contrat au format HTML → PDF, l'uploade sur Cloudinary
-     * et retourne l'URL publique.
+     * Génère le PDF du contrat, l'uploade sur Cloudinary ET le stocke localement.
+     * Retourne un Map avec "cloudinaryUrl" et "localPath".
      */
-    public String generateAndUpload(Contract contract) {
+    public Map<String, String> generateUploadAndStoreLocal(Contract contract) {
+        Map<String, String> results = new HashMap<>();
         try {
             String html = buildHtml(contract);
 
@@ -39,21 +47,43 @@ public class ContractPdfService {
                 clientName = contract.getDeal().getClientFolder().getClient().getFirstName() + "_"
                         + contract.getDeal().getClientFolder().getClient().getLastName();
             }
-            // Nettoyage du nom pour éviter les caractères spéciaux
             String cleanClientName = clientName.replaceAll("[^a-zA-Z0-9_-]", "_");
-            String publicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8) + ".pdf";
-            
-            // On utilise "image" pour que Cloudinary permette la visualisation directe du PDF.
-            // On s'assure que le publicId ne contient AUCUNE extension .pdf pour éviter le .pdf.pdf
-            String basePublicId = "contract_" + cleanClientName + "_" + java.util.UUID.randomUUID().toString().substring(0, 8);
+            String basePublicId = "contract_" + cleanClientName + "_" + UUID.randomUUID().toString().substring(0, 8);
+
+            // 1. Stockage local
+            String relativeDir = "contracts";
+            String uploadDir = "uploads/" + relativeDir;
+            File dir = new File(uploadDir);
+            if (!dir.exists()) dir.mkdirs();
+
+            String filename = basePublicId + ".pdf";
+            Path targetLocation = Paths.get(uploadDir).resolve(filename);
+            Files.write(targetLocation, pdfBytes);
+            // Stockage du chemin relatif pour accès via /uploads/
+            String localPath = relativeDir + "/" + filename;
+            results.put("localPath", localPath);
+            log.info("Contrat PDF sauvegardé localement: {}", localPath);
+
+            // 2. Upload Cloudinary
             String url = cloudinaryService.upload(pdfBytes, basePublicId, "contracts", "image");
-            log.info("PDF contrat uploadé sur Cloudinary: {}", url);
-            return url;
+            results.put("cloudinaryUrl", url);
+            log.info("Contrat PDF uploadé sur Cloudinary: {}", url);
+
+            return results;
 
         } catch (Exception e) {
-            log.error("Erreur lors de la génération/upload du PDF contrat: {}", e.getMessage(), e);
-            return null;
+            log.error("Erreur lors de la génération/upload/stockage du PDF contrat: {}", e.getMessage(), e);
+            return results;
         }
+    }
+
+    /**
+     * @deprecated Use generateUploadAndStoreLocal instead
+     */
+    @Deprecated
+    public String generateAndUpload(Contract contract) {
+        Map<String, String> res = generateUploadAndStoreLocal(contract);
+        return res.get("cloudinaryUrl");
     }
 
     private String buildHtml(Contract contract) {

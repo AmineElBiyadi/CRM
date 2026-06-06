@@ -63,6 +63,9 @@ public class Contract {
     @Column(name = "pdf_url", length = 1000)
     private String pdfUrl;
 
+    @Column(name = "local_file_path", length = 1000)
+    private String localFilePath;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_deal", nullable = false)
     private Deal deal;

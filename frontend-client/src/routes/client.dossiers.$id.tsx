@@ -760,17 +760,20 @@ function DossierDetailPage() {
 
                     <div className="flex flex-col gap-3 pt-2">
                       <button
-                        onClick={() => setPreviewDocUrl(contract.pdfUrl)}
-                        disabled={!contract.pdfUrl}
+                        onClick={() => {
+                          const url = contract.localFilePath ? `http://localhost:8081${contract.localFilePath}` : contract.pdfUrl;
+                          if (url) window.open(url, '_blank');
+                        }}
+                        disabled={!contract.pdfUrl && !contract.localFilePath}
                         className={cn(
                           "w-full py-4 rounded-2xl font-black text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg",
-                          contract.pdfUrl
+                          (contract.pdfUrl || contract.localFilePath)
                             ? "bg-eerie text-white hover:bg-eerie/90"
                             : "bg-alice text-muted-foreground/40 cursor-not-allowed border border-border/20"
                         )}
                       >
-                        <Download size={14} className={contract.pdfUrl ? "text-vanilla" : "text-muted-foreground/20"} />
-                        {contract.pdfUrl ? "VISUALISER LE CONTRAT" : "CONTRAT EN ATTENTE"}
+                        <Download size={14} className={(contract.pdfUrl || contract.localFilePath) ? "text-vanilla" : "text-muted-foreground/20"} />
+                        {(contract.pdfUrl || contract.localFilePath) ? "VISUALISER LE CONTRAT" : "CONTRAT EN ATTENTE"}
                       </button>
                     </div>
                   </NeuCard>
@@ -804,27 +807,30 @@ function DossierDetailPage() {
                       <div className="flex justify-between items-start">
                         <div className={cn(
                           "p-3 rounded-2xl shadow-sm border border-white",
-                          doc.filePath ? "bg-vanilla/20 text-vanilla" : "bg-alice text-muted-foreground/40"
+                          (doc.filePath || doc.localFilePath) ? "bg-vanilla/20 text-vanilla" : "bg-alice text-muted-foreground/40"
                         )}>
                           <FileText size={20} />
                         </div>
-                        <SoftBadge tone={doc.filePath ? "success" : "warn"} className="text-[8px] font-black tracking-widest uppercase">
-                          {doc.filePath ? "COMPLÉTÉ" : "À FOURNIR"}
+                        <SoftBadge tone={(doc.filePath || doc.localFilePath) ? "success" : "warn"} className="text-[8px] font-black tracking-widest uppercase">
+                          {(doc.filePath || doc.localFilePath) ? "COMPLÉTÉ" : "À FOURNIR"}
                         </SoftBadge>
                       </div>
 
                       <div className="space-y-1">
                         <h4 className="font-black text-sm text-eerie uppercase tracking-tight">{doc.documentType.replace(/_/g, ' ')}</h4>
                         <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                          {doc.filePath ? `Ajouté le ${formatDate(doc.createdAt)}` : "Action requise"}
+                          {(doc.filePath || doc.localFilePath) ? `Ajouté le ${formatDate(doc.createdAt)}` : "Action requise"}
                         </p>
                       </div>
                     </div>
 
                     <div className="mt-6">
-                      {doc.filePath ? (
+                      {(doc.filePath || doc.localFilePath) ? (
                         <button
-                          onClick={() => setPreviewDocUrl(doc.filePath)}
+                          onClick={() => {
+                            const url = doc.localFilePath ? `http://localhost:8081${doc.localFilePath}` : doc.filePath;
+                            setPreviewDocUrl(url);
+                          }}
                           className="w-full py-3 bg-alice text-eerie rounded-xl font-black text-[9px] tracking-widest flex items-center justify-center gap-2 hover:bg-vanilla/10 transition-all active:scale-95 border border-border/20"
                         >
                           <ExternalLink size={12} /> VISUALISER LE DOCUMENT

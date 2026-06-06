@@ -1663,24 +1663,35 @@ export function DossierDetailPage({
 
         {tab === "Contrats" && (
           <div className="space-y-4">
-            <button
-              onClick={() => {
-                if (!acceptedProperty) {
-                  toast.warning("Veuillez d'abord accepter une offre de propriété pour ce dossier.");
-                  setTab("Propriétés");
-                  return;
-                }
-                setPropDetail(acceptedProperty);
-                setShowContractForm(true);
-              }}
-              className={`w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                acceptedProperty 
-                ? "bg-eerie text-ghost hover:opacity-90 shadow-lg" 
-                : "bg-alice text-muted-foreground/60 cursor-not-allowed"
-              }`}
-            >
-              <Plus size={16} /> Nouveau contrat {!acceptedProperty && "(Sélectionnez un bien d'abord)"}
-            </button>
+            {contracts.length === 0 && (
+              <button
+                onClick={() => {
+                  if (!acceptedProperty) {
+                    toast.warning("Veuillez d'abord accepter une offre de propriété pour ce dossier.");
+                    setTab("Propriétés");
+                    return;
+                  }
+                  setPropDetail(acceptedProperty);
+                  setShowContractForm(true);
+                }}
+                className={`w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                  acceptedProperty 
+                  ? "bg-eerie text-ghost hover:opacity-90 shadow-lg" 
+                  : "bg-alice text-muted-foreground/60 cursor-not-allowed"
+                }`}
+              >
+                <Plus size={16} /> Nouveau contrat {!acceptedProperty && "(Sélectionnez un bien d'abord)"}
+              </button>
+            )}
+
+            {contracts.length > 0 && (
+              <div className="bg-vanilla/10 p-3 rounded-xl border border-vanilla/20 flex items-center gap-3">
+                <AlertCircle size={16} className="text-vanilla shrink-0" />
+                <p className="text-[10px] font-bold text-vanilla uppercase tracking-wider">
+                  Un contrat est déjà associé à ce dossier.
+                </p>
+              </div>
+            )}
 
             {/* Historique des contrats depuis l'API */}
             {loadingContext ? (
@@ -1705,15 +1716,26 @@ export function DossierDetailPage({
                         Réf : MR-{new Date(c.createdAt || Date.now()).getFullYear()}-{(c.idContract?.substring(0, 4) || 'XXXX').toUpperCase()} · {((c.agreedPrice || 0) / 1_000_000).toFixed(2)}M $
                       </p>
                     </div>
-                    {c.pdfUrl && (
-                      <button
-                        onClick={() => window.open(c.pdfUrl, '_blank')}
-                        className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center shrink-0"
-                        title="Aperçu du PDF"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {c.status === "DRAFT" && (
+                        <button
+                          onClick={() => handleDeleteContract(c.idContract)}
+                          className="p-2 rounded-lg hover:bg-warn/10 text-warn transition-all flex items-center justify-center"
+                          title="Supprimer le brouillon"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                      {(c.pdfUrl || c.localFilePath) && (
+                        <button
+                          onClick={() => window.open(c.localFilePath ? `http://localhost:8081${c.localFilePath}` : c.pdfUrl, '_blank')}
+                          className="p-2 rounded-lg neu-sm hover:neu-pressable text-eerie transition-all flex items-center justify-center"
+                          title="Aperçu du PDF"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Tracker statut */}
@@ -1853,21 +1875,23 @@ export function DossierDetailPage({
               return (
               <div
                 key={f.idDocument || i}
-                className={`flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group ${!f.filePath ? 'opacity-60 bg-alice/20' : ''}`}
+                className={`flex items-center gap-2 p-2 rounded-lg neu-sm text-xs group ${(!f.filePath && !f.localFilePath) ? 'opacity-60 bg-alice/20' : ''}`}
               >
                 <Paperclip size={13} className="text-muted-foreground shrink-0" />
                 <span className="flex-1 truncate">
                   {displayName}
                   <div className="text-[10px] text-muted-foreground opacity-70 mt-0.5">
                     {f.documentType || f.type || "Document"} 
-                    {!f.filePath && <span className="ml-2 text-warn font-bold">(À fournir)</span>}
+                    {(!f.filePath && !f.localFilePath) && <span className="ml-2 text-warn font-bold">(À fournir)</span>}
                   </div>
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {f.filePath && (
+                  {(f.filePath || f.localFilePath) && (
                     <button
                       onClick={() => {
-                        if (f.filePath.startsWith("http")) {
+                        if (f.localFilePath) {
+                          window.open(`http://localhost:8081${f.localFilePath}`, '_blank');
+                        } else if (f.filePath.startsWith("http")) {
                           window.open(f.filePath, '_blank');
                         } else {
                           window.open(`http://localhost:8081/api/documents/file?path=${encodeURIComponent(f.filePath)}`, '_blank');

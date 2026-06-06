@@ -103,11 +103,15 @@ public class ContractService {
         // Publier l'événement pour l'audit IA automatique
         eventPublisher.publishEvent(new ContractCreatedEvent(this, savedContract));
 
-        // Génération et upload du PDF Cloudinary
+        // Génération et upload du PDF Cloudinary + Local
         try {
-            String pdfUrl = contractPdfService.generateAndUpload(savedContract);
-            if (pdfUrl != null) {
-                savedContract.setPdfUrl(pdfUrl);
+            java.util.Map<String, String> files = contractPdfService.generateUploadAndStoreLocal(savedContract);
+            String pdfUrl = files.get("cloudinaryUrl");
+            String localPath = files.get("localPath");
+            
+            if (pdfUrl != null || localPath != null) {
+                if (pdfUrl != null) savedContract.setPdfUrl(pdfUrl);
+                if (localPath != null) savedContract.setLocalFilePath(localPath);
                 savedContract = contractRepository.save(savedContract);
             }
         } catch (Exception e) {
@@ -195,7 +199,7 @@ public class ContractService {
                 .orElseThrow(() -> new IllegalArgumentException("Contrat non trouvé avec l'ID: " + contractId));
 
         if (contract.getStatus() != ContractStatus.DRAFT) {
-            throw new IllegalStateException("Seuls les contrats au statut DRAFT peuvent être supprimés.");
+            throw new IllegalStateException("Seuls les contrats au statut DRAFT peuvent être supprimés par l'agent.");
         }
 
         contractRepository.delete(contract);
@@ -270,6 +274,11 @@ public class ContractService {
                     .collect(Collectors.toList());
         }
 
+        String localUrl = null;
+        if (contract.getLocalFilePath() != null) {
+            localUrl = "/uploads/" + contract.getLocalFilePath().replace("\\", "/");
+        }
+
         return ContractDto.Response.builder()
                 .idContract(contract.getIdContract())
                 .agreedPrice(contract.getAgreedPrice())
@@ -283,6 +292,7 @@ public class ContractService {
                 .aiRiskSummary(contract.getAiRiskSummary())
                 .createdAt(contract.getCreatedAt())
                 .pdfUrl(contract.getPdfUrl())
+                .localFilePath(localUrl)
                 .payments(paymentResponses)
                 .build();
     }

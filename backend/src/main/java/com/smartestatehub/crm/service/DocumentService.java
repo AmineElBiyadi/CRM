@@ -41,11 +41,17 @@ public class DocumentService {
 
 
     private DocumentDto toDto(Document doc) {
+        String localUrl = null;
+        if (doc.getLocalFilePath() != null) {
+            // Transforme le chemin relatif en URL accessible via /uploads/
+            localUrl = "/uploads/" + doc.getLocalFilePath().replace("\\", "/");
+        }
+
         return DocumentDto.builder()
                 .idDocument(doc.getIdDocument())
                 .documentType(doc.getDocumentType() != null ? doc.getDocumentType().name() : null)
                 .filePath(doc.getFilePath())
-                .localFilePath(doc.getLocalFilePath())
+                .localFilePath(localUrl)
                 .confirmedReceived(doc.isConfirmedReceived())
                 .createdAt(doc.getCreatedAt())
                 .dealId(doc.getDeal() != null ? doc.getDeal().getIdDeal() : null)
@@ -95,16 +101,18 @@ public class DocumentService {
                 .orElseThrow(() -> new IllegalArgumentException("Dossier non trouvé: " + dealId));
 
         // 1. Sauvegarde locale
-        String uploadDir = "uploads/documents";
+        String relativeDir = "documents";
+        String uploadDir = "uploads/" + relativeDir;
         File dir = new File(uploadDir);
         if (!dir.exists()) dir.mkdirs();
 
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
         String filename = type.name() + "_" + UUID.randomUUID() + "_" + originalFilename;
-        Path targetLocation = Paths.get(uploadDir).toAbsolutePath().resolve(filename);
+        Path targetLocation = Paths.get(uploadDir).resolve(filename);
         
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-        String localPath = targetLocation.toString();
+        // On stocke le chemin relatif par rapport à /uploads/
+        String localPath = relativeDir + "/" + filename;
         log.info("Fichier sauvegardé localement: {}", localPath);
 
         // 2. Upload Cloudinary
