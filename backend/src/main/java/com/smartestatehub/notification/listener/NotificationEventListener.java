@@ -8,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Map;
 
@@ -130,7 +134,8 @@ public class NotificationEventListener {
         ));
     }
 
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleDossierConfirmed(DossierConfirmedEvent event) {
         log.info("Dossier confirmed for client: {}", event.getFolder().getClient().getEmail());
         n8nWebhookService.triggerWorkflow("/dossier-confirmed", "DOSSIER_CONFIRMED", Map.of(

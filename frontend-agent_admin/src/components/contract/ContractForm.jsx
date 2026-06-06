@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   X, ChevronRight, ChevronLeft, FileSignature, Building2,
-  DollarSign, CalendarDays, Plus, Trash2, Check, Loader2,
+  DollarSign, CalendarDays, Plus, Trash2, Check, Loader2, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createContract } from "@/api/contractApi";
