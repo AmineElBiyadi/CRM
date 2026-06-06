@@ -75,12 +75,11 @@ public class SecurityConfig {
                     "/api/crm/**",
                     "/api/documents/**",
                     "/api/properties/**",
-                    "/api/property-types/**",
                     "/api/contracts/**",
                     "/api/offers/**",
                     "/api/emails/**",
                     "/api/ai/**"
-                ).hasAnyRole("AGENT", "ADMIN")
+                ).hasAnyRole("AGENT", "ADMIN", "CLIENT")
                 .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "AGENT", "ADMIN")
                 .requestMatchers("/api/rag/**").hasAnyRole("AGENT", "ADMIN", "CLIENT")
                 .anyRequest().authenticated()

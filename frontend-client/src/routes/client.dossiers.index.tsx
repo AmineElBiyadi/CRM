@@ -15,11 +15,21 @@ import {
   Filter,
   ArrowUpDown,
   Search,
-  X
+  X,
+  Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useClientData } from "@/hooks/use-client-data";
+import { MurshidChatbot } from "@/components/ai/MurshidChatbot";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/client/dossiers/")({
   component: DossiersListPage,
@@ -57,8 +67,11 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export function DossiersListPage() {
-  const { data: dossiers, isLoading, isError, refetch } = useDossiers();
+  const { data: dossiers, isLoading, isError, refetch: refetchDossiers } = useDossiers();
+  const { data: clientData } = useClientData();
   const navigate = useNavigate();
+
+  const [showMurshidModal, setShowMurshidModal] = useState(false);
 
   // Filtres
   const [filterType, setFilterType] = useState<string>("ALL");
@@ -77,10 +90,12 @@ export function DossiersListPage() {
     if (!dossiers) return [];
     
     let result = dossiers.filter(d => {
+      const status = d.status?.toUpperCase();
+      const isActive = status === 'ACTIVE'; // Strictly show only active dossiers
       const matchType = filterType === "ALL" || d.clientType === filterType;
       const matchAgent = filterAgent === "ALL" || d.assignedAgentName === filterAgent;
       const matchStage = filterStage === "ALL" || d.stage === filterStage;
-      return matchType && matchAgent && matchStage;
+      return isActive && matchType && matchAgent && matchStage;
     });
 
     return result.sort((a, b) => {
@@ -138,7 +153,7 @@ export function DossiersListPage() {
           <h2 className="text-xl font-bold text-red-900 mb-2">Erreur de chargement</h2>
           <p className="text-red-700 mb-6">Nous n'avons pas pu récupérer vos dossiers. Veuillez réessayer.</p>
           <button 
-            onClick={() => refetch()}
+            onClick={() => refetchDossiers()}
             className="px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
           >
             Réessayer
@@ -155,8 +170,39 @@ export function DossiersListPage() {
           <h1 className="text-3xl font-black tracking-tight text-eerie">Mes dossiers</h1>
           <p className="text-muted-foreground font-medium">Retrouvez l'ensemble de vos projets immobiliers en cours.</p>
         </div>
-        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground/60 bg-alice/30 px-4 py-2 rounded-full border border-border/20">
-          <Folder size={14} className="text-vanilla" /> {filteredDossiers.length} dossiers trouvés
+        <div className="flex items-center gap-4">
+          <Dialog open={showMurshidModal} onOpenChange={setShowMurshidModal}>
+            <DialogTrigger asChild>
+              <button className="flex items-center gap-2 px-4 py-2 bg-eerie text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-vanilla hover:text-eerie transition-all shadow-lg shadow-eerie/10">
+                <Plus size={14} /> OUVRIR AUTRE DOSSIER
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px] p-0 border-none bg-transparent shadow-none">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Murshid Dossier</DialogTitle>
+              </DialogHeader>
+              <MurshidChatbot 
+                mode="dossier_only" 
+                initialData={clientData?.profile ? {
+                  clientId: clientData.profile.idClient,
+                  firstName: clientData.profile.firstName,
+                  lastName: clientData.profile.lastName,
+                  email: clientData.profile.email,
+                  phone: clientData.profile.phone
+                } : undefined}
+                onCompleted={() => {
+                  setTimeout(() => {
+                    setShowMurshidModal(false);
+                    refetchDossiers();
+                  }, 3000);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground/60 bg-alice/30 px-4 py-2 rounded-full border border-border/20">
+            <Folder size={14} className="text-vanilla" /> {filteredDossiers.length} dossiers trouvés
+          </div>
         </div>
       </header>
 
@@ -265,7 +311,9 @@ export function DossiersListPage() {
                       {title}
                     </h3>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      Créé le {format(new Date(dossier.createdAt || 0), "d MMMM yyyy", { locale: fr })}
+                      {dossier.createdAt && new Date(dossier.createdAt).getTime() > 0
+                        ? `Créé le ${format(new Date(dossier.createdAt), "d MMMM yyyy", { locale: fr })}`
+                        : "Date de création inconnue"}
                     </p>
                   </div>
 

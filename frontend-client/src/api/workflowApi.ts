@@ -49,11 +49,11 @@ export const workflowApi = {
     const { data } = await api.post<string>('/api/public/onboarding/dossier', request);
     return data;
   },
-  checkEmail: async (email: string): Promise<void> => {
-    await api.get(`/api/public/onboarding/check-email?email=${encodeURIComponent(email)}`);
-  },
   getPropertyTypes: async (): Promise<PropertyType[]> => {
     const { data } = await api.get<PropertyType[]>('/api/property-types');
     return data;
+  },
+  checkEmail: async (email: string): Promise<void> => {
+    await api.get('/api/public/onboarding/check-email', { params: { email } });
   }
 };

@@ -10,6 +10,21 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  // Support for CSRF token from cookies
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('csrf_token='))
+    ?.split('=')[1];
+    
+  if (csrfToken && config.method !== 'get') {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   const clientId = getClientId();
   if (clientId) {
     config.headers["X-Client-Id"] = clientId;

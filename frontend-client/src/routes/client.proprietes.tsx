@@ -23,7 +23,11 @@ function ClientProperties() {
     );
   }
 
-  const dossiersWithProperties = data?.dossiers?.filter(d => d.propertyTitle) || [];
+  const dossiersWithProperties = data?.dossiers?.filter(d => {
+    const status = d.status?.toUpperCase();
+    const isActive = status === 'ACTIVE'; // Strictly show only properties from active dossiers
+    return d.propertyTitle && isActive;
+  }) || [];
 
   const toggleFav = (id: string) => {
     setFavorites((prev) => {

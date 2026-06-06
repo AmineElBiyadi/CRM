@@ -53,6 +53,7 @@ export interface DossierDetail {
   aiRecommendedAction: string;
   aiSummary: string;
   isUrgent: boolean;
+  status: string;
   budgetMin?: number;
   budgetMax?: number;
   preferredArea?: string;
@@ -64,6 +65,8 @@ export interface DossierDetail {
   assignedAgentName: string;
   propertyImageUrls?: string[];
   lastInteractionAt: string;
+  createdAt: string;
+  updatedAt?: string;
   visitStatus?: "VISITED" | "VISIT_PLANNED" | "PROPOSED";
   clientFriendlyAction?: string;
   documents?: Document[];
@@ -136,7 +139,7 @@ export interface ClientPortalData {
 export function useClientData() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery<ClientPortalData>({
+  const { data, isLoading, error, refetch } = useQuery<ClientPortalData>({
     queryKey: ["clientPortalData"],
     queryFn: async () => {
       const { data } = await clientPortalAxios.get("/full-data");
@@ -223,6 +226,7 @@ export function useClientData() {
     data,
     isLoading,
     error,
+    refetch,
     updateProfile,
     sendMessage,
     acceptMeeting,
