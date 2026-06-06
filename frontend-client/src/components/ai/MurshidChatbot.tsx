@@ -22,19 +22,31 @@ type OnboardingStep =
   | 'COMPLETED'
   | 'ERROR';
 
-export function MurshidChatbot() {
+export interface MurshidChatbotProps {
+  mode?: 'onboarding' | 'dossier_only';
+  initialData?: {
+    clientId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  onCompleted?: () => void;
+}
+
+export function MurshidChatbot({ mode = 'onboarding', initialData, onCompleted }: MurshidChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('WELCOME');
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [userData, setUserData] = useState<any>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
+    firstName: initialData?.firstName || '',
+    lastName: initialData?.lastName || '',
+    email: initialData?.email || '',
+    phone: initialData?.phone || '',
     source: '',
-    clientId: '',
+    clientId: initialData?.clientId || '',
     clientType: '', // BUYER or SELLER
     dossier: {}
   });
@@ -54,14 +66,22 @@ export function MurshidChatbot() {
 
     // Initial welcome message
     const welcome = async () => {
-      addBotMessage(`👋 Bonjour et bienvenue !
+      if (mode === 'dossier_only') {
+        addBotMessage(`👋 Bonjour **${userData.firstName}** !
+        
+Heureux de vous revoir. Je suis **Murshid**, votre assistant immobilier.
+
+Quel nouveau projet souhaitez-vous lancer aujourd'hui ?`);
+        setCurrentStep('TYPE_SELECTION');
+      } else {
+        addBotMessage(`👋 Bonjour et bienvenue !
       
 Je suis **Murshid**, votre assistant immobilier personnel.
 Je vais vous accompagner pour créer votre dossier en quelques minutes seulement.
 
 Pour commencer, quel est votre prénom ?`);
-      
-      setCurrentStep('FIRST_NAME');
+        setCurrentStep('FIRST_NAME');
+      }
       
       // Pre-fetch property types
       try {
@@ -72,7 +92,7 @@ Pour commencer, quel est votre prénom ?`);
       }
     };
     welcome();
-  }, []);
+  }, [mode]);
 
   const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
 
@@ -293,6 +313,7 @@ Pour commencer, quel est votre prénom ?`);
           } else {
             addBotMessage("Entendu ! Merci encore pour votre confiance. Nos agents reviennent vers vous très vite. À très bientôt ! 👋");
             setCurrentStep('COMPLETED');
+            if (onCompleted) onCompleted();
           }
           break;
       }

@@ -3,8 +3,6 @@ import { useState, useMemo } from "react";
 import { NeuCard } from "@/components/ui/neu-card";
 import { Avatar, SoftBadge, LeadScore } from "@/components/ui/design-bits";
 import { 
-  CheckCircle2, 
-  Circle, 
   MessageCircle, 
   CalendarPlus, 
   Upload, 
@@ -14,20 +12,14 @@ import {
   Loader2, 
   CheckCheck, 
   Folder, 
-  TrendingUp,
-  AlertCircle,
   ArrowRight,
-  User,
   Activity,
-  Bot,
   PieChart as PieChartIcon,
   BarChart3,
   Calendar,
   Users,
   Wallet,
-  ArrowUpRight,
-  Sparkles,
-  ChevronRight
+  Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import { useClientData } from "@/hooks/use-client-data";
@@ -36,6 +28,14 @@ import { fr } from "date-fns/locale";
 import { ContactAgentModal } from "@/components/client/ContactAgentModal";
 import { cn } from "@/lib/utils";
 import { RagChatWidget } from "@/components/ai/RagChatWidget";
+import { MurshidChatbot } from "@/components/ai/MurshidChatbot";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   PieChart, 
   Pie, 
@@ -60,8 +60,9 @@ const stageToIdx: Record<string, number> = {
 };
 
 function ClientHome() {
-  const { data, isLoading } = useClientData();
+  const { data, isLoading, refetch } = useClientData();
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showMurshidModal, setShowMurshidModal] = useState(false);
 
   // Statistics calculation
   const stats = useMemo(() => {
@@ -164,92 +165,39 @@ function ClientHome() {
               </div>
             </div>
           </div>
-          
-          <div className="flex gap-4">
-            <button 
-              onClick={() => setShowContactModal(true)}
-              className="px-8 py-4 bg-vanilla text-eerie rounded-2xl font-black text-xs tracking-widest hover:scale-105 transition-all shadow-xl shadow-vanilla/20 flex items-center gap-2"
-            >
-              <MessageCircle size={16} /> CONTACTER L'ÉQUIPE
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Financial & Priority Section */}
+      {/* Overview Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <NeuCard className="p-6 bg-white border-none shadow-xl shadow-eerie/5 relative overflow-hidden group">
+        {/* Financial Summary */}
+        <NeuCard className="p-8 bg-white border-none shadow-xl shadow-eerie/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
             <Wallet size={80} className="text-eerie" />
           </div>
-          <div className="space-y-4 relative z-10">
+          <div className="space-y-6 relative z-10">
             <div className="flex items-center gap-2 text-muted-foreground">
               <div className="p-2 bg-ghost rounded-xl"><Wallet size={16} /></div>
               <span className="text-[10px] font-black uppercase tracking-widest">Capacité d'Investissement</span>
             </div>
             <div>
-              <div className="text-3xl font-black text-eerie">
+              <div className="text-4xl font-black text-eerie">
                 {stats?.totalBuyerBudget.toLocaleString()} <span className="text-lg font-bold">€</span>
               </div>
               <p className="text-[10px] font-bold text-muted-foreground mt-1">Cumul des budgets d'achat</p>
             </div>
-            <div className="pt-4 border-t border-ghost flex items-center justify-between">
+            <div className="pt-6 border-t border-ghost flex items-center justify-between">
               <span className="text-[9px] font-black text-muted-foreground/50 uppercase tracking-widest">Patrimoine en vente</span>
-              <span className="text-sm font-black text-success">+{stats?.totalSellerValue.toLocaleString()} €</span>
+              <span className="text-base font-black text-success">+{stats?.totalSellerValue.toLocaleString()} €</span>
             </div>
           </div>
         </NeuCard>
 
-        <NeuCard className="lg:col-span-2 p-6 bg-ghost/30 border-none shadow-inner relative overflow-hidden">
-          <div className="absolute top-4 right-4"><Sparkles size={20} className="text-vanilla/40 animate-pulse" /></div>
-          <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground/50 mb-6 flex items-center gap-2">
-            <Bot size={14} className="text-vanilla" /> Recommandations IA & Priorités
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stats?.urgentDossiers.length ? (
-              stats.urgentDossiers.slice(0, 2).map((d, i) => (
-                <div key={i} className="p-4 rounded-3xl bg-white border border-border/10 shadow-sm flex items-start gap-4 hover:border-vanilla/30 transition-colors cursor-pointer group">
-                  <div className="p-3 bg-danger/10 rounded-2xl text-danger shrink-0"><AlertCircle size={20} /></div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-danger uppercase tracking-widest">Action Urgente</p>
-                    <p className="text-xs font-bold text-eerie leading-snug">{d.clientFriendlyAction || "Action requise sur votre dossier"}</p>
-                    <div className="flex items-center gap-1 text-[9px] font-black text-muted-foreground pt-1 uppercase">
-                      {d.propertyTitle || "Dossier sans titre"} <ChevronRight size={10} />
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 rounded-3xl bg-white border border-border/10 shadow-sm flex items-start gap-4">
-                <div className="p-3 bg-success/10 rounded-2xl text-success shrink-0"><CheckCheck size={20} /></div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-success uppercase tracking-widest">Tout est en ordre</p>
-                  <p className="text-xs font-bold text-eerie leading-snug">Vos dossiers progressent normalement. Aucune action urgente requise.</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="p-4 rounded-3xl bg-vanilla/10 border border-vanilla/20 shadow-sm flex items-start gap-4 hover:bg-vanilla/15 transition-all cursor-pointer group">
-              <div className="p-3 bg-vanilla rounded-2xl text-white shrink-0 shadow-lg shadow-vanilla/20"><TrendingUp size={20} /></div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-vanilla uppercase tracking-widest">Opportunité</p>
-                <p className="text-xs font-bold text-eerie leading-snug">Nouvelle propriété correspondant à vos critères de recherche.</p>
-                <Link to="/client/proprietes" className="flex items-center gap-1 text-[9px] font-black text-vanilla pt-1 uppercase group-hover:underline">
-                  Voir la sélection <ArrowRight size={10} />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </NeuCard>
-      </div>
-
-      {/* Statistics Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Portfolio Distribution */}
         <NeuCard className="p-8 space-y-6 bg-white border-none shadow-xl shadow-eerie/5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
-              <PieChartIcon size={14} className="text-vanilla" /> Répartition du Portefeuille
+              <PieChartIcon size={14} className="text-vanilla" /> Portefeuille
             </h3>
             <div className="flex gap-4">
               {stats?.pieData.map((d, i) => (
@@ -260,15 +208,15 @@ function ClientHome() {
               ))}
             </div>
           </div>
-          <div className="h-[250px] w-full">
+          <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={stats?.pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={70}
-                  outerRadius={90}
+                  innerRadius={50}
+                  outerRadius={70}
                   paddingAngle={8}
                   dataKey="value"
                   stroke="none"
@@ -286,20 +234,21 @@ function ClientHome() {
           </div>
         </NeuCard>
 
+        {/* Pipeline Summary */}
         <NeuCard className="p-8 space-y-6 bg-white border-none shadow-xl shadow-eerie/5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
-              <BarChart3 size={14} className="text-vanilla" /> Pipeline & Étapes
+              <BarChart3 size={14} className="text-vanilla" /> Pipeline
             </h3>
           </div>
-          <div className="h-[250px] w-full">
+          <div className="h-[180px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats?.barData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+              <BarChart data={stats?.barData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <XAxis 
                   dataKey="stage" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: '900', fill: '#94a3b8' }}
+                  tick={{ fontSize: 9, fontWeight: '900', fill: '#94a3b8' }}
                   dy={10}
                 />
                 <YAxis hide />
@@ -307,7 +256,7 @@ function ClientHome() {
                   cursor={{ fill: '#f8fafc', radius: 12 }}
                   contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '16px' }}
                 />
-                <Bar dataKey="dossiers" fill="#f59e0b" radius={[12, 12, 12, 12]} barSize={40} />
+                <Bar dataKey="dossiers" fill="#f59e0b" radius={[8, 8, 8, 8]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -321,6 +270,35 @@ function ClientHome() {
             <h2 className="text-xl font-black text-eerie uppercase tracking-tight flex items-center gap-3">
               <Folder className="text-vanilla" size={24} /> Vos Dossiers Actifs
             </h2>
+
+            <Dialog open={showMurshidModal} onOpenChange={setShowMurshidModal}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2 bg-eerie text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-vanilla hover:text-eerie transition-all shadow-lg shadow-eerie/10">
+                  <Plus size={14} /> OUVRIR AUTRE DOSSIER
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] p-0 border-none bg-transparent shadow-none">
+                <DialogHeader className="sr-only">
+                  <DialogTitle>Murshid Dossier</DialogTitle>
+                </DialogHeader>
+                <MurshidChatbot 
+                  mode="dossier_only" 
+                  initialData={data?.profile ? {
+                    clientId: data.profile.idClient,
+                    firstName: data.profile.firstName,
+                    lastName: data.profile.lastName,
+                    email: data.profile.email,
+                    phone: data.profile.phone
+                  } : undefined}
+                  onCompleted={() => {
+                    setTimeout(() => {
+                      setShowMurshidModal(false);
+                      refetch();
+                    }, 3000);
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="space-y-6">
@@ -474,13 +452,6 @@ function ClientHome() {
                 <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Aucun RDV prévu</p>
               </div>
             )}
-            
-            <button 
-              onClick={() => setShowContactModal(true)}
-              className="w-full py-4 bg-eerie text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-lg shadow-eerie/20 flex items-center justify-center gap-2"
-            >
-              <CalendarPlus size={14} /> DEMANDER UN RDV
-            </button>
           </NeuCard>
 
           {/* Missing Documents Widget */}
@@ -517,19 +488,17 @@ function ClientHome() {
             )}
           </NeuCard>
 
-          {/* Activity Summary Widget */}
           <NeuCard className="p-6 space-y-6 bg-white border-none shadow-xl shadow-eerie/5">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
                 <Activity size={14} className="text-vanilla" /> Activité Récente
               </h3>
-              <Link to="/client/chronologie" className="text-[10px] font-black text-vanilla hover:underline">VOIR TOUT</Link>
             </div>
             
-            <div className="space-y-4">
-              {data?.timeline?.slice(0, 3).map((event, i) => (
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              {data?.timeline?.map((event, i) => (
                 <div key={i} className="flex gap-4 items-start relative">
-                  {i < 2 && <div className="absolute left-[11px] top-6 w-0.5 h-6 bg-ghost" />}
+                  {i < (data?.timeline?.length || 0) - 1 && <div className="absolute left-[11px] top-6 w-0.5 h-6 bg-ghost" />}
                   <div className="w-6 h-6 rounded-full bg-ghost flex items-center justify-center shrink-0 border-2 border-white shadow-sm">
                     <div className="w-1.5 h-1.5 rounded-full bg-vanilla" />
                   </div>

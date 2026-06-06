@@ -43,7 +43,11 @@ function ClientContracts() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold">Compromis de vente</h3>
-                    <p className="text-sm text-muted-foreground">Créé le {format(new Date(c.createdAt), "d MMMM yyyy", { locale: fr })}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Créé le {c.createdAt && new Date(c.createdAt).getTime() > 0 
+                        ? format(new Date(c.createdAt), "d MMMM yyyy", { locale: fr }) 
+                        : "Date inconnue"}
+                    </p>
                   </div>
                 </div>
                 <SoftBadge tone={c.status === "SIGNED" ? "success" : "warn"}>{c.status}</SoftBadge>
